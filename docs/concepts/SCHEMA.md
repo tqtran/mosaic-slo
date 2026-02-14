@@ -20,25 +20,25 @@ This document describes the complete database schema for the MOSAIC assessment p
 institution
     └─> institutional_outcomes
         └─> program_outcomes
-            ├─> programs
-            └─> student_learning_outcomes
+            └─> programs
+
+slo_sets (per year/quarter/period)
+    ├─> terms
+    │   └─> course_sections
+    │       └─> enrollment (with CRN)
+    │           ├─> students
+    │           └─> assessments
+    └─> student_learning_outcomes
+        └─> courses
 
 departments
     ├─> programs
     └─> courses
-        ├─> student_learning_outcomes
-        └─> course_sections
-            └─> enrollment
-                ├─> students
-                └─> assessments
 
 users
     ├─> user_roles -> roles
     ├─> course_sections (instructor)
     └─> audit fields (created_by, updated_by, assessed_by)
-
-terms
-    └─> course_sections
 ```
 
 ## Tables
@@ -104,12 +104,38 @@ Program-level learning outcomes mapped to institutional outcomes.
 
 **Indexes**: code (unique), program_fk, institutional_outcomes_fk, sequence_num, is_active
 
+---
+
+### 3. SLO Sets & Outcomes
+
+#### slo_sets
+Grouping of SLOs by time period (year, quarter, period). Each term uses outcomes from one SLO set.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| slo_sets_pk | INT | Primary key |
+| set_code | VARCHAR(50) | Unique set code (e.g., 'AY2024') |
+| set_name | VARCHAR(255) | Set name (e.g., 'Academic Year 2024') |
+| set_type | ENUM | 'year', 'quarter', 'semester', 'custom' |
+| start_date | DATE | Set start date |
+| end_date | DATE | Set end date |
+| is_active | BOOLEAN | Active set flag |
+| created_at | TIMESTAMP | Record creation time |
+| updated_at | TIMESTAMP | Last update time |
+| created_by_fk | INT | User who created record |
+| updated_by_fk | INT | User who last updated |
+
+**Foreign Keys**: created_by_fk → users(users_pk), updated_by_fk → users(users_pk)
+
+**Indexes**: set_code (unique), set_type, is_active, start_date, end_date
+
 #### student_learning_outcomes
-Course-level student learning outcomes mapped to program outcomes.
+Course-level student learning outcomes within SLO sets. SLOs are uploaded per set and can be mapped to program outcomes.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | student_learning_outcomes_pk | INT | Primary key |
+| slo_set_fk | INT | Foreign key to slo_sets |
 | course_fk | INT | Foreign key to courses |
 | program_outcomes_fk | INT | Parent program outcome (nullable) |
 | slo_code | VARCHAR(50) | SLO code within course |
@@ -122,15 +148,15 @@ Course-level student learning outcomes mapped to program outcomes.
 | created_by_fk | INT | User who created record |
 | updated_by_fk | INT | User who last updated |
 
-**Foreign Keys**: course_fk → courses(courses_pk), program_outcomes_fk → program_outcomes(program_outcomes_pk), created_by_fk → users(users_pk), updated_by_fk → users(users_pk)
+**Foreign Keys**: slo_set_fk → slo_sets(slo_sets_pk), course_fk → courses(courses_pk), program_outcomes_fk → program_outcomes(program_outcomes_pk), created_by_fk → users(users_pk), updated_by_fk → users(users_pk)
 
-**Unique Constraint**: (course_fk, slo_code)
+**Unique Constraint**: (slo_set_fk, course_fk, slo_code)
 
-**Indexes**: course_fk, program_outcomes_fk, sequence_num, is_active
+**Indexes**: slo_set_fk, course_fk, program_outcomes_fk, sequence_num, is_active
 
 ---
 
-### 3. Organizational Structure
+### 4. Organizational Structure
 
 #### departments
 Academic departments.
@@ -192,11 +218,12 @@ Course definitions (catalog entries).
 **Indexes**: course_code (unique), department_fk, is_active
 
 #### terms
-Academic terms/semesters.
+Academic terms/semesters. Each term is associated with an SLO set to determine which SLOs are assessed.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | terms_pk | INT | Primary key |
+| slo_set_fk | INT | Foreign key to slo_sets |
 | term_code | VARCHAR(50) | Term code (e.g., 'FA2024') |
 | term_name | VARCHAR(100) | Term name (e.g., 'Fall 2024') |
 | term_year | INT | Academic year |
@@ -206,7 +233,9 @@ Academic terms/semesters.
 | created_at | TIMESTAMP | Record creation time |
 | updated_at | TIMESTAMP | Last update time |
 
-**Indexes**: term_code (unique), term_year, is_active
+**Foreign Keys**: slo_set_fk → slo_sets(slo_sets_pk)
+
+**Indexes**: term_code (unique), slo_set_fk, term_year, is_active
 
 #### course_sections
 Course offerings in specific terms.
@@ -230,7 +259,7 @@ Course offerings in specific terms.
 
 ---
 
-### 4. Students & Enrollment
+### 5. Students & Enrollment
 
 #### students
 Student records.
@@ -249,13 +278,14 @@ Student records.
 **Indexes**: student_id (unique), email, is_active
 
 #### enrollment
-Student enrollment in course sections.
+Student enrollment in course sections. Each enrollment has a unique CRN (Course Reference Number). Assessments are tied to the enrollment record via CRN.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | enrollment_pk | INT | Primary key |
 | course_section_fk | INT | Foreign key to course_sections |
 | student_fk | INT | Foreign key to students |
+| crn | VARCHAR(50) | Course Reference Number |
 | enrollment_status | ENUM | 'enrolled', 'dropped', 'completed' |
 | enrollment_date | DATE | Date enrolled |
 | drop_date | DATE | Date dropped (nullable) |
@@ -264,21 +294,21 @@ Student enrollment in course sections.
 
 **Foreign Keys**: course_section_fk → course_sections(course_sections_pk), student_fk → students(students_pk)
 
-**Unique Constraint**: (course_section_fk, student_fk)
+**Unique Constraint**: (course_section_fk, student_fk), crn (unique)
 
-**Indexes**: course_section_fk, student_fk, enrollment_status
+**Indexes**: course_section_fk, student_fk, crn, enrollment_status
 
 ---
 
-### 5. Assessment Data
+### 6. Assessment Data
 
 #### assessments
-Individual student assessments for SLOs.
+Individual student assessments for SLOs. Each assessment is tied to an enrollment record (which contains the CRN) and a specific SLO from the term's SLO set.
 
 | Column | Type | Description |
 |--------|------|-------------|
 | assessments_pk | INT | Primary key |
-| enrollment_fk | INT | Foreign key to enrollment |
+| enrollment_fk | INT | Foreign key to enrollment (includes CRN) |
 | student_learning_outcome_fk | INT | Foreign key to SLOs |
 | score_value | DECIMAL(5,2) | Numeric score (nullable) |
 | achievement_level | ENUM | 'met', 'not_met', 'pending' |
@@ -295,7 +325,7 @@ Individual student assessments for SLOs.
 
 ---
 
-### 6. User Management
+### 7. User Management
 
 #### users
 System users (faculty, administrators, staff).
@@ -349,7 +379,7 @@ User role assignments (many-to-many with context).
 
 ---
 
-### 7. LTI Integration
+### 8. LTI Integration
 
 #### lti_consumers
 LTI consumer registrations.
@@ -383,15 +413,24 @@ Nonce tracking for LTI security.
 
 ## Key Relationships
 
-### 1. Assessment Chain
+### 1. Assessment Chain with SLO Sets
 
 ```
-Student → Enrollment → Course Section → Course → SLO → Assessment
-                                              ↓
-                                       Program Outcome
-                                              ↓
-                                  Institutional Outcome
+SLO Set (per year/quarter) → Student Learning Outcomes → Assessments
+                           ↓
+                         Terms → Course Sections → Enrollment (with CRN) → Student
+                                                                         ↓
+                                                                    Assessment
+                                                       
+SLO → Program Outcome → Institutional Outcome
 ```
+
+**Assessment Flow:**
+1. SLOs are uploaded into an SLO Set (e.g., "Academic Year 2024")
+2. Each Term is linked to an SLO Set
+3. Course Sections run within Terms
+4. Students enroll in Course Sections (Enrollment record includes CRN)
+5. Assessments are recorded per Enrollment (CRN) for specific SLOs from the Term's SLO Set
 
 ### 2. Institutional Reporting
 
@@ -402,12 +441,14 @@ Institution defines Institutional Outcomes
 Program creates Program Outcomes mapped to Institutional
     → program_outcomes records with institutional_outcomes_fk
     
-Course defines SLOs mapped to Program Outcomes
-    → student_learning_outcomes records with program_outcomes_fk
+SLO Set contains SLOs mapped to Program Outcomes
+    → slo_sets records
+    → student_learning_outcomes records with program_outcomes_fk and slo_set_fk
     
-Query: Get all assessments rolling up to Institutional Outcome #3
+Query: Get all assessments rolling up to Institutional Outcome #3 for AY2024
+    → JOIN assessments → enrollment → course_sections → terms → slo_sets
     → JOIN assessments → student_learning_outcomes → program_outcomes → institutional_outcomes
-    → WHERE institutional_outcomes_pk = 3
+    → WHERE institutional_outcomes_pk = 3 AND slo_sets.set_code = 'AY2024'
 ```
 
 ### 3. Access Control
@@ -454,14 +495,18 @@ Assessment table adds:
 
 **Data Retrieved:**
 - Student identification (ID, name)
+- Enrollment CRN
 - SLO details (code, description)
+- SLO Set information
 - Program outcome code (if aligned)
 - Institutional outcome code (if aligned)
 - Assessment results (achievement level, score)
 
 **Relationships Traversed:**
-- Assessments → Enrollments → Students
-- Assessments → SLOs → Program Outcomes → Institutional Outcomes
+- Assessments → Enrollments (with CRN) → Students
+- Assessments → SLOs → SLO Sets
+- SLOs → Program Outcomes → Institutional Outcomes
+- Enrollments → Course Sections → Terms → SLO Sets
 
 **Filters:**
 - Specific course section
@@ -470,22 +515,44 @@ Assessment table adds:
 
 **Ordering**: Student name (last, first), then SLO sequence
 
-### Program Outcome Achievement Analytics
+### Program Outcome Achievement Analytics by SLO Set
 
-**Query Concept**: Calculate achievement statistics for all outcomes within a program
+**Query Concept**: Calculate achievement statistics for all outcomes within a program for a specific time period (SLO Set)
 
 **Data Retrieved:**
+- SLO Set information (code, name, date range)
 - Program outcome identification (code, description)
 - Total assessment count per outcome
 - Count of met vs not met assessments
 - Achievement rate percentage
 
 **Relationships Traversed:**
-- Program Outcomes → SLOs → Assessments
+- Program Outcomes → SLOs → SLO Sets
+- SLOs → Assessments → Enrollments (with CRN)
 
 **Aggregations:**
-- Count total assessments per outcome
+- Count total assessments per outcome per SLO set
 - Sum assessments by achievement level
+- Group by SLO set and program outcome
+
+### CRN-Based Assessment Lookup
+
+**Query Concept**: Retrieve all assessments for a specific CRN
+
+**Data Retrieved:**
+- Course section details
+- Student information
+- All SLO assessments for that enrollment
+- Assessment status and scores
+
+**Relationships Traversed:**
+- Enrollment (via CRN) → Assessments → SLOs
+- Enrollment → Student
+- Enrollment → Course Section → Course
+
+**Filters:**
+- CRN match
+- Active records only
 - Calculate achievement rate percentage
 
 **Filters:**

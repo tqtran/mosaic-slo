@@ -60,10 +60,22 @@ mosaic-slo/
 Institution
     └── Institutional Outcomes
         └── Program Outcomes
-            ├── Programs
-            └── Student Learning Outcomes (SLOs)
-                └── Assessments
+            └── Programs
+
+SLO Sets (per year/quarter/period)
+    ├── Terms
+    │   └── Course Sections
+    │       └── Enrollment (with CRN)
+    │           └── Assessments
+    └── Student Learning Outcomes (SLOs)
+        └── Mapped to Program Outcomes
 ```
+
+**Key Concepts:**
+- **SLO Sets**: SLOs are grouped by time period (academic year, quarter, semester, etc.)
+- **Terms**: Each academic term is linked to an SLO Set, determining which SLOs are assessed
+- **CRN**: Each enrollment has a unique Course Reference Number
+- **Assessments**: Tied to enrollment records (via CRN) for specific SLOs from the term's SLO Set
 
 ## Key Features
 
@@ -95,25 +107,25 @@ Institution
 institution
     └─> institutional_outcomes
         └─> program_outcomes
-            ├─> programs
-            └─> student_learning_outcomes
+            └─> programs
+
+slo_sets (per year/quarter/period)
+    ├─> terms
+    │   └─> course_sections
+    │       └─> enrollment (with CRN)
+    │           ├─> students
+    │           └─> assessments
+    └─> student_learning_outcomes
+        └─> courses
 
 departments
     ├─> programs
     └─> courses
-        ├─> student_learning_outcomes
-        └─> course_sections
-            └─> enrollment
-                ├─> students
-                └─> assessments
 
 users
     ├─> user_roles -> roles
     ├─> course_sections (instructor)
     └─> audit fields (created_by, updated_by, assessed_by)
-
-terms
-    └─> course_sections
 ```
 
 ## Technology Stack
