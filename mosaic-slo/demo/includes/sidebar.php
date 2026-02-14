@@ -3,7 +3,7 @@
         <!-- Brand Logo -->
         <a href="dashboard.php" class="brand-link">
             <i class="fas fa-chart-line brand-image ml-3"></i>
-            <span class="brand-text font-weight-light">Mosaic-SLO</span>
+            <span class="brand-text font-weight-light">MOSAIC</span>
         </a>
 
         <!-- Sidebar -->

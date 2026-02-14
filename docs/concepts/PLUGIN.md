@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Extends SLO Cloud functionality without modifying core code through a plugin system.
+Extends MOSAIC functionality without modifying core code through a plugin system.
 
 ## Plugin Types
 
@@ -15,7 +15,7 @@ Extends SLO Cloud functionality without modifying core code through a plugin sys
 ## Core vs Connector Separation
 
 **Core Data Layer** (MySQL 8.0+ required)
-- Internal SLO Cloud data (students, assessments, SLOs, programs)
+- Internal MOSAIC data (students, assessments, SLOs, programs)
 - Direct MySQL implementation with prepared statements
 - Accessed via core Models
 - Hard requirement, no alternatives
@@ -31,7 +31,7 @@ Extends SLO Cloud functionality without modifying core code through a plugin sys
 
 **Manifest** (`plugin.json`)
 - Plugin metadata (id, name, version, author, type)
-- Dependencies (minimum SLO Cloud version)
+- Dependencies (minimum MOSAIC version)
 - Hook registrations (which events plugin handles)
 - Routes (URL paths plugin handles)
 - Permissions (access control identifiers)
@@ -108,8 +108,8 @@ Extends SLO Cloud functionality without modifying core code through a plugin sys
 
 ### Sync Strategies
 
-**Import** - External system → SLO Cloud  
-**Export** - SLO Cloud → External system  
+**Import** - External system → MOSAIC  
+**Export** - MOSAIC → External system  
 **Bidirectional** - Synchronize both directions  
 **Scheduled** - Run on cron/timer  
 **Triggered** - Respond to webhooks  
@@ -119,7 +119,7 @@ Extends SLO Cloud functionality without modifying core code through a plugin sys
 
 When data differs between systems:
 - **External Wins** - External system is source of truth (typical for imports)
-- **Internal Wins** - SLO Cloud data takes precedence (rare)
+- **Internal Wins** - MOSAIC data takes precedence (rare)
 - **Last-Write-Wins** - Most recent modification preserved
 - **Manual Review** - Flag conflicts for admin decision
 

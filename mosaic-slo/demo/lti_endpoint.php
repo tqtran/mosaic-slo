@@ -1,6 +1,6 @@
 <?php
 /**
- * Mosaic-SLO - LTI Endpoint Demo
+ * MOSAIC Demo - LTI Endpoint
  * Instructor-facing assessment interface (no sidebar menu)
  */
 
@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assessments'])
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>SLO Assessment Entry - Mosaic-SLO</title>
+    <title>SLO Assessment Entry - MOSAIC Demo</title>
 
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
@@ -351,7 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assessments'])
                     <li><strong>Enter Outcomes:</strong> For each student, select whether they Met, Partially Met, or did Not Meet the learning outcome.</li>
                     <li><strong>Optional Scores:</strong> You may enter numeric scores (0-100) if applicable to your assessment.</li>
                     <li><strong>Quick Actions:</strong> Use the buttons above the table to quickly set all students to the same outcome level.</li>
-                    <li><strong>Save:</strong> Click "Save Assessment Data" when complete. Data is securely transmitted back to the SLO Cloud system.</li>
+                    <li><strong>Save:</strong> Click "Save Assessment Data" when complete. Data is securely transmitted back to the MOSAIC system.</li>
                 </ol>
             </div>
         </div>

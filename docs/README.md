@@ -1,4 +1,4 @@
-# SLO Cloud Documentation
+# MOSAIC Documentation
 
 Documentation is organized into two categories:
 

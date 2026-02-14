@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOSAIC - Modular Outcomes System for Achievement and Institutional Compliance</title>
+    <meta name="description" content="An open-source, modular platform for managing Student Learning Outcomes without vendor lock-in.">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <style>
+        :root {
+            --primary-dark: #2c3e50;
+            --accent-blue: #667eea;
+            --accent-purple: #764ba2;
+            --light-gray: #f8f9fa;
+            --medium-gray: #6c757d;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: #2c3e50;
+            line-height: 1.7;
+        }
+        
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .logo-text {
+            font-size: 5rem;
+            font-weight: 700;
+            letter-spacing: 0.5rem;
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+            font-family: 'Courier New', monospace;
+        }
+        
+        @media (max-width: 768px) {
+            .logo-text {
+                font-size: 3rem;
+                letter-spacing: 0.3rem;
+            }
+        }
+        
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--medium-gray);
+            font-weight: 400;
+            margin-bottom: 2rem;
+        }
+        
+        .lead-description {
+            font-size: 1.5rem;
+            color: var(--primary-dark);
+            margin-bottom: 3rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-dark);
+            border-color: var(--primary-dark);
+            padding: 0.75rem 2rem;
+            font-weight: 500;
+        }
+        
+        .btn-primary:hover {
+            background-color: #1a252f;
+            border-color: #1a252f;
+        }
+        
+        .btn-outline-dark {
+            padding: 0.75rem 2rem;
+            font-weight: 500;
+        }
+        
+        section {
+            padding: 5rem 0;
+        }
+        
+        section:nth-child(even) {
+            background-color: var(--light-gray);
+        }
+        
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 3rem;
+            color: var(--primary-dark);
+        }
+        
+        .principle-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            padding: 2rem;
+            height: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .principle-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .principle-icon {
+            font-size: 3rem;
+            color: var(--accent-blue);
+            margin-bottom: 1rem;
+        }
+        
+        .principle-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--primary-dark);
+        }
+        
+        .mosaic-tile {
+            display: inline-block;
+            width: 80px;
+            height: 80px;
+            margin: 0.5rem;
+            background-color: #e9ecef;
+            border: 1px solid #dee2e6;
+        }
+        
+        .mosaic-tile:nth-child(3n+1) {
+            background-color: #667eea;
+        }
+        
+        .mosaic-tile:nth-child(3n+2) {
+            background-color: #764ba2;
+        }
+        
+        .mosaic-tile:nth-child(3n+3) {
+            background-color: #2c3e50;
+        }
+        
+        .how-it-works-step {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            line-height: 60px;
+            border-radius: 50%;
+            background-color: var(--primary-dark);
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .footer {
+            background-color: var(--primary-dark);
+            color: white;
+            padding: 3rem 0 2rem;
+        }
+        
+        .footer a {
+            color: white;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+        
+        .footer a:hover {
+            opacity: 0.7;
+        }
+        
+        .disclaimer {
+            font-size: 0.875rem;
+            opacity: 0.7;
+            margin-top: 2rem;
+        }
+        
+        .icon-feature {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .icon-feature i {
+            font-size: 3rem;
+            color: var(--accent-blue);
+            margin-bottom: 1rem;
+        }
+        
+        .transparent-section {
+            background-color: rgba(255,255,255,0.8);
+            border-left: 4px solid var(--accent-blue);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip to main content for keyboard navigation -->
+    <a href="#main-content" class="visually-hidden-focusable">Skip to main content</a>
+
+    <!-- Navigation -->
+    <nav class="navbar" role="navigation" aria-label="Main navigation" style="background-color: white; border-bottom: 1px solid #dee2e6; padding: 1rem 0;">
+        <div class="container">
+            <a class="navbar-brand" href="index.html" style="font-size: 1.5rem; font-weight: 700; letter-spacing: 0.2rem; color: var(--primary-dark); font-family: 'Courier New', monospace;" aria-label="MOSAIC Home">MOSAIC</a>
+            <div class="d-flex gap-3">
+                <a href="index.html" class="btn btn-link text-dark fw-bold" aria-current="page">Home</a>
+                <a href="faq.html" class="btn btn-link text-dark">FAQ</a>
+                <a href="https://github.com/tqtran/mosaic-slo" class="btn btn-outline-dark" aria-label="View MOSAIC on GitHub">
+                    <i class="bi bi-github me-1" aria-hidden="true"></i>GitHub
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <main id="main-content">
+    <section class="hero" aria-labelledby="hero-heading">
+        <div class="container">
+            <div class="row justify-content-center text-center">
+                <div class="col-lg-10">
+                    <h1 id="hero-heading" class="logo-text">MOSAIC</h1>
+                    <p class="subtitle">Modular Outcomes System for Achievement and Institutional Compliance</p>
+                    <p class="lead-description">
+                        An open-source, modular platform for managing Student Learning Outcomes without vendor lock-in.
+                    </p>
+                    <div class="d-flex gap-3 justify-content-center flex-wrap">
+                        <a href="https://github.com/tqtran/mosaic-slo" class="btn btn-primary btn-lg" aria-label="View MOSAIC source code on GitHub">
+                            <i class="bi bi-github me-2" aria-hidden="true"></i>View on GitHub
+                        </a>
+                        <a href="faq.html" class="btn btn-outline-dark btn-lg" aria-label="View frequently asked questions">
+                            <i class="bi bi-question-circle me-2" aria-hidden="true"></i>FAQ
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- What MOSAIC Is -->
+    <section id="what-is" aria-labelledby="what-is-heading">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 text-center">
+                    <h2 id="what-is-heading" class="section-title">What MOSAIC Is</h2>
+                    <div class="row g-4 mt-4">
+                        <div class="col-md-6 col-lg-3">
+                            <div class="icon-feature">
+                                <i class="bi bi-box-seam" aria-hidden="true"></i>
+                                <h3>Open Source</h3>
+                                <p>SLO management platform built for transparency and community</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <div class="icon-feature">
+                                <i class="bi bi-mortarboard" aria-hidden="true"></i>
+                                <h3>Higher Education</h3>
+                                <p>Designed specifically for academic institutions and accreditation needs</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <div class="icon-feature">
+                                <i class="bi bi-grid-3x3" aria-hidden="true"></i>
+                                <h3>Modular</h3>
+                                <p>Extensible architecture that adapts to your institution's workflow</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <div class="icon-feature">
+                                <i class="bi bi-server" aria-hidden="true"></i>
+                                <h3>Self-Hostable</h3>
+                                <p>Complete control over your data and infrastructure</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-5">
+                        <p class="lead mb-4">Community-driven, not tied to a single vendor</p>
+                        <p class="text-muted"><small>Like many open source projects, third-party services may exist in the ecosystem. These are separate from the MOSAIC project.</small></p>
+                        <div class="d-flex justify-content-center flex-wrap">
+                            <div class="mosaic-tile"></div>
+                            <div class="mosaic-tile"></div>
+                            <div class="mosaic-tile"></div>
+                            <div class="mosaic-tile"></div>
+                            <div class="mosaic-tile"></div>
+                            <div class="mosaic-tile"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Core Principles -->
+    <section id="principles" aria-labelledby="principles-heading">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <h2 id="principles-heading" class="section-title text-center">Core Principles</h2>
+                    <div class="row g-4">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="principle-card">
+                                <div class="principle-icon">
+                                    <i class="bi bi-puzzle" aria-hidden="true"></i>
+                                </div>
+                                <h3 class="principle-title">Modular by Design</h3>
+                                <p>Build only what you need. Add functionality through plugins without bloating the core system.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="principle-card">
+                                <div class="principle-icon">
+                                    <i class="bi bi-code-square" aria-hidden="true"></i>
+                                </div>
+                                <h3 class="principle-title">Open Source</h3>
+                                <p>Transparent, auditable, and community-driven. Every line of code is open for inspection and contribution.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="principle-card">
+                                <div class="principle-icon">
+                                    <i class="bi bi-unlock" aria-hidden="true"></i>
+                                </div>
+                                <h3 class="principle-title">No Lock-In</h3>
+                                <p>Self-host on your infrastructure or extend freely. Your data, your control, your choice.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="principle-card">
+                                <div class="principle-icon">
+                                    <i class="bi bi-plug" aria-hidden="true"></i>
+                                </div>
+                                <h3 class="principle-title">Plugin-Friendly</h3>
+                                <p>Extend with custom dashboards, reports, analytics, and integrations. Open-source LMS-inspired architecture.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="principle-card">
+                                <div class="principle-icon">
+                                    <i class="bi bi-building" aria-hidden="true"></i>
+                                </div>
+                                <h3 class="principle-title">Institution-Neutral</h3>
+                                <p>Adaptable to local needs, workflows, and requirements. Not tied to any single institution's process.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="principle-card">
+                                <div class="principle-icon">
+                                    <i class="bi bi-universal-access" aria-hidden="true"></i>
+                                </div>
+                                <h3 class="principle-title">WCAG 2.2 AA Compliant</h3>
+                                <p>Accessible to all users with disabilities. Full compliance with ADA and WCAG 2.2 Level AA standards.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" aria-labelledby="how-it-works-heading">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <h2 id="how-it-works-heading" class="section-title text-center">How It Works</h2>
+                    <div class="row g-4 mt-4">
+                        <div class="col-lg-4">
+                            <div class="how-it-works-step">
+                                <div class="step-number" aria-hidden="true">1</div>
+                                <h3>Core Platform</h3>
+                                <p>MOSAIC core handles SLO data structure, course management, student tracking, and assessment records with a clean MVC architecture.</p>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="how-it-works-step">
+                                <div class="step-number" aria-hidden="true">2</div>
+                                <h3>Plugin Ecosystem</h3>
+                                <p>Add functionality through plugins: custom dashboards, analytics modules, report generators, LTI integrations, and authentication providers.</p>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="how-it-works-step">
+                                <div class="step-number" aria-hidden="true">3</div>
+                                <h3>Self-Host</h3>
+                                <p>Deploy on your own infrastructure with complete control. Self-host on dedicated servers, VPS, or cloud platforms for maximum security and compliance.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Community & Governance -->
+    <section id="community" aria-labelledby="community-heading">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <h2 id="community-heading" class="section-title text-center">Community & Governance</h2>
+                    
+                    <div class="row g-4 mt-4">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-people-fill fs-1 text-primary me-3" aria-hidden="true"></i>
+                                <div>
+                                    <h3>Open Contribution Model</h3>
+                                    <p>Anyone can contribute code, documentation, plugins, or improvements. All contributions are welcome and reviewed fairly.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-github fs-1 text-primary me-3" aria-hidden="true"></i>
+                                <div>
+                                    <h3>Maintained Core Repository</h3>
+                                    <p>Core maintainers ensure stability, security, and long-term viability of the platform through careful stewardship.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-git fs-1 text-primary me-3" aria-hidden="true"></i>
+                                <div>
+                                    <h3>Reviewed Pull Requests</h3>
+                                    <p>All code changes go through peer review to maintain quality, security, and consistency across the codebase.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-trophy-fill fs-1 text-primary me-3" aria-hidden="true"></i>
+                                <div>
+                                    <h3>Bug Bounties & Participation</h3>
+                                    <p>Community participation is encouraged and rewarded. Security researchers and contributors help make MOSAIC stronger.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-5">
+                        <a href="https://github.com/tqtran/mosaic-slo" class="btn btn-primary btn-lg" aria-label="Contribute to MOSAIC on GitHub">
+                            <i class="bi bi-heart-fill me-2" aria-hidden="true"></i>Contribute to MOSAIC
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto text-center">
+                    <p class="lead mb-4">MOSAIC is an open-source project for education.</p>
+                    
+                    <nav aria-label="Footer navigation">
+                    <div class="d-flex justify-content-center gap-4 mb-4 flex-wrap">
+                        <a href="https://github.com/tqtran/mosaic-slo" class="fs-5" aria-label="View MOSAIC on GitHub">
+                            <i class="bi bi-github me-2" aria-hidden="true"></i>GitHub
+                        </a>
+                        <a href="faq.html" class="fs-5" aria-label="View frequently asked questions">
+                            <i class="bi bi-question-circle me-2" aria-hidden="true"></i>FAQ
+                        </a>
+                        <a href="#community" class="fs-5" aria-label="Join the MOSAIC community">
+                            <i class="bi bi-people me-2" aria-hidden="true"></i>Community
+                        </a>
+                        <a href="https://github.com/tqtran/mosaic-slo/license" class="fs-5" aria-label="View license information">
+                            <i class="bi bi-file-text me-2" aria-hidden="true"></i>License
+                        </a>
+                    </div>
+                    </nav>
+                    
+                    <p class="disclaimer">
+                        Not affiliated with any single institution or vendor.<br>
+                        Built by educators, for educators.
+                    </p>
+                    
+                    <div class="mt-4">
+                        <small class="text-muted">
+                            &copy; 2026 MOSAIC Project Contributors. All rights reserved.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

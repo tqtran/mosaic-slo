@@ -1,6 +1,6 @@
-# Mosaic-SLO Demo
+# MOSAIC Demo
 
-This directory contains demonstration pages for the Mosaic-SLO system using AdminLTE 3 framework.
+This directory contains demonstration pages for the MOSAIC platform using AdminLTE 3 framework.
 
 **Access via:** Navigate to `/mosaic-slo/demo/` in your browser
 
@@ -94,10 +94,10 @@ http://localhost:8000/mosaic-slo/demo/admin_users.php
 http://localhost:8000/mosaic-slo/demo/lti_endpoint.php
 ```
 
-## Differences from SLO-Cloud Demo
+## Framework Features
 
-- **Framework:** AdminLTE 3 instead of custom Bootstrap styling
+- **AdminLTE 3:** Professional admin dashboard framework
 - **Navigation:** Consistent sidebar menu across admin pages
-- **Layout:** Professional admin dashboard layout
+- **Layout:** Responsive admin dashboard layout
 - **Components:** AdminLTE widgets, cards, and UI elements
-- **Branding:** Mosaic-SLO specific styling and colors
+- **Branding:** MOSAIC platform styling and colors

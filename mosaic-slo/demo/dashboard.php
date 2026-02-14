@@ -1,6 +1,6 @@
 <?php
 /**
- * Mosaic-SLO - Dashboard Demo
+ * MOSAIC Demo - Dashboard
  * AdminLTE-based analytics dashboard
  */
 
@@ -115,7 +115,7 @@ foreach ($filteredData as $row) {
     $courseBreakdown[$course]++;
 }
 
-$pageTitle = 'Dashboard - Mosaic-SLO';
+$pageTitle = 'Dashboard - MOSAIC Demo';
 $currentPage = 'dashboard';
 include 'includes/header.php';
 ?>

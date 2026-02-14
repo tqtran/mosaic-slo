@@ -1,10 +1,10 @@
-# SLO Cloud - Copilot Instructions
+# MOSAIC - Copilot Instructions
 
 ## Project Overview
 
-**SLO Cloud** is a web-based Student Learning Outcomes (SLO) assessment system for higher education with LTI 1.1/1.3 integration. Built in PHP 8.1+ with MySQL, following MVC architecture. FERPA-compliant student data handling is critical.
+**MOSAIC** (Modular Outcomes System for Achievement and Institutional Compliance) is an open-source Student Learning Outcomes (SLO) assessment platform for higher education with LTI 1.1/1.3 integration. Built in PHP 8.1+ with MySQL, following MVC architecture. FERPA-compliant student data handling is critical.
 
-**Current Status:** Early development phase with comprehensive architecture documentation in `docs/concepts/` and implementation guides in `docs/implementation/`. Working demo implementations in `slo-cloud/demo/` using AdminLTE 3 framework.
+**Current Status:** Early development phase with comprehensive design docs in `design_concepts/` and working demo implementations in `mosaic-slo/demo/` using AdminLTE 3 framework.
 
 ## Architecture-First Principle
 

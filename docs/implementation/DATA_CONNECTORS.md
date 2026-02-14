@@ -4,7 +4,7 @@ This guide provides step-by-step patterns for building data connector plugins as
 
 ## What is a Data Connector?
 
-Data connectors synchronize data between SLO Cloud and external systems (Student Information Systems, Learning Management Systems, data warehouses, etc.) without modifying core database schema.
+Data connectors synchronize data between MOSAIC and external systems (Student Information Systems, Learning Management Systems, data warehouses, etc.) without modifying core database schema.
 
 **Key principle**: External systems remain authoritative for their data. Connectors import/export data, maintaining separate ID mappings.
 
@@ -14,18 +14,18 @@ Data connectors synchronize data between SLO Cloud and external systems (Student
 
 1. **External System Layer** - Source of truth for external data
 2. **Mapping Layer** - Bidirectional ID mappings (connector-specific tables)
-3. **Core Data Layer** - SLO Cloud's internal data (uses core models)
+3. **Core Data Layer** - MOSAIC's internal data (uses core models)
 
 ### ID Mapping Strategy
 
 **Why mappings are needed:**
 - External IDs differ from internal auto-increment PKs
-- Same student may have different IDs in SIS vs SLO Cloud
+- Same student may have different IDs in SIS vs MOSAIC
 - Need to track which external records correspond to which internal records
 
 **Mapping table structure:**
 - `external_id` - ID from external system (VARCHAR)
-- `internal_id` - SLO Cloud primary key (INT)
+- `internal_id` - MOSAIC primary key (INT)
 - `entity_type` - Type of entity (student, course, section, etc.)
 - `sync_status` - Current state (pending, synced, error)
 - `last_synced_at` - Timestamp of last sync
@@ -179,7 +179,7 @@ For syncing course enrollment rosters:
    - Update if status changed in external system
 
 4. **Handle Drops** (optional)
-   - Determine students in SLO Cloud but not in external roster
+   - Determine students in MOSAIC but not in external roster
    - Mark as dropped if present locally but missing externally
    - Or skip this step to prevent accidental drops
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * Mosaic-SLO Demo Portal
+ * MOSAIC Demo Portal
  * Landing page for demo applications
  */
 ?>
@@ -9,7 +9,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mosaic-SLO Demo Portal</title>
+    <title>MOSAIC Demo Portal</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
@@ -164,8 +164,8 @@
                 <i class="fas fa-chart-line" style="font-size: 4rem; color: var(--accent-blue);"></i>
             </div>
             
-            <h1 class="hero-title">Mosaic-SLO Demo</h1>
-            <p class="hero-subtitle">Experience the Student Learning Outcomes Assessment System</p>
+            <h1 class="hero-title">MOSAIC Demo</h1>
+            <p class="hero-subtitle">Experience the Modular Outcomes System for Achievement and Institutional Compliance</p>
             
             <div class="demo-cards">
                 <!-- Dashboard -->
@@ -278,8 +278,8 @@
         
         <div style="text-align: center; padding: 30px 0; color: rgba(255,255,255,0.9);">
             <p style="margin: 0;">
-                <strong>Mosaic-SLO</strong> &copy; <?php echo date('Y'); ?> | 
-                Transform Student Learning Outcomes Assessment
+                <strong>MOSAIC</strong> &copy; <?php echo date('Y'); ?> | 
+                Modular Outcomes System for Achievement and Institutional Compliance
             </p>
         </div>
     </div>

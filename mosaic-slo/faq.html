@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ - MOSAIC SLO</title>
+    <meta name="description" content="Frequently asked questions about MOSAIC - the open-source Student Learning Outcomes platform.">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <style>
+        :root {
+            --primary-dark: #2c3e50;
+            --accent-blue: #667eea;
+            --accent-purple: #764ba2;
+            --light-gray: #f8f9fa;
+            --medium-gray: #6c757d;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: #2c3e50;
+            line-height: 1.7;
+        }
+        
+        .navbar {
+            background-color: white;
+            border-bottom: 1px solid #dee2e6;
+            padding: 1rem 0;
+        }
+        
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 0.2rem;
+            color: var(--primary-dark) !important;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .hero-small {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 4rem 0 3rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .page-title {
+            font-size: 3rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+        }
+        
+        .page-subtitle {
+            font-size: 1.25rem;
+            color: var(--medium-gray);
+        }
+        
+        section {
+            padding: 3rem 0;
+        }
+        
+        .faq-item {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            transition: box-shadow 0.2s;
+        }
+        
+        .faq-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        .faq-question {
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: start;
+        }
+        
+        .faq-question i {
+            color: var(--accent-blue);
+            margin-right: 1rem;
+            margin-top: 0.2rem;
+            font-size: 1.5rem;
+        }
+        
+        .faq-answer {
+            margin-left: 2.5rem;
+            color: #495057;
+        }
+        
+        .faq-answer p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .alert-info-custom {
+            background-color: #e7f3ff;
+            border-left: 4px solid var(--accent-blue);
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+        }
+        
+        .alert-warning-custom {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+        }
+        
+        .category-section {
+            margin-bottom: 3rem;
+        }
+        
+        .category-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 2rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--accent-blue);
+        }
+        
+        .footer {
+            background-color: var(--primary-dark);
+            color: white;
+            padding: 2rem 0;
+            margin-top: 4rem;
+        }
+        
+        .footer a {
+            color: white;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+        
+        .footer a:hover {
+            opacity: 0.7;
+        }
+        
+        code {
+            background-color: #f8f9fa;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            color: #e83e8c;
+        }
+    </style>
+</head>
+<body>
+    <!-- Skip to main content for keyboard navigation -->
+    <a href="#main-content" class="visually-hidden-focusable">Skip to main content</a>
+
+    <!-- Navigation -->
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
+        <div class="container">
+            <a class="navbar-brand" href="index.html" aria-label="MOSAIC Home">MOSAIC</a>
+            <div class="d-flex gap-3">
+                <a href="index.html" class="btn btn-link text-dark">Home</a>
+                <a href="faq.html" class="btn btn-link text-dark fw-bold" aria-current="page">FAQ</a>
+                <a href="https://github.com/tqtran/mosaic-slo" class="btn btn-outline-dark" aria-label="View MOSAIC on GitHub">
+                    <i class="bi bi-github me-1" aria-hidden="true"></i>GitHub
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <main id="main-content">
+    <div class="hero-small">
+        <div class="container">
+            <div class="row justify-content-center text-center">
+                <div class="col-lg-10">
+                    <h1 class="page-title">Frequently Asked Questions</h1>
+                    <p class="page-subtitle">Everything you need to know about MOSAIC SLO</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAQ Content -->
+    <section>
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    
+                    <!-- General -->
+                    <div class="category-section">
+                        <h2 class="category-title">General</h2>
+                        
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle-fill" aria-hidden="true"></i>
+                                <h3>What is MOSAIC?</h3>
+                            </div>
+                            <div class="faq-answer">
+                                <p>MOSAIC is the <strong>M</strong>odular <strong>O</strong>utcomes <strong>S</strong>ystem for <strong>A</strong>chievement and <strong>I</strong>nstitutional <strong>C</strong>ompliance. It is an open-source, modular platform designed to help institutions manage Student Learning Outcomes (SLOs) without vendor lock-in.</p>
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle"></i>
+                                <span>Is MOSAIC free?</span>
+                            </div>
+                            <div class="faq-answer">
+                                <p>Yes. MOSAIC is completely free and open source. Institutions may self-host, modify, and extend it without any fees or restrictions.</p>
+                                <div class="alert-info-custom mt-3">
+                                    <strong>Note:</strong> Like many open source projects (content management systems, learning platforms, operating systems), third-party vendors may offer commercial services such as hosting, support, or custom development. These services are <strong>separate from the MOSAIC project</strong> and not required to use the software.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle"></i>
+                                <span>Why is MOSAIC open source?</span>
+                            </div>
+                            <div class="faq-answer">
+                                <p>Open source ensures transparency, long-term sustainability, and institutional autonomy. It allows institutions to inspect the code, adapt it to local needs, and avoid dependency on a single vendor.</p>
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle"></i>
+                                <span>Is MOSAIC tied to any specific institution or vendor?</span>
+                            </div>
+                            <div class="faq-answer">
+                                <p>No. MOSAIC is intentionally institution-neutral and not affiliated with any single vendor or college.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Technology & Architecture -->
+                    <div class="category-section">
+                        <h2 class="category-title">Technology & Architecture</h2>
+                        
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle"></i>
+                                <span>Why did you choose PHP instead of Node.js, Java, or .NET Core?</span>
+                            </div>
+                            <div class="faq-answer">
+                                <p>We chose PHP to lower operational barriers and help minimize the equity gap between institutions.</p>
+                                <p>Many colleges already operate PHP-based infrastructure and may not have the staffing or budget to maintain managed application runtimes such as Node.js, Java application servers, or .NET Core services. PHP fits naturally into existing web environments and reduces the need for specialized operational expertise.</p>
+                                <p><strong>Security is determined by system design and governance, not the programming language itself.</strong></p>
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle"></i>
+                                <span>Does MOSAIC support plugins or extensions?</span>
+                            </div>
+                            <div class="faq-answer">
+                                <p>Yes. MOSAIC is designed as a modular platform. Core functionality is intentionally minimal, and additional capabilities such as dashboards, analytics, exports, or integrations can be added through plugins.</p>
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle"></i>
+                                <span>Can MOSAIC be implemented using other technologies in the future?</span>
+                            </div>
+                            <div class="faq-answer">
+                                <p>Yes. The architecture is designed to allow alternative implementations if there is sufficient demand. The current technology choices reflect operational accessibility, not technical limitation.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security, Privacy & Compliance -->
+                    <div class="category-section">
+                        <h2 class="category-title">Security, Privacy & Compliance</h2>
+                        
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle-fill" aria-hidden="true"></i>
+                                <h3>Is MOSAIC secure?</h3>
+                            </div>
+                            <div class="faq-answer">
+                                <p>MOSAIC is designed with secure defaults:</p>
+                                <ul>
+                                    <li>Minimal data collection</li>
+                                    <li>Non-anonymized data is encrypted at rest and in transit</li>
+                                    <li>No reliance on privileged system access</li>
+                                    <li>No requirement for long-running application services</li>
+                                    <li>Regular security audits and community review</li>
+                                </ul>
+                                <p><strong>Security is treated as a design outcome, not a feature bolted on later.</strong></p>
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle-fill" aria-hidden="true"></i>
+                                <h3>What data does MOSAIC store?</h3>
+                            </div>
+                            <div class="faq-answer">
+                                <p>MOSAIC stores only the data necessary to support SLO definition, alignment, and reporting:</p>
+                                <ul>
+                                    <li>Student Learning Outcomes (SLOs)</li>
+                                    <li>Course information and mappings</li>
+                                    <li>Assessment records (met/unmet/partially met)</li>
+                                    <li>LMS integration metadata</li>
+                                </ul>
+                                <p><strong>Non-anonymized personally identifiable information (PII) is encrypted by default.</strong> Institutions can configure additional anonymization or pseudonymization strategies based on their privacy requirements.</p>
+                                <p>Institutions remain in complete control of their data and deployment model.</p>
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle-fill" aria-hidden="true"></i>
+                                <h3>Is MOSAIC ADA compliant?</h3>
+                            </div>
+                            <div class="faq-answer">
+                                <p><strong>Yes.</strong> MOSAIC is built to meet <strong>WCAG 2.2 Level AA</strong> accessibility standards, ensuring compliance with the Americans with Disabilities Act (ADA).</p>
+                                <p>All interfaces include:</p>
+                                <ul>
+                                    <li>Semantic HTML5 structure</li>
+                                    <li>ARIA landmarks and labels</li>
+                                    <li>Keyboard navigation support</li>
+                                    <li>Screen reader compatibility</li>
+                                    <li>Sufficient color contrast ratios</li>
+                                    <li>Skip navigation links</li>
+                                </ul>
+                                <p>Accessibility is a core design principle, not an afterthought. Institutions can further customize the interface to meet specific accommodation needs.</p>
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle-fill" aria-hidden="true"></i>
+                                <h3>Is MOSAIC FERPA compliant?</h3>
+                            </div>
+                            <div class="faq-answer">
+                                <p>MOSAIC provides the technical foundation for FERPA compliance through:</p>
+                                <ul>
+                                    <li>Data encryption and secure storage</li>
+                                    <li>Role-based access controls</li>
+                                    <li>Audit logging capabilities</li>
+                                    <li>Self-hosted deployment options (no third-party data sharing)</li>
+                                </ul>
+                                <p><strong>Note:</strong> FERPA compliance is ultimately the responsibility of the institution and how they deploy and configure MOSAIC. The platform provides the necessary tools, but institutional policies and procedures must align with FERPA requirements.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Deployment & Hosting -->
+                    <div class="category-section">
+                        <h2 class="category-title">Deployment & Hosting</h2>
+                        
+                        <div class="alert-warning-custom">
+                            <h5 class="mb-2"><i class="bi bi-exclamation-triangle me-2"></i>Important: Hosting Recommendations</h5>
+                            <p class="mb-0">While MOSAIC can run on shared hosting, <strong>we strongly recommend against hosting SLO data on public shared hosting environments</strong> for security and compliance reasons. Institutions should use dedicated servers, virtual private servers (VPS), or private cloud infrastructure whenever possible.</p>
+                        </div>
+
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle"></i>
+                                <span>Can MOSAIC be hosted on shared hosting?</span>
+                            </div>
+                            <div class="faq-answer">
+                                <div class="alert-info-custom mb-3">
+                                    <strong>Equity Consideration:</strong> We recognize that not all institutions have equal access to dedicated infrastructure. MOSAIC is intentionally designed to accommodate resource-constrained environments.
+                                </div>
+                                <p>Yes. MOSAIC <em>can</em> run in constrained or shared hosting environments if necessary.</p>
+                                <p>This includes common commercial hosting providers. The system minimizes stored data and encrypts sensitive information to reduce risk in these environments.</p>
+                                <p><strong>However, we strongly recommend:</strong></p>
+                                <ul>
+                                    <li>Using dedicated or VPS hosting when possible</li>
+                                    <li>Implementing SSL/TLS encryption</li>
+                                    <li>Regular security updates and backups</li>
+                                    <li>Following your institution's data governance policies</li>
+                                </ul>
+                                <p>Shared hosting should be considered a fallback option for institutions with limited resources, not a recommended deployment model.</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Customization & Upgrades -->
+                    <div class="category-section">
+                        <h2 class="category-title">Customization & Upgrades</h2>
+                        
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle"></i>
+                                <span>Can institutions customize MOSAIC?</span>
+                            </div>
+                            <div class="faq-answer">
+                                <p>Yes. Institutions may customize:</p>
+                                <ul>
+                                    <li>Branding and appearance</li>
+                                    <li>User interfaces</li>
+                                    <li>Workflows</li>
+                                    <li>Reporting and dashboards</li>
+                                </ul>
+                                <p>All customization can be done by your institution's technical staff or developers. The plugin architecture makes it easy to extend functionality without modifying core code.</p>
+                                <p><small class="text-muted">Note: Third-party consultants or developers in the open source community may also offer customization services, independent of the MOSAIC project.</small></p>
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle"></i>
+                                <span>How are upgrades handled?</span>
+                            </div>
+                            <div class="faq-answer">
+                                <ul>
+                                    <li><strong>Minor updates</strong> do not require database changes.</li>
+                                    <li><strong>Major version upgrades</strong> may include database migrations and should be tested before deployment.</li>
+                                </ul>
+                                <p>Institutions are advised to perform full backups prior to major upgrades.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Community & Contribution -->
+                    <div class="category-section">
+                        <h2 class="category-title">Community & Contribution</h2>
+                        
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle"></i>
+                                <span>Who maintains the MOSAIC project?</span>
+                            </div>
+                            <div class="faq-answer">
+                                <p>MOSAIC is maintained through a governed open-source model. Contributions are reviewed and approved to ensure quality, security, and long-term stability.</p>
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <div class="faq-question">
+                                <i class="bi bi-question-circle"></i>
+                                <span>Can institutions contribute back to the project?</span>
+                            </div>
+                            <div class="faq-answer">
+                                <p>Yes. Contributions are welcome. Institutions may choose to contribute improvements or plugins back to the community, though this is optional.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto text-center">
+                    <p class="mb-3">MOSAIC is an open-source project for education.</p>
+                    
+                    <nav aria-label="Footer navigation">
+                    <div class="d-flex justify-content-center gap-4 mb-3 flex-wrap">
+                        <a href="index.html" aria-label="Return to home page">
+                            <i class="bi bi-house me-1" aria-hidden="true"></i>Home
+                        </a>
+                        <a href="https://github.com/tqtran/mosaic-slo" aria-label="View MOSAIC on GitHub">
+                            <i class="bi bi-github me-1" aria-hidden="true"></i>GitHub
+                        </a>
+                        <a href="faq.html" aria-current="page" aria-label="Frequently asked questions">
+                            <i class="bi bi-question-circle me-1" aria-hidden="true"></i>FAQ
+                        </a>
+                    </div>
+                    </nav>
+                    
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            &copy; 2026 MOSAIC Project Contributors. Not affiliated with any single institution or vendor.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

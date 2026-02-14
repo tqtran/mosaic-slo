@@ -1,8 +1,8 @@
-# SLO Cloud Architecture
+# MOSAIC Architecture
 
 ## Overview
 
-SLO Cloud is a web-based Student Learning Outcomes assessment system with LTI integration support.
+MOSAIC (Modular Outcomes System for Achievement and Institutional Compliance) is an open-source Student Learning Outcomes assessment platform with LTI integration support.
 
 ## Directory Structure
 

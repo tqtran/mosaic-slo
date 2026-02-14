@@ -44,7 +44,7 @@ Include permissions (if plugin adds new actions):
 ### Dependency Declaration
 
 Specify requirements:
-- Minimum SLO Cloud version
+- Minimum MOSAIC version
 - PHP version/extensions needed
 - Other plugins (if dependent)
 

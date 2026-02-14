@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the complete database schema for the SLO Cloud assessment system. The schema follows third normal form (3NF) and uses InnoDB storage engine with UTF8MB4 character set.
+This document describes the complete database schema for the MOSAIC assessment platform. The schema follows third normal form (3NF) and uses InnoDB storage engine with UTF8MB4 character set.
 
 **Database Requirement:** MySQL 8.0+ is required. This is a hard requirement with no alternative database support. The system uses direct MySQL queries with prepared statements (no ORM or abstraction layer).
 

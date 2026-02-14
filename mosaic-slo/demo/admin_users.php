@@ -1,6 +1,6 @@
 <?php
 /**
- * Mosaic-SLO - Student Management
+ * MOSAIC Demo - Student Management
  * AdminLTE-based student enrollment management
  */
 
@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $successMessage = 'Student data saved successfully! In production, this would update the database.';
 }
 
-$pageTitle = 'Student Management - Mosaic-SLO';
+$pageTitle = 'Student Management - MOSAIC Demo';
 $currentPage = 'admin_users';
 include 'includes/header.php';
 ?>

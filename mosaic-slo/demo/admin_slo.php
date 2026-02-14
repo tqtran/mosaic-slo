@@ -1,6 +1,6 @@
 <?php
 /**
- * Mosaic-SLO - SLO Administration
+ * MOSAIC Demo - SLO Administration
  * AdminLTE-based SLO management interface
  */
 
@@ -114,7 +114,7 @@ foreach ($courseSLOs as $index => $cslo) {
     ];
 }
 
-$pageTitle = 'SLO Management - Mosaic-SLO';
+$pageTitle = 'SLO Management - MOSAIC Demo';
 $currentPage = 'admin_slo';
 include 'includes/header.php';
 ?>

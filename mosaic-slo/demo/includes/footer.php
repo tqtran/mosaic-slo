@@ -1,5 +1,5 @@
     <footer class="main-footer">
-        <strong>Copyright &copy; <?= date('Y') ?> <a href="#">Mosaic-SLO</a>.</strong>
+        <strong>Copyright &copy; <?= date('Y') ?> <a href="#">MOSAIC</a>.</strong>
         All rights reserved.
         <div class="float-right d-none d-sm-inline-block">
             <b>Demo Version</b> 1.0
