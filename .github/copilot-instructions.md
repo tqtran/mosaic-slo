@@ -6,6 +6,13 @@
 
 **Current Status:** Early development phase with comprehensive design docs in `design_concepts/` and working demo implementations in `mosaic-slo/demo/` using AdminLTE 3 framework.
 
+AVOID UNICODE characters in code and documentation to ensure compatibility across all environments. Use ASCII characters only.
+
+- X (BALLOT X) → X or [X] or [FAIL]
+- OK (CHECK MARK) → OK or [OK] or [PASS]
+- +===+ (box drawing) → +===+ or similar ASCII
+- | (box drawing) → |
+
 ## Architecture-First Principle
 
 **ALWAYS consult architecture docs before implementing features or making architectural decisions.** 
@@ -24,35 +31,39 @@
 
 ### Before You Code
 
-- **Models**: Read [SCHEMA.md](docs/concepts/SCHEMA.md) for tables, then [MVC_GUIDE.md](docs/implementation/MVC_GUIDE.md) for patterns
-- **Controllers**: Read [MVC.md](docs/concepts/MVC.md) for responsibilities, then [MVC_GUIDE.md](docs/implementation/MVC_GUIDE.md) for implementation
-- **Auth**: Read [AUTH.md](docs/concepts/AUTH.md) and [SECURITY.md](docs/concepts/SECURITY.md)
-- **Plugins**: Read [PLUGIN.md](docs/concepts/PLUGIN.md), then [PLUGIN_GUIDE.md](docs/implementation/PLUGIN_GUIDE.md)
-- **Data Connectors**: Read [PLUGIN.md](docs/concepts/PLUGIN.md), then [DATA_CONNECTORS.md](docs/implementation/DATA_CONNECTORS.md)
-- **Tests**: Read [TESTING.md](docs/concepts/TESTING.md)
+- **Models**: Read [SCHEMA.md](../docs/concepts/SCHEMA.md) for tables, then [MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md) for patterns
+- **Controllers**: Read [MVC.md](../docs/concepts/MVC.md) for responsibilities, then [MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md) for implementation
+- **Auth**: Read [AUTH.md](../docs/concepts/AUTH.md) and [SECURITY.md](../docs/concepts/SECURITY.md)
+- **Plugins**: Read [PLUGIN.md](../docs/concepts/PLUGIN.md), then [PLUGIN_GUIDE.md](../docs/implementation/PLUGIN_GUIDE.md)
+- **Data Connectors**: Read [PLUGIN.md](../docs/concepts/PLUGIN.md), then [DATA_CONNECTORS.md](../docs/implementation/DATA_CONNECTORS.md)
+- **Tests**: Read [TESTING.md](../docs/concepts/TESTING.md)
 
 **All implementations must align with architecture docs.** Concepts explain *what* and *why*, guides explain *how*.
 
 ## Architecture Overview
 
 ### Hierarchical Assessment Model
-```
+
+```text
 Institution → Institutional Outcomes → Program Outcomes → SLOs → Assessments
 Department → Program → Course → Course Section → Student Enrollment
 ```
 
 **Critical Files:**
-- [docs/concepts/ARCHITECTURE.md](docs/concepts/ARCHITECTURE.md) - System architecture and entity relationships
-- [docs/concepts/SCHEMA.md](docs/concepts/SCHEMA.md) - Complete database schema with naming conventions
-- [docs/concepts/MVC.md](docs/concepts/MVC.md) - MVC architecture overview
-- [docs/implementation/MVC_GUIDE.md](docs/implementation/MVC_GUIDE.md) - MVC implementation patterns
+
+- [docs/concepts/ARCHITECTURE.md](../docs/concepts/ARCHITECTURE.md) - System architecture and entity relationships
+- [docs/concepts/SCHEMA.md](../docs/concepts/SCHEMA.md) - Complete database schema with naming conventions
+- [docs/concepts/MVC.md](../docs/concepts/MVC.md) - MVC architecture overview
+- [docs/implementation/MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md) - MVC implementation patterns
 
 ### MVC Structure (Planned)
+
 - **Models** (`src/Models/`): Base class in `src/Core/Model.php` with CRUD operations. All models extend this base.
 - **Controllers** (`src/controllers/`): Handle routing, validation, and business logic
 - **Views** (`src/views/`): PHP templates with Bootstrap 5, no template engine
 
 **Naming Conventions:**
+
 - Primary keys: `{table_name}_pk` (e.g., `courses_pk`, `students_pk`)
 - Foreign keys: `{referenced_table}_fk` (e.g., `course_fk`, `program_fk`)
 - Ordering fields: `sequence_num`
@@ -61,11 +72,13 @@ Department → Program → Course → Course Section → Student Enrollment
 ## Authentication & Security
 
 **Three concurrent auth methods:**
+
 1. **Dashboard**: Local bcrypt (cost 12) with session-based auth
 2. **LTI**: OAuth 1.0 (LTI 1.1) or JWT/JWKS (LTI 1.3) from Learning Management Systems
 3. **SAML SSO**: SAML 2.0 federation with institutional Identity Providers
-ocs/concepts/SECURITY.md](docs/
-**Security Requirements** (see [docs/concepts/SECURITY.md](docs/concepts/SECURITY.md)):
+
+**Security Requirements** (see [docs/concepts/SECURITY.md](../docs/concepts/SECURITY.md)):
+
 - **Always use prepared statements** - no string concatenation in SQL queries
 - **Escape all output** - HTML escape user-generated content
 - **CSRF tokens** - required on all POST/PUT/DELETE operations
@@ -75,6 +88,7 @@ ocs/concepts/SECURITY.md](docs/
 ## Development Workflow
 
 ### Local Development Server
+
 ```powershell
 # Start from project root
 php -S localhost:8000
@@ -84,6 +98,7 @@ http://localhost:8000/mosaic-slo/demo/
 ```
 
 ### Current Working Demo
+
 - **Portal**: `mosaic-slo/demo/index.php` - Landing page with demo cards
 - **Dashboard**: `mosaic-slo/demo/dashboard.php` - Admin analytics with AdminLTE sidebar
 - **SLO Management**: `mosaic-slo/demo/admin_slo.php` - Outcome hierarchy management
@@ -92,6 +107,7 @@ http://localhost:8000/mosaic-slo/demo/
 - **Sample Data**: `mosaic-slo/demo/sample.csv` - Multi-course assessment data
 
 **Demo Pattern:**
+
 - No authentication required (bypassed for demos)
 - CSV parsing with file operations (`fopen`, `fgetcsv`)
 - Session storage for selected course (`$_SESSION['selected_crn']`)
@@ -99,6 +115,7 @@ http://localhost:8000/mosaic-slo/demo/
 - AdminLTE 3 framework with responsive sidebar navigation
 
 ### Session Handling Pattern
+
 ```php
 // Always configure session security
 ini_set('session.cookie_httponly', 1);
@@ -117,8 +134,9 @@ if (time() - $_SESSION['created'] > 1800) {
 
 Plugins extend functionality without modifying core code. Types: Dashboard widgets, Reports, Themes, Export formats.
 
-**Structure** (see [docs/concepts/PLUGIN.md](docs/concepts/PLUGIN.md)):
-```
+**Structure** (see [docs/concepts/PLUGIN.md](../docs/concepts/PLUGIN.md)):
+
+```text
 plugins/local/{plugin-id}/
 ├── plugin.json         # Manifest with hooks, routes, permissions
 ├── {PluginName}.php    # Main class extending Plugin base
@@ -129,9 +147,10 @@ plugins/local/{plugin-id}/
 
 ## Testing Strategy
 
-See [docs/concepts/TESTING.md](docs/concepts/TESTING.md) for comprehensive testing approach.
+See [docs/concepts/TESTING.md](../docs/concepts/TESTING.md) for comprehensive testing approach.
 
 **Key testing areas:**
+
 - Unit tests: Models, validation, business logic (80%+ coverage target)
 - Integration tests: Controller-Model interactions, auth flows
 - Security tests: SQL injection, XSS, CSRF, authorization violations
@@ -142,12 +161,14 @@ See [docs/concepts/TESTING.md](docs/concepts/TESTING.md) for comprehensive testi
 ## Code Style & Patterns
 
 **PHP:**
+
 - Strict types: `declare(strict_types=1);`
 - Type hints on all method signatures
 - PSR-12 coding standard
 - No short PHP tags (`<?=` allowed in views only)
 
 **HTML/CSS:**
+
 - AdminLTE 3 framework (CDN: `https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css`)
 - Bootstrap 4 (AdminLTE dependency)
 - Font Awesome icons (`https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css`)
@@ -157,14 +178,16 @@ See [docs/concepts/TESTING.md](docs/concepts/TESTING.md) for comprehensive testi
 ## Common Tasks
 
 ### Adding a New Model
-1. **Read [SCHEMA.md](docs/concepts/SCHEMA.md) first** - Verify table structure, relationships, and naming conventions
-2. Review [MVC_GUIDE.md](docs/implementation/MVC_GUIDE.md) for implementation patterns
+
+1. **Read [SCHEMA.md](../docs/concepts/SCHEMA.md) first** - Verify table structure, relationships, and naming conventions
+2. Review [MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md) for implementation patterns
 3. Extend base Model class (from `src/Core/Model.php`)
 4. Set `$table` and `$primaryKey` properties matching schema exactly
 5. Implement domain-specific query methods per MVC patterns
-6. Follow security patterns from [SECURITY.md](docs/concepts/SECURITY.md) - use prepared statements
+6. Follow security patterns from [SECURITY.md](../docs/concepts/SECURITY.md) - use prepared statements
 
 ### Adding a Demo Page
+
 1. **Review existing demos** in `mosaic-slo/demo/` for patterns
 2. Create file in `mosaic-slo/demo/`
 3. Include `includes/header.php` and `includes/sidebar.php` for admin pages (or omit sidebar for LTI pages)
@@ -173,45 +196,52 @@ See [docs/concepts/TESTING.md](docs/concepts/TESTING.md) for comprehensive testi
 6. Add card to `mosaic-slo/demo/index.php` portal
 7. Update `mosaic-slo/demo/README.md`
 
-### Implementing LTI Inocs/concepts/AUTH.md) first** for complete LTI launch validation patterns:
+### Implementing LTI Integration
+
+**Read [AUTH.md](../docs/concepts/AUTH.md) first** for complete LTI launch validation patterns:
+
 - LTI 1.1: OAuth 1.0 signature validation
 - LTI 1.3: JWKS public key verification
 - Auto-provision users from launch parameters
-- Role mapping to internal RBAC system per [AUTH.md](docs/concepts/AUTH.md) role hierarchy
+- Role mapping to internal RBAC system per [AUTH.md](../docs/concepts/AUTH.md) role hierarchy
 
 ### Adding Controllers
-1. **Read [MVC.md](docs/concepts/MVC.md)** for controller responsibilities
-2. **Review [MVC_GUIDE.md](docs/implementation/MVC_GUIDE.md)** for implementation patterns
-3. Implement validation per [SECURITY.md](docs/concepts/SECURITY.md)
+
+1. **Read [MVC.md](../docs/concepts/MVC.md)** for controller responsibilities
+2. **Review [MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md)** for implementation patterns
+3. Implement validation per [SECURITY.md](../docs/concepts/SECURITY.md)
 4. Use CSRF tokens on all POST/PUT/DELETE operations
-5. Follow authorization patterns from [AUTH.md](docs/concepts/AUTH.md)
+5. Follow authorization patterns from [AUTH.md](../docs/concepts/AUTH.md)
 
 ### Building Plugins
-1. **Read [PLUGIN.md](docs/concepts/PLUGIN.md)** for architecture and plugin types
-2. **Review [PLUGIN_GUIDE.md](docs/implementation/PLUGIN_GUIDE.md) or [DATA_CONNECTORS.md](docs/implementation/DATA_CONNECTORS.md)** for step-by-step patterns
+
+1. **Read [PLUGIN.md](../docs/concepts/PLUGIN.md)** for architecture and plugin types
+2. **Review [PLUGIN_GUIDE.md](../docs/implementation/PLUGIN_GUIDE.md) or [DATA_CONNECTORS.md](../docs/implementation/DATA_CONNECTORS.md)** for step-by-step patterns
 3. Follow non-invasive principle: Never modify core schema
 4. Use core models for all core data access
-4. Follow authorization patterns from [AUTH.md](docs/concepts/AUTH.md)
+5. Follow authorization patterns from [AUTH.md](../docs/concepts/AUTH.md)
 
 ## Key Dependencies
 
 **Required (Hard Requirements):**
+
 - PHP 8.1+ with extensions: mysqli, mbstring, openssl, json
 - MySQL 8.0+ (InnoDB engine, UTF8MB4 charset)
   - No PostgreSQL, SQLite, or other database support
   - No ORM or database abstraction layer
 
 **Frontend (CDN):**
+
 - Bootstrap 5.3.2
 - Bootstrap Icons 1.11.3
 
-**Note:** For external system integration (SIS, LMS), use data connector plugins rather than attempting database substitution. See [docs/concepts/PLUGIN.md](docs/concepts/PLUGIN.md).
+**Note:** For external system integration (SIS, LMS), use data connector plugins rather than attempting database substitution. See [docs/concepts/PLUGIN.md](../docs/concepts/PLUGIN.md).
 
 ## Important Constraints
 
 - **FERPA Compliance**: Student data must be protected, audit all access
 - **MySQL 8.0+ Required**: No database abstraction layer, direct MySQL with prepared statements
-  - For external integrations, use data connector plugins (see [PLUGIN.md](docs/concepts/PLUGIN.md))
+  - For external integrations, use data connector plugins (see [PLUGIN.md](../docs/concepts/PLUGIN.md))
 - **No Composer yet**: Dependencies via CDN or manual installation
 - **Windows Development**: Use PowerShell commands, path separators handled by PHP
 
@@ -234,12 +264,14 @@ See [docs/concepts/TESTING.md](docs/concepts/TESTING.md) for comprehensive testi
   - **Response:** "They can't. This is MySQL-only. If they need alternative storage, they can use connector plugins to bridge external systems."
 
 **YAGNI (You Aren't Gonna Need It):**
+
 - Build what's needed now, not what might be needed later
 - Hard requirements are better than trying to please everyone
 - Complexity is expensive: development time, bugs, maintenance, onboarding
 - Good software has opinions and constraints
 
 **When to challenge the user:**
+
 - Premature abstraction or generalization
 - Adding flexibility without concrete use cases
 - Supporting multiple options when one good option exists
@@ -247,14 +279,16 @@ See [docs/concepts/TESTING.md](docs/concepts/TESTING.md) for comprehensive testi
 - Trying to accommodate edge cases that may never happen
 
 **When to be flexible:**
-- ✅ When it simplifies the user experience (optional fields, sensible defaults)
-- ✅ When institutions demonstrably differ (SIS connectors, auth methods, custom reports)
-- ✅ When flexibility is already simple to implement (configuration over code changes)
-- ✅ When it prevents forking (plugin hooks for common extensions)
+
+- When it simplifies the user experience (optional fields, sensible defaults)
+- When institutions demonstrably differ (SIS connectors, auth methods, custom reports)
+- When flexibility is already simple to implement (configuration over code changes)
+- When it prevents forking (plugin hooks for common extensions)
 
 **Push for:**
-- ✅ Concrete implementations over abstract patterns
-- ✅ Clear, non-negotiable requirements
-- ✅ Simple, maintainable code
-- ✅ Shipping working features over theoretical flexibility
-- ✅ Real user problems over hypothetical scenarios
+
+- Concrete implementations over abstract patterns
+- Clear, non-negotiable requirements
+- Simple, maintainable code
+- Shipping working features over theoretical flexibility
+- Real user problems over hypothetical scenarios

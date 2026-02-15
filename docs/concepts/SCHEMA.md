@@ -16,8 +16,7 @@ This document describes the complete database schema for the MOSAIC assessment p
 
 ## Entity Relationship Diagram
 
-```
-institution
+```textinstitution
     └─> institutional_outcomes
         └─> program_outcomes
             └─> programs
@@ -39,8 +38,7 @@ users
     ├─> user_roles -> roles
     ├─> course_sections (instructor)
     └─> audit fields (created_by, updated_by, assessed_by)
-```
-
+```text
 ## Tables
 
 ### 1. Root Entity
@@ -49,7 +47,7 @@ users
 Institution root entity (typically one record).
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | institution_pk | INT | Primary key |
 | institution_name | VARCHAR(255) | Institution name |
 | institution_code | VARCHAR(50) | Institution identifier |
@@ -67,7 +65,7 @@ Institution root entity (typically one record).
 Top-level institutional learning outcomes.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | institutional_outcomes_pk | INT | Primary key |
 | institution_fk | INT | Foreign key to institution |
 | code | VARCHAR(50) | Unique outcome code |
@@ -87,7 +85,7 @@ Top-level institutional learning outcomes.
 Program-level learning outcomes mapped to institutional outcomes.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | program_outcomes_pk | INT | Primary key |
 | program_fk | INT | Foreign key to programs |
 | institutional_outcomes_fk | INT | Parent institutional outcome |
@@ -112,7 +110,7 @@ Program-level learning outcomes mapped to institutional outcomes.
 Grouping of SLOs by time period (year, quarter, period). Each term uses outcomes from one SLO set.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | slo_sets_pk | INT | Primary key |
 | set_code | VARCHAR(50) | Unique set code (e.g., 'AY2024') |
 | set_name | VARCHAR(255) | Set name (e.g., 'Academic Year 2024') |
@@ -133,7 +131,7 @@ Grouping of SLOs by time period (year, quarter, period). Each term uses outcomes
 Course-level student learning outcomes within SLO sets. SLOs are uploaded per set and can be mapped to program outcomes.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | student_learning_outcomes_pk | INT | Primary key |
 | slo_set_fk | INT | Foreign key to slo_sets |
 | course_fk | INT | Foreign key to courses |
@@ -162,7 +160,7 @@ Course-level student learning outcomes within SLO sets. SLOs are uploaded per se
 Academic departments.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | departments_pk | INT | Primary key |
 | department_code | VARCHAR(50) | Department code |
 | department_name | VARCHAR(255) | Department name |
@@ -180,7 +178,7 @@ Academic departments.
 Academic programs within departments.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | programs_pk | INT | Primary key |
 | department_fk | INT | Foreign key to departments |
 | program_code | VARCHAR(50) | Program code |
@@ -200,7 +198,7 @@ Academic programs within departments.
 Course definitions (catalog entries).
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | courses_pk | INT | Primary key |
 | department_fk | INT | Foreign key to departments |
 | course_code | VARCHAR(50) | Course code |
@@ -221,7 +219,7 @@ Course definitions (catalog entries).
 Academic terms/semesters. Each term is associated with an SLO set to determine which SLOs are assessed.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | terms_pk | INT | Primary key |
 | slo_set_fk | INT | Foreign key to slo_sets |
 | term_code | VARCHAR(50) | Term code (e.g., 'FA2024') |
@@ -241,7 +239,7 @@ Academic terms/semesters. Each term is associated with an SLO set to determine w
 Course offerings in specific terms.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | course_sections_pk | INT | Primary key |
 | course_fk | INT | Foreign key to courses |
 | term_fk | INT | Foreign key to terms |
@@ -265,7 +263,7 @@ Course offerings in specific terms.
 Student records.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | students_pk | INT | Primary key |
 | student_id | VARCHAR(50) | Unique student ID |
 | first_name | VARCHAR(100) | First name |
@@ -281,7 +279,7 @@ Student records.
 Student enrollment in course sections. Each enrollment has a unique CRN (Course Reference Number). Assessments are tied to the enrollment record via CRN.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | enrollment_pk | INT | Primary key |
 | course_section_fk | INT | Foreign key to course_sections |
 | student_fk | INT | Foreign key to students |
@@ -306,7 +304,7 @@ Student enrollment in course sections. Each enrollment has a unique CRN (Course 
 Individual student assessments for SLOs. Each assessment is tied to an enrollment record (which contains the CRN) and a specific SLO from the term's SLO set.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | assessments_pk | INT | Primary key |
 | enrollment_fk | INT | Foreign key to enrollment (includes CRN) |
 | student_learning_outcome_fk | INT | Foreign key to SLOs |
@@ -331,7 +329,7 @@ Individual student assessments for SLOs. Each assessment is tied to an enrollmen
 System users (faculty, administrators, staff).
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | users_pk | INT | Primary key |
 | user_id | VARCHAR(100) | Unique username/ID |
 | first_name | VARCHAR(100) | First name |
@@ -348,7 +346,7 @@ System users (faculty, administrators, staff).
 User roles for access control.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | roles_pk | INT | Primary key |
 | role_name | VARCHAR(50) | Role name |
 | description | TEXT | Role description |
@@ -363,7 +361,7 @@ User roles for access control.
 User role assignments (many-to-many with context).
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | user_roles_pk | INT | Primary key |
 | user_fk | INT | Foreign key to users |
 | role_fk | INT | Foreign key to roles |
@@ -385,7 +383,7 @@ User role assignments (many-to-many with context).
 LTI consumer registrations.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | lti_consumers_pk | INT | Primary key |
 | consumer_key | VARCHAR(255) | LTI consumer key |
 | consumer_secret | VARCHAR(255) | LTI consumer secret |
@@ -400,7 +398,7 @@ LTI consumer registrations.
 Nonce tracking for LTI security.
 
 | Column | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | lti_nonces_pk | INT | Primary key |
 | consumer_key | VARCHAR(255) | LTI consumer key |
 | nonce_value | VARCHAR(255) | Nonce value |
@@ -415,16 +413,14 @@ Nonce tracking for LTI security.
 
 ### 1. Assessment Chain with SLO Sets
 
-```
-SLO Set (per year/quarter) → Student Learning Outcomes → Assessments
+```textSLO Set (per year/quarter) → Student Learning Outcomes → Assessments
                            ↓
                          Terms → Course Sections → Enrollment (with CRN) → Student
                                                                          ↓
                                                                     Assessment
                                                        
 SLO → Program Outcome → Institutional Outcome
-```
-
+```text
 **Assessment Flow:**
 1. SLOs are uploaded into an SLO Set (e.g., "Academic Year 2024")
 2. Each Term is linked to an SLO Set
@@ -434,8 +430,7 @@ SLO → Program Outcome → Institutional Outcome
 
 ### 2. Institutional Reporting
 
-```
-Institution defines Institutional Outcomes
+```textInstitution defines Institutional Outcomes
     → institutional_outcomes records
     
 Program creates Program Outcomes mapped to Institutional
@@ -449,18 +444,15 @@ Query: Get all assessments rolling up to Institutional Outcome #3 for AY2024
     → JOIN assessments → enrollment → course_sections → terms → slo_sets
     → JOIN assessments → student_learning_outcomes → program_outcomes → institutional_outcomes
     → WHERE institutional_outcomes_pk = 3 AND slo_sets.set_code = 'AY2024'
-```
-
+```text
 ### 3. Access Control
 
-```
-User assigned role at different contexts:
+```textUser assigned role at different contexts:
     → Global admin: user_roles (user_fk, role='admin', context_type=NULL)
     → Department chair: user_roles (user_fk, role='department_chair', context_type='department', context_id=dept_pk)
     → Program coordinator: user_roles (user_fk, role='program_coordinator', context_type='program', context_id=program_pk)
     → Instructor: user_roles (user_fk, role='instructor', context_type='course', context_id=course_pk)
-```
-
+```text
 ### 4. Audit Trail
 
 All major tables include:
