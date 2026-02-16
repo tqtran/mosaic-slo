@@ -6,6 +6,7 @@ declare(strict_types=1);
  * 
  * Instructor-facing interface for entering SLO assessment data.
  * Accessed via LTI launch from Learning Management System.
+ * Uses pragmatic page pattern (logic + template in one file).
  * 
  * @package Mosaic
  */
@@ -38,19 +39,19 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 // Load core classes
-require_once __DIR__ . '/Core/Config.php';
-require_once __DIR__ . '/Core/Database.php';
-require_once __DIR__ . '/Core/Logger.php';
-require_once __DIR__ . '/Core/Path.php';
-require_once __DIR__ . '/includes/message_page.php';
+require_once __DIR__ . '/../Core/Config.php';
+require_once __DIR__ . '/../Core/Database.php';
+require_once __DIR__ . '/../Core/Logger.php';
+require_once __DIR__ . '/../Core/Path.php';
+require_once __DIR__ . '/../includes/message_page.php';
 
 // Check if configured
-if (!file_exists(__DIR__ . '/config/config.yaml')) {
+if (!file_exists(__DIR__ . '/../config/config.yaml')) {
     \Mosaic\Core\Path::redirect('setup/');
 }
 
 // Load configuration
-$config = \Mosaic\Core\Config::getInstance(__DIR__ . '/config/config.yaml');
+$config = \Mosaic\Core\Config::getInstance(__DIR__ . '/../config/config.yaml');
 $configData = $config->all();
 
 // Define constants
@@ -639,4 +640,4 @@ function setAllOutcomes(outcome) {
 }
 </script>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

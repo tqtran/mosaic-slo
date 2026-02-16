@@ -5,6 +5,7 @@ declare(strict_types=1);
  * Institutional Outcomes Administration
  * 
  * Manage top-level institutional learning outcomes.
+ * Uses pragmatic page pattern (logic + template in one file).
  * 
  * @package Mosaic
  */
@@ -37,17 +38,17 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 // Load core classes
-require_once __DIR__ . '/Core/Config.php';
-require_once __DIR__ . '/Core/Database.php';
-require_once __DIR__ . '/Core/Path.php';
+require_once __DIR__ . '/../Core/Config.php';
+require_once __DIR__ . '/../Core/Database.php';
+require_once __DIR__ . '/../Core/Path.php';
 
 // Check if configured
-if (!file_exists(__DIR__ . '/config/config.yaml')) {
+if (!file_exists(__DIR__ . '/../config/config.yaml')) {
     \Mosaic\Core\Path::redirect('setup/');
 }
 
 // Load configuration
-$config = \Mosaic\Core\Config::getInstance(__DIR__ . '/config/config.yaml');
+$config = \Mosaic\Core\Config::getInstance(__DIR__ . '/../config/config.yaml');
 $configData = $config->all();
 
 // Define constants
@@ -332,7 +333,7 @@ unset($outcome);
 $currentPage = 'admin_institutional_outcomes';
 $pageTitle = 'Institutional Outcomes - ' . SITE_NAME;
 $bodyClass = 'hold-transition sidebar-mini layout-fixed';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="wrapper">
@@ -362,7 +363,7 @@ require_once __DIR__ . '/includes/header.php';
     </nav>
     <!-- /.navbar -->
 
-<?php require_once __DIR__ . '/includes/sidebar.php'; ?>
+<?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 
     <!-- Content Wrapper -->
     <div class="content-wrapper">
@@ -773,4 +774,4 @@ function toggleStatus(id, code) {
 }
 </script>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

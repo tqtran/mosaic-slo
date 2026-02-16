@@ -5,8 +5,10 @@ declare(strict_types=1);
  * LTI Launch Handler
  * 
  * Accepts LTI 1.1/1.3 launch requests from Learning Management Systems.
- * Currently bypasses signature validation for development.
+ * Uses pragmatic page pattern (logic + template in one file).
  * 
+ * @todo Implement OAuth 1.0 signature validation (LTI 1.1)
+ * @todo Implement JWT/JWKS validation (LTI 1.3)
  * @package Mosaic
  */
 
@@ -32,19 +34,19 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Load core classes
-require_once __DIR__ . '/Core/Config.php';
-require_once __DIR__ . '/Core/Database.php';
-require_once __DIR__ . '/Core/Logger.php';
-require_once __DIR__ . '/Core/Path.php';
-require_once __DIR__ . '/includes/message_page.php';
+require_once __DIR__ . '/../Core/Config.php';
+require_once __DIR__ . '/../Core/Database.php';
+require_once __DIR__ . '/../Core/Logger.php';
+require_once __DIR__ . '/../Core/Path.php';
+require_once __DIR__ . '/../includes/message_page.php';
 
 // Check if configured
-if (!file_exists(__DIR__ . '/config/config.yaml')) {
+if (!file_exists(__DIR__ . '/../config/config.yaml')) {
     \Mosaic\Core\Path::redirect('setup/');
 }
 
 // Load configuration
-$config = \Mosaic\Core\Config::getInstance(__DIR__ . '/config/config.yaml');
+$config = \Mosaic\Core\Config::getInstance(__DIR__ . '/../config/config.yaml');
 $configData = $config->all();
 
 // Define constants
@@ -231,7 +233,7 @@ $logger->info('LTI Launch Successful', [
 // Redirect based on role
 if ($isInstructor) {
     // Instructors go to assessment interface
-    \Mosaic\Core\Path::redirect('lti_assessment.php');
+    \Mosaic\Core\Path::redirect('lti/assessment.php');
 } elseif ($isStudent) {
     // Students see their results (TODO: implement student view)
     render_message_page(
