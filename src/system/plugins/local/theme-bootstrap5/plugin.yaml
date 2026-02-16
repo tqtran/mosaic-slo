@@ -1,0 +1,27 @@
+# Bootstrap 5 Theme Plugin
+# Clean, minimal theme using Bootstrap 5 framework
+
+id: theme-bootstrap5
+name: Bootstrap 5 Theme
+version: 1.0.0
+type: theme
+description: Clean, minimal theme using vanilla Bootstrap 5 with multiple layout options
+author: MOSAIC Project
+
+# Theme-specific configuration
+theme:
+  default_layout: default
+  layouts:
+    default:
+      name: Default Layout
+      description: Basic container layout with minimal styling (used as fallback for other layouts)
+      header: layouts/simple/header.php
+      footer: layouts/simple/footer.php
+    navbar:
+      name: Navbar Layout
+      description: Layout with top navigation bar
+      header: layouts/navbar/header.php
+    fluid:
+      name: Fluid Layout
+      description: Full-width fluid container layout
+      header: layouts/fluid/header.php
