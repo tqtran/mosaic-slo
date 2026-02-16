@@ -1,6 +1,6 @@
 <?php
 /**
- * Bootstrap 5 Theme Renderer
+ * Default Theme Renderer
  * 
  * Custom theme class example with helper methods.
  * Demonstrates how to extend base Theme class with custom functionality.

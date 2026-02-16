@@ -1,0 +1,168 @@
+# MOSAIC Configuration Template
+# This file defines all available configuration options with metadata for UI generation
+# Copy to config.yaml and update with your settings
+
+# Database Configuration
+database:
+  # @label: Database Host
+  # @description: MySQL server hostname or IP address
+  # @required: true
+  # @type: string
+  # @default: localhost
+  # @validation: ^[a-zA-Z0-9.-]+$
+  host: localhost
+  
+  # @label: Database Port
+  # @description: MySQL server port number
+  # @required: true
+  # @type: integer
+  # @default: 3306
+  # @validation: min=1,max=65535
+  port: 3306
+  
+  # @label: Database Name
+  # @description: Name of the database to use for MOSAIC
+  # @required: true
+  # @type: string
+  # @validation: ^[a-zA-Z0-9_]+$
+  # @help: Must be alphanumeric with underscores only
+  name: mosaic_db
+  
+  # @label: Table Prefix
+  # @description: Optional prefix for all database tables
+  # @required: false
+  # @type: string
+  # @default: tbl_
+  # @validation: ^[a-zA-Z0-9_]*$
+  # @help: Leave empty for no prefix. Must end with underscore if used.
+  prefix: tbl_
+  
+  # @label: Database Username
+  # @description: MySQL user with access to the database
+  # @required: true
+  # @type: string
+  username: mosaic_user
+  
+  # @label: Database Password
+  # @description: Password for database user
+  # @required: true
+  # @type: password
+  # @help: Stored in plain text - ensure file permissions are secure
+  password: your_password_here
+  
+  # @label: Character Set
+  # @description: Database character encoding
+  # @required: true
+  # @type: select
+  # @options: utf8mb4,utf8,latin1
+  # @default: utf8mb4
+  # @help: utf8mb4 recommended for full Unicode support
+  charset: utf8mb4
+
+# Application Settings
+app:
+  # @label: Site Name
+  # @description: Display name for your MOSAIC installation
+  # @required: true
+  # @type: string
+  # @default: MOSAIC
+  name: MOSAIC
+  
+  # @label: Timezone
+  # @description: Server timezone for date/time operations
+  # @required: true
+  # @type: timezone
+  # @default: America/Los_Angeles
+  # @help: See https://www.php.net/manual/en/timezones.php for valid values
+  timezone: America/Los_Angeles
+  
+  # @label: Base URL Path
+  # @description: URL path where MOSAIC is installed (relative to domain)
+  # @required: true
+  # @type: string
+  # @default: /
+  # @validation: ^/.*
+  # @help: Use / for domain root, or /beta/ for subdirectory. Must start with /
+  base_url: /
+  
+  # @label: Debug Mode
+  # @description: Enable detailed error messages and logging
+  # @required: true
+  # @type: boolean
+  # @default: true
+  # @help: Set to false in production for security
+  debug_mode: true
+
+# Theme Configuration
+theme:
+  # @label: Active Theme
+  # @description: Theme plugin to use for frontend rendering
+  # @required: false
+  # @type: select
+  # @options: theme-default|Default (Bootstrap 5),theme-adminlte|AdminLTE 4 Professional,theme-metis|Metis Material Design
+  # @default: theme-default
+  # @help: If not specified, theme-default is used automatically
+  active_theme: theme-default
+
+# Email Configuration
+email:
+  # @label: Email Method
+  # @description: How to send email notifications
+  # @required: true
+  # @type: select
+  # @options: disabled|Disabled (No Email),smtp|SMTP Server,sendmail|Sendmail,mail|PHP mail()
+  # @default: disabled
+  # @help: SMTP recommended for reliability
+  method: disabled
+  
+  # @label: From Email Address
+  # @description: Email address shown as sender
+  # @required: false
+  # @type: email
+  # @validation: email
+  # @help: Required if email method is not disabled
+  from_email: noreply@example.com
+  
+  # @label: From Name
+  # @description: Display name shown as sender
+  # @required: false
+  # @type: string
+  # @default: MOSAIC
+  from_name: MOSAIC
+  
+  # @label: SMTP Host
+  # @description: SMTP server hostname
+  # @required: false
+  # @type: string
+  # @help: Required if method is smtp
+  smtp_host: smtp.example.com
+  
+  # @label: SMTP Port
+  # @description: SMTP server port
+  # @required: false
+  # @type: integer
+  # @default: 587
+  # @validation: min=1,max=65535
+  # @help: Common ports: 25 (unencrypted), 587 (TLS), 465 (SSL)
+  smtp_port: 587
+  
+  # @label: SMTP Username
+  # @description: Username for SMTP authentication
+  # @required: false
+  # @type: string
+  # @help: Required if SMTP server requires authentication
+  smtp_username: 
+  
+  # @label: SMTP Password
+  # @description: Password for SMTP authentication
+  # @required: false
+  # @type: password
+  smtp_password: 
+  
+  # @label: SMTP Encryption
+  # @description: Encryption method for SMTP connection
+  # @required: false
+  # @type: select
+  # @options: tls|TLS (recommended),ssl|SSL,none|None (insecure)
+  # @default: tls
+  smtp_encryption: tls

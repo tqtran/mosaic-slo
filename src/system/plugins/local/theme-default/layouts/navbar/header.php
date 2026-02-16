@@ -1,6 +1,6 @@
 <?php
 /**
- * Bootstrap 5 Theme - Navbar Layout Header
+ * Default Theme - Navbar Layout Header
  * Layout with top navigation bar
  */
 ?>

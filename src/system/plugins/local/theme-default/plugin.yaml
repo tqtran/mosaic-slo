@@ -1,11 +1,11 @@
-# Bootstrap 5 Theme Plugin
+# Default Theme Plugin
 # Clean, minimal theme using Bootstrap 5 framework
 
-id: theme-bootstrap5
-name: Bootstrap 5 Theme
+id: theme-default
+name: Default Theme
 version: 1.0.0
 type: theme
-description: Clean, minimal theme using vanilla Bootstrap 5 with multiple layout options
+description: Clean, minimal Bootstrap 5 theme - system default with multiple layout options
 author: MOSAIC Project
 
 # Theme-specific configuration
@@ -15,8 +15,8 @@ theme:
     default:
       name: Default Layout
       description: Basic container layout with minimal styling (used as fallback for other layouts)
-      header: layouts/simple/header.php
-      footer: layouts/simple/footer.php
+      header: layouts/default/header.php
+      footer: layouts/default/footer.php
     navbar:
       name: Navbar Layout
       description: Layout with top navigation bar

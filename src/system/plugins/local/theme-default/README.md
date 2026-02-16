@@ -1,12 +1,13 @@
-# Bootstrap 5 Theme
+# Default Theme
 
-Clean, minimal theme using vanilla Bootstrap 5 framework.
+Clean, minimal theme using Bootstrap 5 framework - the system default.
 
 ## Layouts
 
-### Simple Layout
+### Default Layout
 - Basic container layout
 - Minimal styling
+- Used as fallback for other layouts
 - Perfect for simple pages and forms
 
 ### Navbar Layout

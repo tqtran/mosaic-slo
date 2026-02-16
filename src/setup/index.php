@@ -168,6 +168,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                     $configContent .= "  timezone: America/Los_Angeles\n";
                                     $configContent .= "  base_url: " . $base_url . "\n";
                                     $configContent .= "  debug_mode: true\n\n";
+                                    $configContent .= "# Theme Configuration\n";
+                                    $configContent .= "# Available themes: theme-default, theme-adminlte, theme-metis\n";
+                                    $configContent .= "theme:\n";
+                                    $configContent .= "  active_theme: theme-default\n\n";
                                     $configContent .= "# Email configuration for notifications\n";
                                     $configContent .= "email:\n";
                                     $configContent .= "  method: " . $mail_method . "\n";

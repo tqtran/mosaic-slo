@@ -59,13 +59,37 @@ class ThemeLoader
      * 
      * @return string Active theme ID
      */
+    /**
+     * Determine which theme to use
+     * 
+     * Priority:
+     * 1. config.yaml 'theme.active_theme' setting
+     * 2. Database (when PluginManager exists)
+     * 3. Fallback to 'theme-default'
+     * 
+     * @return string Theme plugin ID
+     */
     private static function determineActiveTheme(): string
     {
+        // Try config.yaml first
+        $configPath = dirname(__DIR__, 2) . '/config/config.yaml';
+        if (file_exists($configPath)) {
+            try {
+                $config = Config::getInstance($configPath);
+                $activeTheme = $config->get('theme.active_theme');
+                if ($activeTheme) {
+                    return $activeTheme;
+                }
+            } catch (\Exception $e) {
+                // Config not available or error reading, fall through to default
+            }
+        }
+        
         // TODO: When PluginManager exists, query database:
         // SELECT plugin_id FROM plugins WHERE type='theme' AND is_active=1 LIMIT 1
         
-        // Hard-coded default for now
-        return 'theme-adminlte';
+        // Fallback to system default
+        return 'theme-default';
     }
     
     /**

@@ -1,7 +1,7 @@
 <?php
 /**
- * Bootstrap 5 Theme - Fluid Layout Header
- * Full-width fluid container layout
+ * Default Theme - Default Layout Header
+ * Minimal layout with container
  */
 ?>
 <!DOCTYPE html>
@@ -23,13 +23,13 @@
             --brand-teal: #1565C0;
         }
         body {
-            padding-top: 1rem;
+            padding-top: 2rem;
+            padding-bottom: 2rem;
         }
         .page-header {
-            margin-bottom: 1.5rem;
-            padding: 1rem;
-            background: linear-gradient(135deg, var(--primary-dark), var(--brand-teal));
-            color: white;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--primary-dark);
         }
     </style>
     
@@ -38,9 +38,9 @@
     <?php endif; ?>
 </head>
 <body>
-<div class="container-fluid">
+<div class="container">
     <?php if (isset($pageTitle)): ?>
-    <header class="page-header rounded">
+    <header class="page-header">
         <h1><?= htmlspecialchars($pageTitle) ?></h1>
     </header>
     <?php endif; ?>
