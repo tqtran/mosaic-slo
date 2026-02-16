@@ -108,39 +108,89 @@ if (file_exists(CONFIG_PATH)) {
                             <i class="fas fa-check-circle fa-4x text-success"></i>
                         </div>
                         <h1 class="h3 text-center mb-3"><?php echo htmlspecialchars(SITE_NAME); ?></h1>
-                        <p class="text-center text-muted mb-4">Configuration loaded successfully. Application framework is ready.</p>
+                        <p class="text-center text-muted mb-4">Student Learning Outcomes Assessment Platform</p>
                         
                         <div class="card bg-light mb-3">
                             <div class="card-body">
                                 <h5 class="card-title">
-                                    <i class="fas fa-cogs mr-2"></i>Administration Pages
+                                    <i class="fas fa-tachometer-alt mr-2"></i>Main Application
                                 </h5>
                                 <div class="d-grid gap-2">
-                                    <a href="<?= BASE_URL ?>admin_config.php" class="btn btn-outline-primary">
+                                    <a href="<?= BASE_URL ?>admin_institution.php" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-chart-line"></i> Dashboard (Coming Soon)
+                                    </a>
+                                    <a href="<?= BASE_URL ?>lti_test.html" class="btn btn-info btn-lg">
+                                        <i class="fas fa-microscope"></i> LTI Test Harness
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card bg-light mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-cogs mr-2"></i>Administration
+                                </h5>
+                                <div class="d-grid gap-2">
+                                    <a href="<?= BASE_URL ?>admin_config.php" class="btn btn-outline-secondary">
                                         <i class="fas fa-cog"></i> System Configuration
                                     </a>
-                                    <a href="<?= BASE_URL ?>admin_institution.php" class="btn btn-outline-primary">
+                                    <a href="<?= BASE_URL ?>admin_institution.php" class="btn btn-outline-secondary">
                                         <i class="fas fa-university"></i> Institution Management
                                     </a>
-                                    <a href="<?= BASE_URL ?>admin_institutional_outcomes.php" class="btn btn-outline-primary">
+                                    <a href="<?= BASE_URL ?>admin_institutional_outcomes.php" class="btn btn-outline-secondary">
                                         <i class="fas fa-graduation-cap"></i> Institutional Outcomes
                                     </a>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="card bg-light">
+                        <div class="card bg-light mb-3">
                             <div class="card-body">
                                 <h5 class="card-title">
-                                    <i class="fas fa-tasks mr-2"></i>Development Tasks
+                                    <i class="fas fa-plug mr-2"></i>LTI Launch URL
                                 </h5>
-                                <ul class="mb-0">
-                                    <li>Implement autoloader</li>
-                                    <li>Implement router</li>
-                                    <li>Create controllers</li>
-                                </ul>
+                                <p class="mb-2">
+                                    <strong>Configure this URL in your LMS:</strong>
+                                </p>
+                                <div class="input-group mb-2">
+                                    <?php
+                                    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+                                    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+                                    $ltiUrl = $protocol . $host . BASE_URL . 'lti_launch.php';
+                                    ?>
+                                    <input type="text" class="form-control" value="<?= htmlspecialchars($ltiUrl) ?>" readonly id="ltiUrl">
+                                    <button class="btn btn-outline-primary" type="button" onclick="copyLtiUrl()">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                                <p class="mb-0 small text-muted">
+                                    <i class="fas fa-info-circle"></i> Add this as an external tool in Canvas, Blackboard, Moodle, etc.
+                                    Use the LTI Test Harness above to simulate launches during development.
+                                </p>
                             </div>
                         </div>
+                        
+                        <script>
+                        function copyLtiUrl() {
+                            const urlField = document.getElementById('ltiUrl');
+                            urlField.select();
+                            urlField.setSelectionRange(0, 99999);
+                            document.execCommand('copy');
+                            
+                            const btn = event.target.closest('button');
+                            const originalHtml = btn.innerHTML;
+                            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                            btn.classList.remove('btn-outline-primary');
+                            btn.classList.add('btn-success');
+                            
+                            setTimeout(() => {
+                                btn.innerHTML = originalHtml;
+                                btn.classList.remove('btn-success');
+                                btn.classList.add('btn-outline-primary');
+                            }, 2000);
+                        }
+                        </script>
                     </div>
                 </div>
             </div>

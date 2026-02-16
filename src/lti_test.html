@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LTI Launch Test Harness - MOSAIC</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">LTI Launch Test Harness</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <strong>Development Tool Only</strong><br>
+                            This simulates an LTI POST from a Learning Management System (Canvas, Blackboard, Moodle, etc.).
+                            In production, LTI launches come directly from your LMS.
+                        </div>
+
+                        <form method="POST" action="lti_launch.php" target="_blank">
+                            <h5>User Information</h5>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">User ID (LTI)</label>
+                                    <input type="text" class="form-control" name="user_id" value="demo_instructor_001" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" name="lis_person_contact_email_primary" value="instructor@example.edu">
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">First Name</label>
+                                    <input type="text" class="form-control" name="lis_person_name_given" value="Demo">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Last Name</label>
+                                    <input type="text" class="form-control" name="lis_person_name_family" value="Instructor">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" name="lis_person_name_full" value="Demo Instructor">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Student/Employee ID</label>
+                                <input type="text" class="form-control" name="lis_person_sourcedid" value="C00123456">
+                            </div>
+
+                            <h5 class="mt-4">Role</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Roles</label>
+                                <select class="form-select" name="roles" required>
+                                    <option value="Instructor">Instructor</option>
+                                    <option value="Learner,Student">Student</option>
+                                    <option value="Administrator">Administrator</option>
+                                </select>
+                            </div>
+
+                            <h5 class="mt-4">Course Context</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Context ID</label>
+                                <input type="text" class="form-control" name="context_id" value="course_001_spring2026" required>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Context Title</label>
+                                    <input type="text" class="form-control" name="context_title" value="CIS157-23477 (ONL) Intro to Python Programming">
+                                    <small class="text-muted">Full course name</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Context Label</label>
+                                    <input type="text" class="form-control" name="context_label" value="CIS157-23477 (ONL)">
+                                    <small class="text-muted">Course number and section (parsed as CourseNum-CRN (Section))</small>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Course Offering ID</label>
+                                <input type="text" class="form-control" name="lis_course_offering_sourcedid" value="23477.202523">
+                                <small class="text-muted">Format: CRN.TERMID (e.g., 23477.202523 = CRN 23477, Term ID 202523)</small>
+                            </div>
+
+                            <h5 class="mt-4">Resource Link</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Resource Link ID</label>
+                                <input type="text" class="form-control" name="resource_link_id" value="mosaic_slo_tool_link_001" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Resource Link Title</label>
+                                <input type="text" class="form-control" name="resource_link_title" value="SLO Assessment Tool">
+                            </div>
+
+                            <h5 class="mt-4">Tool Consumer (LMS)</h5>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Consumer Name</label>
+                                    <input type="text" class="form-control" name="tool_consumer_instance_name" value="Demo University">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Consumer GUID</label>
+                                    <input type="text" class="form-control" name="tool_consumer_instance_guid" value="demo.university.edu">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">OAuth Consumer Key</label>
+                                <input type="text" class="form-control" name="oauth_consumer_key" value="DEMO_KEY_12345">
+                                <small class="text-muted">Future: Will be validated against institution table (lti_consumer_key)</small>
+                            </div>
+
+                            <h5 class="mt-4">Custom Canvas Parameters (Optional)</h5>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Canvas Course ID</label>
+                                    <input type="text" class="form-control" name="custom_canvas_course_id" value="12345">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Canvas User ID</label>
+                                    <input type="text" class="form-control" name="custom_canvas_user_id" value="67890">
+                                </div>
+                            </div>
+
+                            <h5 class="mt-4">LTI Protocol</h5>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">LTI Version</label>
+                                    <input type="text" class="form-control" name="lti_version" value="LTI-1p0" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Message Type</label>
+                                    <input type="text" class="form-control" name="lti_message_type" value="basic-lti-launch-request" readonly>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    Launch LTI Tool (Opens in New Tab)
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer text-muted">
+                        <small>
+                            <strong>Note:</strong> OAuth signature validation is currently disabled for development.
+                            Before production use, implement signature validation in lti_launch.php.
+                        </small>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <strong>Quick Test Scenarios</strong>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            <li><strong>Instructor Launch:</strong> Default form values (Role: Instructor)</li>
+                            <li><strong>Student Launch:</strong> Change Role to "Learner,Student"</li>
+                            <li><strong>Different Courses:</strong> Modify Context ID, Title, and Course Offering ID</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

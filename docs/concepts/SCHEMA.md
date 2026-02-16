@@ -51,11 +51,16 @@ Institution root entity (typically one record).
 | institution_pk | INT | Primary key |
 | institution_name | VARCHAR(255) | Institution name |
 | institution_code | VARCHAR(50) | Institution identifier |
+| lti_consumer_key | VARCHAR(255) | LTI consumer key for LMS integration |
+| lti_consumer_secret | VARCHAR(255) | LTI consumer secret |
+| lti_consumer_name | VARCHAR(100) | LMS display name (e.g., "Canvas Production") |
 | is_active | BOOLEAN | Soft delete flag |
 | created_at | TIMESTAMP | Record creation time |
 | updated_at | TIMESTAMP | Last update time |
 
-**Indexes**: institution_code (unique)
+**Indexes**: institution_code (unique), lti_consumer_key (unique)
+
+**Note**: One MOSAIC instance = one institution = one LMS integration. LTI keys stored at institution level for simplicity.
 
 ---
 
@@ -309,7 +314,7 @@ Individual student assessments for SLOs. Each assessment is tied to an enrollmen
 | enrollment_fk | INT | Foreign key to enrollment (includes CRN) |
 | student_learning_outcome_fk | INT | Foreign key to SLOs |
 | score_value | DECIMAL(5,2) | Numeric score (nullable) |
-| achievement_level | ENUM | 'met', 'not_met', 'pending' |
+| achievement_level | ENUM | 'met', 'partially_met', 'not_met', 'pending' |
 | notes | TEXT | Assessment notes |
 | assessed_date | DATE | Date assessed |
 | is_finalized | BOOLEAN | Assessment locked flag |
@@ -379,23 +384,17 @@ User role assignments (many-to-many with context).
 
 ### 8. LTI Integration
 
-#### lti_consumers
-LTI consumer registrations.
+**Architecture Note**: LTI consumer keys are stored in the `institution` table rather than a separate `lti_consumers` table. This design reflects the reality that one MOSAIC instance = one institution = one LMS integration. Multiple consumer keys are not needed because:
 
-| Column | Type | Description |
-| -------- | ------ | ------------- |
-| lti_consumers_pk | INT | Primary key |
-| consumer_key | VARCHAR(255) | LTI consumer key |
-| consumer_secret | VARCHAR(255) | LTI consumer secret |
-| consumer_name | VARCHAR(255) | Consumer display name |
-| is_active | BOOLEAN | Consumer active flag |
-| created_at | TIMESTAMP | Record creation time |
-| updated_at | TIMESTAMP | Last update time |
+- Authorization is handled by role + context from LTI launch parameters, not by consumer keys
+- The consumer key authenticates the LMS instance, not individual users or courses
+- Simpler configuration: LMS admin configures tool once at institution level
+- Follows YAGNI principle: Don't build for hypothetical multi-LMS scenarios
 
-**Indexes**: consumer_key (unique), is_active
+For institutions needing multiple LMS platforms (rare edge case like Canvas + Blackboard during transition), deploy separate MOSAIC instances or extend via plugin.
 
 #### lti_nonces
-Nonce tracking for LTI security.
+Nonce tracking for LTI security (prevents replay attacks).
 
 | Column | Type | Description |
 | -------- | ------ | ------------- |

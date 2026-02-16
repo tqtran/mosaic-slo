@@ -254,18 +254,26 @@ $totalInstitutions = count($institutions);
 $activeInstitutions = count(array_filter($institutions, fn($i) => $i['is_active']));
 $inactiveInstitutions = $totalInstitutions - $activeInstitutions;
 
+$currentPage = 'admin_institution';
 $pageTitle = 'Institution Management - ' . SITE_NAME;
+$bodyClass = 'hold-transition sidebar-mini layout-fixed';
 require_once __DIR__ . '/includes/header.php';
 ?>
 
 <div class="wrapper">
     <!-- Navbar -->
-    <nav class="navbar navbar-expand navbar-white navbar-light">
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <!-- Left navbar links -->
         <ul class="navbar-nav">
             <li class="nav-item">
-                <a class="nav-link" href="<?= BASE_URL ?>"><i class="fas fa-home"></i> Home</a>
+                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+            </li>
+            <li class="nav-item d-none d-sm-inline-block">
+                <a href="<?= BASE_URL ?>" class="nav-link"><i class="fas fa-home"></i> Home</a>
             </li>
         </ul>
+        
+        <!-- Right navbar links -->
         <ul class="navbar-nav ml-auto">
             <li class="nav-item">
                 <span class="nav-link">
@@ -274,9 +282,12 @@ require_once __DIR__ . '/includes/header.php';
             </li>
         </ul>
     </nav>
+    <!-- /.navbar -->
+
+<?php require_once __DIR__ . '/includes/sidebar.php'; ?>
 
     <!-- Content Wrapper -->
-    <div class="content-wrapper" style="margin-left: 0;">
+    <div class="content-wrapper">
         <!-- Content Header -->
         <div class="content-header">
             <div class="container-fluid">

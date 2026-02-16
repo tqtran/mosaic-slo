@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                         
                         // Drop existing tables if they exist (for clean reinstall)
                         $tables = [
-                            'lti_nonces', 'lti_consumers', 'security_log', 'error_log',
+                            'lti_nonces', 'security_log', 'error_log',
                             'audit_log', 'user_roles', 'roles', 'assessments',
                             'enrollment', 'students', 'course_sections', 'terms',
                             'student_learning_outcomes', 'slo_sets', 'courses',

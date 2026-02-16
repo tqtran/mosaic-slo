@@ -109,13 +109,13 @@ Complete MySQL schema for MOSAIC platform.
   - `security_log` - Security events (logins, permission denials, threats)
 
 **Key tables:**
-- `institution`, `institutional_outcomes`
+- `institution` (includes LTI consumer keys), `institutional_outcomes`
 - `departments`, `programs`, `program_outcomes`
 - `courses`, `slo_sets`, `student_learning_outcomes`
 - `terms`, `course_sections`, `enrollment`
 - `students`, `assessments`
 - `users`, `roles`, `user_roles`
-- `lti_consumers`, `lti_nonces`
+- `lti_nonces`
 
 ### `../src/scripts/create_admin_user.php`
 Creates an admin user with global privileges.

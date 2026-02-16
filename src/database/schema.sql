@@ -8,7 +8,6 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS lti_nonces;
-DROP TABLE IF EXISTS lti_consumers;
 DROP TABLE IF EXISTS user_roles;
 DROP TABLE IF EXISTS roles;
 DROP TABLE IF EXISTS assessments;
@@ -76,11 +75,15 @@ CREATE TABLE institution (
     institution_pk INT AUTO_INCREMENT PRIMARY KEY,
     institution_name VARCHAR(255) NOT NULL,
     institution_code VARCHAR(50) NOT NULL UNIQUE,
+    lti_consumer_key VARCHAR(255),
+    lti_consumer_secret VARCHAR(255),
+    lti_consumer_name VARCHAR(100),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_institution_code (institution_code)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    INDEX idx_institution_code (institution_code),
+    UNIQUE KEY unique_lti_key (lti_consumer_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Institution root entity with LTI credentials';
 
 -- ============================================================================
 -- 3. OUTCOMES HIERARCHY
@@ -326,7 +329,7 @@ CREATE TABLE assessments (
     enrollment_fk INT NOT NULL,
     student_learning_outcome_fk INT NOT NULL,
     score_value DECIMAL(5,2),
-    achievement_level ENUM('met', 'not_met', 'pending') DEFAULT 'pending',
+    achievement_level ENUM('met', 'partially_met', 'not_met', 'pending') DEFAULT 'pending',
     notes TEXT,
     assessed_date DATE,
     is_finalized BOOLEAN DEFAULT FALSE,
@@ -420,18 +423,7 @@ CREATE TABLE security_log (
 -- ============================================================================
 -- 10. LTI INTEGRATION
 -- ============================================================================
-
-CREATE TABLE lti_consumers (
-    lti_consumers_pk INT AUTO_INCREMENT PRIMARY KEY,
-    consumer_key VARCHAR(255) NOT NULL UNIQUE,
-    consumer_secret VARCHAR(255) NOT NULL,
-    consumer_name VARCHAR(255) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_consumer_key (consumer_key),
-    INDEX idx_is_active (is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Note: LTI consumer keys are stored in institution table (one key per instance)
 
 CREATE TABLE lti_nonces (
     lti_nonces_pk INT AUTO_INCREMENT PRIMARY KEY,
