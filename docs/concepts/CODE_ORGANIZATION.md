@@ -1,0 +1,457 @@
+# Code Organization
+
+## Purpose
+
+MOSAIC uses an organized procedural approach prioritizing simplicity and clarity over abstraction layers. The codebase is structured for maintainability without the overhead of a full MVC framework.
+
+## Philosophy
+
+**Simplicity Over Frameworks**
+- Direct, readable code flow
+- Minimal abstraction layers
+- Low barrier to entry for contributors
+- Easier debugging and maintenance
+
+**When This Works Best**
+- Straightforward CRUD operations
+- Form handling and validation
+- Reporting and data display
+- Institutional applications with clear requirements
+
+**This is NOT:**
+- A full MVC framework
+- Object-relational mapping (ORM)
+- A router-based application
+- Convention over configuration
+
+## Directory Structure
+
+```
+src/
+├── index.php              # Application entry point
+├── dashboard/             # Dashboard pages (outcomes, institution, etc.)
+├── lti/                   # LTI integration endpoints
+├── setup/                 # Installation wizard
+├── scripts/               # CLI maintenance scripts
+├── includes/              # Shared page components
+│   ├── header.php         # Common header (loads Bootstrap, AdminLTE, etc.)
+│   ├── footer.php         # Common footer (loads JavaScript libraries)
+│   ├── sidebar.php        # AdminLTE sidebar navigation
+│   └── message_page.php   # Error/success page helper
+├── Core/                  # Core utilities
+│   ├── Config.php         # Configuration management
+│   ├── Database.php       # Database connection wrapper
+│   ├── Logger.php         # Application logging
+│   ├── Model.php          # Optional base model for shared patterns
+│   └── Path.php           # URL/path helpers
+└── Models/                # Optional data access classes
+```
+
+## Code Organization Patterns
+
+### Page-Based Structure
+
+Each feature area gets its own directory:
+
+```
+dashboard/
+├── outcomes.php           # Manage institutional/program outcomes
+├── institution.php        # Institution settings
+└── config.php            # Dashboard configuration
+```
+
+**Pattern:**
+- One file per major page/feature
+- Include header/footer from `system/includes/`
+- Direct database queries with prepared statements
+- Inline logic and presentation
+
+### Shared Components
+
+**Common Includes** (`src/system/includes/`)
+
+Reusable page components for consistency:
+
+**header.php**
+- Sets `<!DOCTYPE>`, `<html>`, `<head>` tags
+- Loads Bootstrap 5, jQuery, AdminLTE 4, Font Awesome
+- Accepts `$pageTitle` and `$bodyClass` variables
+- Handles responsive viewport settings
+
+**footer.php**
+- Closes `<body>` and `<html>` tags
+- Loads JavaScript libraries
+- Provides consistent page structure
+
+**sidebar.php**
+- AdminLTE sidebar navigation
+- Include after header for admin pages
+- Omit for LTI pages (no sidebar)
+
+**message_page.php**
+- Helper function `render_message_page($type, $title, $message, $icon)`
+- Consistent error/success pages
+- Use for user-friendly error messages
+
+**Usage Example:**
+
+```php
+<?php
+declare(strict_types=1);
+
+$pageTitle = 'Manage Outcomes';
+$bodyClass = 'sidebar-mini layout-fixed';
+require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/includes/sidebar.php';
+?>
+
+<!-- Your page content here -->
+<div class="content-wrapper">
+    <section class="content">
+        <!-- Page content -->
+    </section>
+</div>
+
+<?php require_once __DIR__ . '/includes/footer.php'; ?>
+```
+
+### Core Utilities
+
+**Database Wrapper** (`Core/Database.php`)
+- Creates and manages PDO connection
+- Provides prepared statement helpers
+- Handles connection errors
+- Use directly in pages or via optional models
+
+**Configuration** (`Core/Config.php`)
+- Loads `config.yaml` file
+- Provides `get($key, $default)` method
+- Singleton pattern for single config instance
+
+**Logger** (`Core/Logger.php`)
+- Writes to `logs/` directory
+- Log levels: debug, info, warning, error
+- Automatic log rotation
+
+**Path Helper** (`Core/Path.php`)
+- Handles `BASE_URL` detection and routing
+- Supports subdirectory installations
+- `getBaseUrl()` - Returns URL base path
+- `redirect($path)` - Redirects with BASE_URL prepended
+
+### Optional Models
+
+**Base Model Pattern** (`Core/Model.php`)
+
+Optional base class for shared CRUD patterns:
+- Database connection management
+- Common query methods (`find`, `findAll`, etc.)
+- Prepared statement helpers
+
+**When to Use Models:**
+- Repeated queries across multiple pages
+- Complex business logic
+- Data validation patterns
+- Reusable data access methods
+
+**When to Skip Models:**
+- One-off queries
+- Simple page-specific logic
+- Rapid prototyping
+- Demo pages
+
+**Model Example:**
+
+```php
+<?php
+namespace Mosaic\Models;
+
+use Mosaic\Core\Model;
+
+class Student extends Model
+{
+    protected $table = 'students';
+    protected $primaryKey = 'students_pk';
+    
+    public function findByStudentId(string $studentId): ?array
+    {
+        return $this->findOne(['student_id' => $studentId]);
+    }
+    
+    public function getEnrollments(int $studentPk): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT e.*, cs.course_name, cs.term_fk
+            FROM enrollment e
+            JOIN course_sections cs ON e.course_section_fk = cs.course_sections_pk
+            WHERE e.student_fk = ?
+            ORDER BY cs.term_fk DESC
+        ");
+        $stmt->execute([$studentPk]);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+}
+```
+
+**Direct Database Example (No Model):**
+
+```php
+<?php
+declare(strict_types=1);
+
+require_once __DIR__ . '/Core/Database.php';
+
+$db = new \Mosaic\Core\Database();
+$stmt = $db->prepare("SELECT * FROM students WHERE student_id = ?");
+$stmt->execute([$studentId]);
+$student = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+if (!$student) {
+    // Show error page
+    require_once __DIR__ . '/includes/message_page.php';
+    render_message_page('error', 'Not Found', 'Student not found.', 'fa-user-slash');
+    exit;
+}
+```
+
+## Security Patterns
+
+### Always Use Prepared Statements
+
+**Correct:**
+```php
+$stmt = $db->prepare("SELECT * FROM courses WHERE course_id = ?");
+$stmt->execute([$courseId]);
+```
+
+**NEVER:**
+```php
+$query = "SELECT * FROM courses WHERE course_id = '$courseId'"; // SQL injection!
+$result = $db->query($query);
+```
+
+### Escape All Output
+
+**HTML Context:**
+```php
+echo htmlspecialchars($userInput, ENT_QUOTES, 'UTF-8');
+```
+
+**In HTML attributes:**
+```php
+<input value="<?= htmlspecialchars($value) ?>">
+```
+
+### CSRF Protection
+
+Forms need CSRF tokens:
+```php
+// Generate token (in session)
+$_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+
+// In form
+<input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+
+// Validate on submission
+if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+    die('Invalid CSRF token');
+}
+```
+
+### Session Security
+
+Configure at application start:
+```php
+ini_set('session.cookie_httponly', '1');
+ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) ? '1' : '0');
+ini_set('session.cookie_samesite', 'Strict');
+ini_set('session.use_strict_mode', '1');
+session_start();
+```
+
+## Data Flow
+
+```
+User Request
+    ↓
+index.php or specific page (dashboard/outcomes.php)
+    ↓
+Session/auth validation
+    ↓
+Input validation
+    ↓
+Database query (direct or via Model)
+    ↓
+Process results
+    ↓
+Include header
+    ↓
+Render HTML
+    ↓
+Include footer
+    ↓
+HTTP Response → User
+```
+
+## Application Constants
+
+Defined in `src/index.php` and available throughout:
+
+**Core Constants:**
+- `APP_ROOT` - Filesystem path to `src/` directory
+- `BASE_URL` - URL path from web root (e.g., `/`, `/beta/`)
+- `BASE_PATH` - Same as `APP_ROOT`, for filesystem operations
+- `CONFIG_PATH` - Path to `config.yaml`
+- `SITE_NAME` - Installation display name
+
+**Configuration Constants:**
+- `DB_PREFIX` - Database table prefix (typically empty)
+- `DEBUG_MODE` - Enable detailed error display
+- `EMAIL_METHOD` - Email delivery method
+- `EMAIL_FROM_EMAIL` - Default sender email
+- `EMAIL_FROM_NAME` - Default sender name
+
+**Using in Code:**
+```php
+echo htmlspecialchars(SITE_NAME); // Display site name
+
+// Build URLs with BASE_URL
+<a href="<?= BASE_URL ?>dashboard/outcomes">Outcomes</a>
+
+// Redirect helper
+\Mosaic\Core\Path::redirect('dashboard/config');
+```
+
+See [CONFIGURATION.md](CONFIGURATION.md) for complete details.
+
+## Error Handling
+
+### User-Facing Errors
+
+Use `message_page.php` helper:
+```php
+require_once __DIR__ . '/includes/message_page.php';
+render_message_page(
+    'error',                      // Type: error, warning, success, info
+    'Access Denied',              // Title
+    'You do not have permission.', // Message
+    'fa-lock text-danger'         // Font Awesome icon
+);
+exit;
+```
+
+### Logging Errors
+
+Use Logger for debugging:
+```php
+require_once APP_ROOT . '/Core/Logger.php';
+$logger = new \Mosaic\Core\Logger();
+$logger->error('Failed to save assessment', [
+    'student_id' => $studentId,
+    'error' => $e->getMessage()
+]);
+```
+
+### Form Validation
+
+```php
+$errors = [];
+
+if (empty($_POST['name'])) {
+    $errors[] = 'Name is required';
+}
+
+if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
+    $errors[] = 'Invalid email address';
+}
+
+if (!empty($errors)) {
+    // Display errors on form
+    $pageTitle = 'Error';
+    require_once __DIR__ . '/includes/header.php';
+    echo "<div class='alert alert-danger'>";
+    foreach ($errors as $error) {
+        echo "<p>" . htmlspecialchars($error) . "</p>";
+    }
+    echo "</div>";
+    require_once __DIR__ . '/includes/footer.php';
+    exit;
+}
+```
+
+## Database Schema Conventions
+
+**Naming Patterns:**
+- Primary keys: `{table_name}_pk` (e.g., `students_pk`, `courses_pk`)
+- Foreign keys: `{referenced_table}_fk` (e.g., `course_fk`, `student_fk`)
+- Ordering fields: `sequence_num`
+- Soft deletes: `is_active` BOOLEAN
+
+See [SCHEMA.md](SCHEMA.md) for complete schema documentation.
+
+## When to Add Abstraction
+
+**Don't abstract prematurely.** Add layers only when you have:
+- 3+ pages doing the same thing
+- Complex business logic repeated across files
+- Shared patterns that benefit from centralization
+
+**Signs you need a Model:**
+- Same query used in 3+ places
+- Complex joins or data transformations
+- Business logic tied to data validation
+
+**Signs you DON'T need a Model:**
+- One-off queries
+- Simple SELECT statements
+- Page-specific logic
+- Demo/prototype code
+
+## Plugin Compatibility
+
+This simple structure makes plugins easier:
+- No framework conventions to learn
+- Direct database access
+- Simple file-based routing
+- Flexible integration points
+
+See [PLUGIN.md](PLUGIN.md) for plugin architecture.
+
+## Design Rationale
+
+**Why Simplicity Over MVC:**
+- Faster development for straightforward features
+- Lower barrier to entry for contributors
+- Easier debugging (no magic routing)
+- Appropriate for application complexity
+- Institutional developers can contribute without framework knowledge
+
+**Why Optional Models:**
+- Use abstraction where it helps
+- Skip it where it adds overhead
+- Let patterns emerge naturally
+- Refactor when duplication appears
+
+**Why Direct MySQL:**
+- Best performance (no ORM overhead)
+- Simple, predictable queries
+- Clear system requirements
+- Focus on features, not database compatibility
+
+**When This Approach Works:**
+- Clear, bounded problem domain
+- Institutional applications
+- Small to medium team size
+- Straightforward CRUD operations
+
+## Related Documentation
+
+**Implementation Guide:**
+- [CODE_GUIDE.md](../implementation/CODE_GUIDE.md) - Practical implementation patterns
+
+**System Context:**
+- [ARCHITECTURE.md](ARCHITECTURE.md) - Overall system design
+- [SCHEMA.md](SCHEMA.md) - Database schema
+- [SECURITY.md](SECURITY.md) - Security requirements
+- [TESTING.md](TESTING.md) - Testing strategy
+- [PLUGIN.md](PLUGIN.md) - Plugin architecture

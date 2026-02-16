@@ -220,7 +220,7 @@ Include partials in main template:
 
 MOSAIC uses common includes to centralize framework asset loading and ensure consistency across all pages.
 
-**Available Common Includes** (located in `src/includes/`):
+**Available Common Includes** (located in `src/system/includes/`):
 
 1. **header.php** - Loads all frontend framework assets:
    - AdminLTE 4.0 CSS

@@ -279,7 +279,7 @@ $logger->cleanup();
 
 ```powershell
 # Run cleanup script
-php src/scripts/cleanup_logs.php 90
+php src/system/scripts/cleanup_logs.php 90
 ```
 
 ### What Gets Cleaned

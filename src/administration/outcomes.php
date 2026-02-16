@@ -38,9 +38,9 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 // Load core classes
-require_once __DIR__ . '/../Core/Config.php';
-require_once __DIR__ . '/../Core/Database.php';
-require_once __DIR__ . '/../Core/Path.php';
+require_once __DIR__ . '/../system/Core/Config.php';
+require_once __DIR__ . '/../system/Core/Database.php';
+require_once __DIR__ . '/../system/Core/Path.php';
 
 // Check if configured
 if (!file_exists(__DIR__ . '/../config/config.yaml')) {
@@ -330,10 +330,10 @@ foreach ($outcomes as &$outcome) {
 }
 unset($outcome);
 
-$currentPage = 'admin_institutional_outcomes';
-$pageTitle = 'Institutional Outcomes - ' . SITE_NAME;
+$currentPage = 'admin_outcomes';
+$pageTitle = 'Outcome Hierarchy - ' . SITE_NAME;
 $bodyClass = 'hold-transition sidebar-mini layout-fixed';
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../system/includes/header.php';
 ?>
 
 <div class="wrapper">
@@ -363,7 +363,7 @@ require_once __DIR__ . '/../includes/header.php';
     </nav>
     <!-- /.navbar -->
 
-<?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
+<?php require_once __DIR__ . '/../system/includes/sidebar.php'; ?>
 
     <!-- Content Wrapper -->
     <div class="content-wrapper">
@@ -774,4 +774,4 @@ function toggleStatus(id, code) {
 }
 </script>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>

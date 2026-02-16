@@ -88,7 +88,7 @@ This creates:
 
 ```powershell
 # From project root  
-php src/scripts/create_admin_user.php
+php src/system/scripts/create_admin_user.php
 ```
 
 ### 3. Start Development Server
@@ -109,7 +109,7 @@ Access at: `http://localhost:8000/`
 chmod 600 src/config/config.yaml
 
 # Scripts should not be web-accessible
-chmod 700 src/scripts/
+chmod 700 src/system/scripts/
 
 # Setup directory should be deleted or moved after initial setup
 chmod 700 src/setup/  # Or remove entirely
@@ -172,7 +172,7 @@ Example production structure:
 Run periodically (weekly recommended):
 
 ```powershell
-php src/scripts/cleanup_logs.php 90  # Keep 90 days
+php src/system/scripts/cleanup_logs.php 90  # Keep 90 days
 ```
 
 #### Windows Task Scheduler
@@ -186,7 +186,7 @@ Register-ScheduledTask -TaskName "MOSAIC Log Cleanup" -Action $action -Trigger $
 #### Linux Cron
 
 ```bash
-0 2 * * 0 /usr/bin/php /var/www/mosaic/src/scripts/cleanup_logs.php 90
+0 2 * * 0 /usr/bin/php /var/www/mosaic/src/system/scripts/cleanup_logs.php 90
 ```
 
 ## Additional Documentation

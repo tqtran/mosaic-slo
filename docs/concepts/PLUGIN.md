@@ -192,11 +192,54 @@ All plugin inputs validated:
 - Simplicity over theoretical flexibility
 - Good software has opinions and constraints
 
+## Plugin Development Patterns
+
+### Simple Plugin Structure
+
+Plugins don't need complex architectures - keep them simple:
+
+```
+src/system/plugins/local/my-export/
+├── plugin.json          # Metadata and hook registrations
+├── export.php           # Main handler with direct logic
+├── template.php         # Simple included template (if needed)
+└── assets/
+    └── style.css        # Plugin-specific styles
+```
+
+### Direct Database Access
+
+Plugins can access the database directly:
+
+```php
+<?php
+require_once APP_ROOT . '/Core/Database.php';
+$db = new \Mosaic\Core\Database();
+
+$stmt = $db->prepare("SELECT * FROM assessments WHERE ...");
+$stmt->execute([$param]);
+$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Process and output
+```
+
+### No Framework Overhead
+
+Plugins benefit from the simple procedural approach:
+- No models/controllers/views required
+- Direct logic flow
+- Easy to understand and debug
+- Lower barrier to entry
+- Institutional developers can contribute easily
+
 ## Related Documentation
 
 **Implementation Guides:**
 - [PLUGIN_GUIDE.md](../implementation/PLUGIN_GUIDE.md) - Step-by-step plugin development
 - [DATA_CONNECTORS.md](../implementation/DATA_CONNECTORS.md) - Connector implementation patterns
+
+**Architecture:**
+- [CODE_ORGANIZATION.md](CODE_ORGANIZATION.md) - Simple procedural architecture
 
 **System Context:**
 - [ARCHITECTURE.md](ARCHITECTURE.md) - Overall system design

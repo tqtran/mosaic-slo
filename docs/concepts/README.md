@@ -12,7 +12,7 @@ MOSAIC is an open-source Student Learning Outcomes (SLO) assessment platform for
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and design principles
 - [CONFIGURATION.md](CONFIGURATION.md) - Configuration file structure and options
 - [SCHEMA.md](SCHEMA.md) - Complete database schema documentation
-- [MVC.md](MVC.md) - MVC architecture overview
+- [CODE_ORGANIZATION.md](CODE_ORGANIZATION.md) - Code structure and patterns
 - [AUTH.md](AUTH.md) - Authentication and authorization patterns
 - [SECURITY.md](SECURITY.md) - Security requirements and best practices
 - [PLUGIN.md](PLUGIN.md) - Plugin architecture and extension points
@@ -20,7 +20,7 @@ MOSAIC is an open-source Student Learning Outcomes (SLO) assessment platform for
 - [ACCESSIBILITY.md](ACCESSIBILITY.md) - Accessibility standards compliance
 
 ### Implementation Guides
-- [MVC_GUIDE.md](../implementation/MVC_GUIDE.md) - Step-by-step MVC implementation
+- [CODE_GUIDE.md](../implementation/CODE_GUIDE.md) - Practical implementation patterns
 - [PLUGIN_GUIDE.md](../implementation/PLUGIN_GUIDE.md) - Building plugins
 - [DATA_CONNECTORS.md](../implementation/DATA_CONNECTORS.md) - External system integration
 - [LOGGING.md](../implementation/LOGGING.md) - Logging patterns
@@ -120,7 +120,7 @@ Replace fragmented, manual assessment processes with an integrated, automated sy
 
 - ✅ Complete design specifications in `design_concepts/`
 - [OK] Working demo implementations in `mosaic-slo/demo/` using AdminLTE 4
-- 🚧 Core MVC architecture implementation in progress
+- 🚧 Core application implementation in progress
 - 📋 Authentication systems (local, LTI, SAML) planned
 - 📋 Plugin system specification complete
 
@@ -152,7 +152,7 @@ We prioritize usability and pragmatic solutions over theoretical flexibility:
 ### Design Specifications (`design_concepts/`)
 - **[ARCHITECTURE.md](design_concepts/ARCHITECTURE.md)** - System architecture and entity relationships
 - **[SCHEMA.md](design_concepts/SCHEMA.md)** - Complete database schema
-- **[MVC.md](design_concepts/MVC.md)** - Model-View-Controller patterns
+- **[CODE_ORGANIZATION.md](design_concepts/CODE_ORGANIZATION.md)** - Code structure and patterns
 - **[AUTH.md](design_concepts/AUTH.md)** - Authentication systems (local, LTI, SAML)
 - **[SECURITY.md](design_concepts/SECURITY.md)** - Security requirements and practices
 - **[PLUGIN.md](design_concepts/PLUGIN.md)** - Plugin architecture specification
@@ -161,8 +161,8 @@ We prioritize usability and pragmatic solutions over theoretical flexibility:
 
 ### Implementation (`mosaic-slo/`)
 - **Demo Applications:** Working prototypes in `mosaic-slo/demo/` using AdminLTE 4 framework
-- **MVC Structure:** Models, Controllers, Views (planned)
-- **Core Components:** Authentication, routing, database abstraction (planned)
+- **Organized Structure:** Direct page-based structure with optional Models for shared patterns
+- **Core Components:** Authentication, routing, database access (planned)
 
 ---
 

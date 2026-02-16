@@ -12,21 +12,21 @@ mosaic-slo/
 │   ├── concepts/         # High-level architecture decisions
 │   └── implementation/   # Step-by-step implementation guides
 ├── src/                   # Web root - drop-in install directory
-│   ├── index.php         # Application entry point (front controller)
-│   ├── controllers/      # Application controllers
-│   ├── models/           # Data models
-│   ├── views/            # View templates
+│   ├── index.php         # Application entry point
+│   ├── dashboard/        # Dashboard pages (outcomes, institution, etc.)
+│   ├── lti/              # LTI integration endpoints
+│   ├── setup/            # Installation wizard
+│   ├── scripts/          # CLI maintenance scripts
+│   ├── includes/         # Shared page components
 │   ├── config/           # Configuration files
 │   ├── Core/             # Core framework classes
+│   ├── Models/           # Optional data access classes
 │   ├── database/         # Database schema files
-│   ├── scripts/          # CLI maintenance scripts
-│   ├── setup/            # Installation scripts
 │   ├── assets/           # Static assets
 │   │   ├── css/          # Stylesheets
 │   │   └── js/           # JavaScript files
 │   └── plugins/          # Plugin directory
 │       └── local/        # Local plugins
-├── database/              # Database files
 ├── database/              # Database files
 │   └── schema.sql        # Master schema file
 ├── logs/                  # Application logs
@@ -57,30 +57,20 @@ Since `src/` is web-accessible, protect sensitive directories:
 Deny from all
 ```
 
-## Architecture Layers
+## Code Organization
 
-### 1. Presentation Layer (Views)
-- HTML templates with PHP
-- Bootstrap/CSS for styling
-- JavaScript for interactivity
-- See [VIEWS.md](VIEWS.md)
+### Page-Based Structure
+- Direct mapping: URL → file → response
+- Pages organized by feature area (`dashboard/`, `lti/`, etc.)
+- Optional Models for shared data access patterns
+- Common includes for consistent framework asset loading
+- See [CODE_ORGANIZATION.md](CODE_ORGANIZATION.md)
 
-### 2. Application Layer (Controllers)
-- Request handling
-- Business logic
-- Route management
-- See [CONTROLLERS.md](CONTROLLERS.md)
-
-### 3. Data Layer (Models)
-- Database interaction
-- Data validation
-- CRUD operations
-- See [MODELS.md](MODELS.md)
-
-### 4. Database Layer
-- MySQL database
+### Database Layer
+- MySQL 8.0+ database
 - Assessment data storage
 - LTI consumer management
+- Direct queries with prepared statements
 - See [SCHEMA.md](SCHEMA.md)
 
 ## Assessment Hierarchy
@@ -169,7 +159,7 @@ users
   - Bootstrap 5.3.2 (CSS framework, included with AdminLTE)
   - jQuery 3.7.0 (optional, for custom scripting)
   - Font Awesome 6.4.0 (icons)
-  - All frameworks loaded via CDN from `src/includes/header.php`
+  - All frameworks loaded via CDN from `src/system/includes/header.php`
 
 ## Security Features
 
@@ -183,6 +173,5 @@ users
 ## Documentation
 
 - [SCHEMA.md](SCHEMA.md) - Complete database schema
-- [MODELS.md](MODELS.md) - Model classes and methods
-- [CONTROLLERS.md](CONTROLLERS.md) - Controller routes and logic
-- [VIEWS.md](VIEWS.md) - View templates and examples
+- [CODE_ORGANIZATION.md](CODE_ORGANIZATION.md) - Code structure and patterns
+- [CODE_GUIDE.md](../implementation/CODE_GUIDE.md) - Implementation patterns

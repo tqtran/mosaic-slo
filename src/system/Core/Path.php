@@ -32,7 +32,9 @@ class Path
     public static function getBasePath(): string
     {
         if (self::$basePath === null) {
-            self::$basePath = dirname(__DIR__);
+            // Path.php is at src/system/Core/Path.php
+            // Go up two levels to reach src/
+            self::$basePath = dirname(dirname(__DIR__));
         }
         return self::$basePath;
     }

@@ -4,16 +4,28 @@ This guide provides practical patterns for building plugins as described in [../
 
 ## Plugin Directory Structure
 
+Plugins use a simple, flexible structure:
+
 ```
-plugins/local/{plugin-id}/
+src/system/plugins/local/{plugin-id}/
 ├── plugin.json           # Manifest (metadata, hooks, routes)
-├── {PluginName}.php      # Main plugin class
-├── controllers/          # Plugin controllers
-├── views/                # Plugin templates
+├── {PluginName}.php      # Main plugin class (optional)
+├── handler.php           # Direct request handler (for simple plugins)
+├── template.php          # HTML template (if needed)
 ├── assets/               # CSS, JS, images
-├── config.php            # Configuration defaults
+├── config.php            # Configuration defaults (optional)
 └── README.md            # Plugin documentation
 ```
+
+**For simple plugins:**
+- Use `handler.php` with direct logic
+- Include `template.php` for rendering
+- Skip the class-based structure
+
+**For complex plugins:**
+- Use class-based structure with `{PluginName}.php`
+- Organize related functions together
+- Still keep it simple - no MVC overhead
 
 ## Creating a Plugin Manifest
 
@@ -98,20 +110,36 @@ Methods that handle hook events:
 
 Adds card/widget to admin dashboard.
 
+**Simple Implementation Example:**
+
+```php
+<?php
+// src/system/plugins/local/my-widget/widget.php
+
+require_once APP_ROOT . '/Core/Database.php';
+$db = new \Mosaic\Core\Database();
+
+// Query data for widget
+$stmt = $db->prepare("SELECT COUNT(*) FROM assessments WHERE assessment_date > ?");
+$stmt->execute([date('Y-m-d', strtotime('-30 days'))]);
+$recentCount = $stmt->fetchColumn();
+
+// Return widget HTML
+return [
+    'id' => 'my-widget',
+    'title' => 'Recent Assessments',
+    'icon' => 'fa-chart-line',
+    'content' => "<p class='display-4'>$recentCount</p><p>assessments in last 30 days</p>",
+    'order' => 10
+];
+```
+
 **Implementation steps:**
 1. Hook into `dashboard.widgets` 
-2. Return widget metadata (title, icon, content)
-3. Generate widget HTML content
-4. Include inline styles or load CSS asset
-5. Optionally add JavaScript for interactivity
-
-**Widget metadata structure:**
-- `id` - Unique widget identifier
-- `title` - Display title
-- `icon` - Bootstrap icon class
-- `content` - HTML content to display
-- `order` - Display ordering (lower = earlier)
-- `permissions` - Required permissions to view
+2. Query database directly for needed data
+3. Generate and return widget HTML
+4. Include inline styles or load CSS asset from `assets/`
+5. No models/controllers/views needed
 
 ### Report Plugin
 
@@ -225,7 +253,7 @@ For all user input:
 
 Reference CSS in views:
 - Use plugin asset path helper
-- Load from `plugins/local/{id}/assets/`
+- Load from `src/system/plugins/local/{id}/assets/`
 - Include in view `<head>` section
 - Support theme customization
 

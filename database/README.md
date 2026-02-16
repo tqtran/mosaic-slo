@@ -1,12 +1,12 @@
 # Database Files Moved
 
-**Note:** The database files have been moved to `src/database/` for deployment purposes.
+**Note:** The database files have been moved to `src/system/database/` for deployment purposes.
 
 All operational files now reside in the `src/` directory, which is the only directory deployed to the web server.
 
 ## New Location
 
-- Schema: `src/database/schema.sql`
+- Schema: `src/system/database/schema.sql`
 - Web setup interface: `src/setup/index.php`
 
 ## Usage

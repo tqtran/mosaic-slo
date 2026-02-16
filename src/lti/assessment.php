@@ -39,11 +39,11 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 // Load core classes
-require_once __DIR__ . '/../Core/Config.php';
-require_once __DIR__ . '/../Core/Database.php';
-require_once __DIR__ . '/../Core/Logger.php';
-require_once __DIR__ . '/../Core/Path.php';
-require_once __DIR__ . '/../includes/message_page.php';
+require_once __DIR__ . '/../system/Core/Config.php';
+require_once __DIR__ . '/../system/Core/Database.php';
+require_once __DIR__ . '/../system/Core/Logger.php';
+require_once __DIR__ . '/../system/Core/Path.php';
+require_once __DIR__ . '/../system/includes/message_page.php';
 
 // Check if configured
 if (!file_exists(__DIR__ . '/../config/config.yaml')) {
@@ -311,7 +311,7 @@ if ($selectedSloId > 0) {
 }
 
 $pageTitle = 'SLO Assessment Entry - ' . SITE_NAME;
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../system/includes/header.php';
 ?>
 
 <style>
@@ -640,4 +640,4 @@ function setAllOutcomes(outcome) {
 }
 </script>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>

@@ -11,7 +11,7 @@ declare(strict_types=1);
  */
 
 // Load path helper for proper redirects
-require_once __DIR__ . '/../Core/Path.php';
+require_once __DIR__ . '/../system/Core/Path.php';
 
 // Define base URL for easy access in this script
 define('BASE_URL', \Mosaic\Core\Path::getBaseUrl());
@@ -19,7 +19,7 @@ define('BASE_URL', \Mosaic\Core\Path::getBaseUrl());
 // Prevent setup from running if already configured
 $configFile = __DIR__ . '/../config/config.yaml';
 if (file_exists($configFile)) {
-    \Mosaic\Core\Path::redirect('');
+    \Mosaic\Core\Path::redirect('administration/');
 }
 
 // Initialize session for form data persistence
@@ -74,7 +74,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
             $db_name_escaped = $mysqli->real_escape_string($db_name);
             
             // Attempt to create database (will be skipped if no CREATE privileges)
-            $createSuccess = @$mysqli->query("CREATE DATABASE IF NOT EXISTS `$db_name_escaped` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $createSuccess = false;
+            try {
+                $createSuccess = $mysqli->query("CREATE DATABASE IF NOT EXISTS `$db_name_escaped` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            } catch (\mysqli_sql_exception $e) {
+                // User doesn't have CREATE DATABASE privilege - that's okay on shared hosting
+                // We'll try to select existing database below
+                $createSuccess = false;
+            }
             
             // Try to select the database (works whether we created it or it already exists)
             if (!$mysqli->select_db($db_name_escaped)) {
@@ -87,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                 }
             } else {
                     // Execute schema
-                    $schemaFile = __DIR__ . '/../database/schema.sql';
+                    $schemaFile = __DIR__ . '/../system/database/schema.sql';
                     
                     if (!file_exists($schemaFile)) {
                         $error = 'Schema file not found at: ' . $schemaFile;
@@ -318,7 +325,7 @@ ob_start();
 <?php
 $customStyles = ob_get_clean();
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../system/includes/header.php';
 echo $customStyles;
 ?>
 
@@ -338,7 +345,7 @@ echo $customStyles;
                     <h2 class="mb-3">You're All Set!</h2>
                     <p class="text-muted mb-2">Your installation was successful.</p>
                     <p class="text-muted mb-4">The database is ready and you can start using your new system.</p>
-                    <a href="<?php echo htmlspecialchars(BASE_URL); ?>" class="btn btn-primary btn-lg btn-block">
+                    <a href="<?php echo htmlspecialchars(BASE_URL); ?>administration/" class="btn btn-primary btn-lg btn-block">
                         <i class="fas fa-arrow-right mr-2"></i>Get Started
                     </a>
                 </div>
@@ -564,4 +571,4 @@ echo $customStyles;
         </div>
     </div>
 
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>

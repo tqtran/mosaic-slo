@@ -18,7 +18,7 @@ Documentation is organized into two categories:
 **Files**:
 - [ARCHITECTURE.md](concepts/ARCHITECTURE.md) - Overall system design
 - [SCHEMA.md](concepts/SCHEMA.md) - Database schema and relationships
-- [MVC.md](concepts/MVC.md) - MVC architecture pattern
+- [CODE_ORGANIZATION.md](concepts/CODE_ORGANIZATION.md) - Code structure and patterns
 - [PLUGIN.md](concepts/PLUGIN.md) - Plugin system architecture
 - [AUTH.md](concepts/AUTH.md) - Authentication and authorization
 - [SECURITY.md](concepts/SECURITY.md) - Security requirements
@@ -39,7 +39,7 @@ Documentation is organized into two categories:
 **When to read**: During active development of features
 
 **Files**:
-- [MVC_GUIDE.md](implementation/MVC_GUIDE.md) - MVC implementation patterns
+- [CODE_GUIDE.md](implementation/CODE_GUIDE.md) - Practical implementation patterns
 - [PLUGIN_GUIDE.md](implementation/PLUGIN_GUIDE.md) - Plugin development guide
 - [DATA_CONNECTORS.md](implementation/DATA_CONNECTORS.md) - Connector implementation patterns
 

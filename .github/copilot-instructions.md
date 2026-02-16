@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**MOSAIC** (Modular Outcomes System for Achievement and Institutional Compliance) is an open-source Student Learning Outcomes (SLO) assessment platform for higher education with LTI 1.1/1.3 integration. Built in PHP 8.1+ with MySQL, following MVC architecture. FERPA-compliant student data handling is critical.
+**MOSAIC** (Modular Outcomes System for Achievement and Institutional Compliance) is an open-source Student Learning Outcomes (SLO) assessment platform for higher education with LTI 1.1/1.3 integration. Built in PHP 8.1+ with MySQL using organized procedural architecture (Page Controller pattern). FERPA-compliant student data handling is critical.
 
 **Current Status:** Early development phase with comprehensive design docs in `design_concepts/` and working demo implementations in `mosaic-slo/demo/` using AdminLTE 4 framework.
 
@@ -32,8 +32,9 @@ AVOID UNICODE characters in code and documentation to ensure compatibility acros
 ### Before You Code
 
 - **Configuration**: Read [CONFIGURATION.md](../docs/concepts/CONFIGURATION.md) for config structure and available constants
-- **Models**: Read [SCHEMA.md](../docs/concepts/SCHEMA.md) for tables, then [MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md) for patterns
-- **Controllers**: Read [MVC.md](../docs/concepts/MVC.md) for responsibilities, then [MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md) for implementation
+- **Code Structure**: Read [CODE_ORGANIZATION.md](../docs/concepts/CODE_ORGANIZATION.md) for architecture overview
+- **Implementation**: Read [CODE_GUIDE.md](../docs/implementation/CODE_GUIDE.md) for practical patterns
+- **Database**: Read [SCHEMA.md](../docs/concepts/SCHEMA.md) for table structure and naming conventions
 - **Auth**: Read [AUTH.md](../docs/concepts/AUTH.md) and [SECURITY.md](../docs/concepts/SECURITY.md)
 - **Plugins**: Read [PLUGIN.md](../docs/concepts/PLUGIN.md), then [PLUGIN_GUIDE.md](../docs/implementation/PLUGIN_GUIDE.md)
 - **Data Connectors**: Read [PLUGIN.md](../docs/concepts/PLUGIN.md), then [DATA_CONNECTORS.md](../docs/implementation/DATA_CONNECTORS.md)
@@ -57,20 +58,26 @@ Department → Program → Course → Course Section → Student Enrollment
 **Critical Files:**
 
 - [docs/concepts/ARCHITECTURE.md](../docs/concepts/ARCHITECTURE.md) - System architecture and entity relationships
+- [docs/concepts/CODE_ORGANIZATION.md](../docs/concepts/CODE_ORGANIZATION.md) - Code structure and patterns
 - [docs/concepts/CONFIGURATION.md](../docs/concepts/CONFIGURATION.md) - Configuration structure, constants, and settings
 - [docs/concepts/SCHEMA.md](../docs/concepts/SCHEMA.md) - Complete database schema with naming conventions
-- [docs/concepts/MVC.md](../docs/concepts/MVC.md) - MVC architecture overview
-- [docs/implementation/MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md) - MVC implementation patterns
+- [docs/implementation/CODE_GUIDE.md](../docs/implementation/CODE_GUIDE.md) - Practical implementation patterns
 
-### MVC Structure (Planned)
+### Code Structure
 
-- **Models** (`src/Models/`): Base class in `src/Core/Model.php` with CRUD operations. All models extend this base.
-- **Controllers** (`src/controllers/`): Handle routing, validation, and business logic
-- **Views** (`src/views/`): PHP templates with AdminLTE 4 framework (Bootstrap 5), no template engine
-- **Common Includes** (`src/includes/`):
-  - `header.php` - Loads all framework assets (Bootstrap 5, jQuery, AdminLTE 4, Font Awesome)
-  - `footer.php` - Loads JavaScript libraries
-  - `message_page.php` - Helper function for error/success pages
+Organized procedural PHP with optional data access layer:
+
+- **Feature Directories** (`src/dashboard/`, `src/lti/`): Pages organized by feature area
+- **System Infrastructure** (`src/system/`): Core framework code
+  - **Core** (`src/system/Core/`): Database, Config, Logger, Path helpers
+  - **Models** (`src/system/Models/`): Optional data access layer - Base class in `src/system/Core/Model.php` for shared patterns
+  - **Common Includes** (`src/system/includes/`): Shared page components
+    - `header.php` - Loads all framework assets (Bootstrap 5, jQuery, AdminLTE 4, Font Awesome)
+    - `footer.php` - Loads JavaScript libraries
+    - `sidebar.php` - AdminLTE sidebar navigation (for admin pages)
+    - `message_page.php` - Helper function for error/success pages
+  - **Scripts** (`src/system/scripts/`): CLI utilities
+  - **Plugins** (`src/system/plugins/`): Plugin framework
 
 **Using Common Includes:**
 
@@ -78,12 +85,12 @@ Department → Program → Course → Course Section → Student Enrollment
 <?php
 $pageTitle = 'My Page Title';
 $bodyClass = 'custom-class'; // optional
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/system/includes/header.php';
 ?>
 
 <!-- Your page content here -->
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/system/includes/footer.php'; ?>
 ```
 
 **Naming Conventions:**
@@ -144,7 +151,7 @@ http://localhost:8000/mosaic-slo/demo/
 
 **Application Pattern:**
 
-- Uses `src/includes/header.php` and `footer.php` (no sidebar, just framework assets)
+- Uses `src/system/includes/header.php` and `footer.php` (no sidebar, just framework assets)
 - For pages with AdminLTE sidebar, copy pattern from demo includes
 
 ### Session Handling Pattern
@@ -170,13 +177,13 @@ Plugins extend functionality without modifying core code. Types: Dashboard widge
 **Structure** (see [docs/concepts/PLUGIN.md](../docs/concepts/PLUGIN.md)):
 
 ```text
-plugins/local/{plugin-id}/
+src/system/plugins/local/{plugin-id}/
 ├── plugin.json         # Manifest with hooks, routes, permissions
 ├── {PluginName}.php    # Main class extending Plugin base
 └── assets/             # CSS, JS, images
 ```
 
-**Plugin Base**: `src/Core/Plugin.php`
+**Plugin Base**: `src/system/Core/Plugin.php`
 
 ## Testing Strategy
 
@@ -202,7 +209,7 @@ See [docs/concepts/TESTING.md](../docs/concepts/TESTING.md) for comprehensive te
 
 **HTML/CSS:**
 
-- AdminLTE 4 framework (CDN: `https://cdn.jsdelivr.net/npm/admin-lte@4.0/dist/css/adminlte.min.css`)
+- AdminLTE 4 framework (CDN: `https://cdn.jsdelivr.net/npm/adminlte4@4.0.0-rc.6.20260104/dist/css/adminlte.min.css`)
 - Bootstrap 5 (AdminLTE dependency)
 - jQuery 3.7 (optional, for custom scripting)
 - Font Awesome icons (`https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css`)
@@ -211,14 +218,23 @@ See [docs/concepts/TESTING.md](../docs/concepts/TESTING.md) for comprehensive te
 
 ## Common Tasks
 
-### Adding a New Model
+### Adding a Page
+
+1. **Determine directory** - `src/dashboard/` for admin pages, `src/lti/` for LTI tools, etc.
+2. **Read [SCHEMA.md](../docs/concepts/SCHEMA.md)** - Understand required tables and relationships
+3. **Review [CODE_GUIDE.md](../docs/implementation/CODE_GUIDE.md)** - Follow page structure patterns
+4. **Include header/footer** - Use `includes/header.php` and `includes/footer.php`
+5. **Database queries** - Use prepared statements directly or via optional Model classes
+6. **Follow security patterns** from [SECURITY.md](../docs/concepts/SECURITY.md) - CSRF tokens, output escaping, prepared statements
+
+### Adding an Optional Model (When Useful)
 
 1. **Read [SCHEMA.md](../docs/concepts/SCHEMA.md) first** - Verify table structure, relationships, and naming conventions
-2. Review [MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md) for implementation patterns
-3. Extend base Model class (from `src/Core/Model.php`)
-4. Set `$table` and `$primaryKey` properties matching schema exactly
-5. Implement domain-specific query methods per MVC patterns
-6. Follow security patterns from [SECURITY.md](../docs/concepts/SECURITY.md) - use prepared statements
+2. **Review [CODE_GUIDE.md](../docs/implementation/CODE_GUIDE.md)** - See when models help vs. direct queries
+4. **Extend base Model class** (from `src/system/Core/Model.php`) if shared patterns emerge
+4. **Set `$table` and `$primaryKey`** properties matching schema exactly
+5. **Implement domain-specific methods** - Query, validation, business logic
+6. **Follow security patterns** from [SECURITY.md](../docs/concepts/SECURITY.md) - use prepared statements
 
 ### Adding a Demo Page
 
@@ -239,21 +255,23 @@ See [docs/concepts/TESTING.md](../docs/concepts/TESTING.md) for comprehensive te
 - Auto-provision users from launch parameters
 - Role mapping to internal RBAC system per [AUTH.md](../docs/concepts/AUTH.md) role hierarchy
 
-### Adding Controllers
+### Adding Application Logic
 
-1. **Read [MVC.md](../docs/concepts/MVC.md)** for controller responsibilities
-2. **Review [MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md)** for implementation patterns
-3. Implement validation per [SECURITY.md](../docs/concepts/SECURITY.md)
-4. Use CSRF tokens on all POST/PUT/DELETE operations
-5. Follow authorization patterns from [AUTH.md](../docs/concepts/AUTH.md)
+1. **Keep it simple** - Direct logic in page files unless complexity warrants extraction
+2. **Review [CODE_GUIDE.md](../docs/implementation/CODE_GUIDE.md)** for request handling patterns
+3. **Implement validation** per [SECURITY.md](../docs/concepts/SECURITY.md)
+4. **Use CSRF tokens** on all POST/PUT/DELETE operations
+5. **Follow authorization patterns** from [AUTH.md](../docs/concepts/AUTH.md)
+6. **Extract to functions/classes** only when patterns repeat 3+ times
 
 ### Building Plugins
 
 1. **Read [PLUGIN.md](../docs/concepts/PLUGIN.md)** for architecture and plugin types
 2. **Review [PLUGIN_GUIDE.md](../docs/implementation/PLUGIN_GUIDE.md) or [DATA_CONNECTORS.md](../docs/implementation/DATA_CONNECTORS.md)** for step-by-step patterns
-3. Follow non-invasive principle: Never modify core schema
-4. Use core models for all core data access
-5. Follow authorization patterns from [AUTH.md](../docs/concepts/AUTH.md)
+3. **Keep plugins simple** - Direct logic, no framework overhead required
+4. **Follow non-invasive principle** - Never modify core schema
+5. **Database access** - Use Core\Database directly or via Models
+6. **Follow authorization patterns** from [AUTH.md](../docs/concepts/AUTH.md)
 
 ## Key Dependencies
 

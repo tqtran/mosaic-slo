@@ -233,5 +233,5 @@ Better approach: Set prefix correctly during initial setup.
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture overview
 - [SCHEMA.md](SCHEMA.md) - Database schema with table naming conventions
-- [MVC_GUIDE.md](../implementation/MVC_GUIDE.md) - Using config in MVC components
+- [CODE_GUIDE.md](../implementation/CODE_GUIDE.md) - Using config in application code
 - [SECURITY.md](SECURITY.md) - Security best practices

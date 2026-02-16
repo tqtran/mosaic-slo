@@ -40,7 +40,7 @@ After setup completes, create an admin user from the command line:
 
 ```powershell
 # From project root
-php src/scripts/create_admin_user.php
+php src/system/scripts/create_admin_user.php
 ```
 
 This script will:
@@ -94,7 +94,7 @@ Web-based database setup wizard. Creates database, executes schema, and saves co
 6. Creates .htaccess to protect config directory
 7. Shows success message with next steps
 
-### `../src/database/schema.sql`
+### `../src/system/database/schema.sql`
 Complete MySQL schema for MOSAIC platform.
 
 **Includes:**
@@ -117,7 +117,7 @@ Complete MySQL schema for MOSAIC platform.
 - `users`, `roles`, `user_roles`
 - `lti_nonces`
 
-### `../src/scripts/create_admin_user.php`
+### `../src/system/scripts/create_admin_user.php`
 Creates an admin user with global privileges.
 
 **Features:**
@@ -311,7 +311,7 @@ If you prefer to manually execute the schema:
 
 ```powershell
 # Using MySQL command line
-mysql -u mosaic_user -p mosaic_slo < src/database/schema.sql
+mysql -u mosaic_user -p mosaic_slo < src/system/database/schema.sql
 ```
 
 Then manually create the config file in `src/config/config.yaml` using the structure above.
