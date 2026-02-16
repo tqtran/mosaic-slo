@@ -311,17 +311,26 @@ foreach ($outcomes as &$outcome) {
 }
 unset($outcome);
 
-$currentPage = 'admin_outcomes';
-$pageTitle = 'Institutional Outcomes';
-$pageIcon = 'fas fa-graduation-cap';
-$bodyClass = 'hold-transition sidebar-mini layout-fixed';
-$breadcrumbs = [
-    ['url' => BASE_URL, 'label' => 'Home'],
-    ['url' => BASE_URL . 'administration/institution.php', 'label' => 'Institutions'],
-    ['label' => 'Institutional Outcomes']
-];
+// Load theme system
+require_once __DIR__ . '/../system/Core/ThemeLoader.php';
+require_once __DIR__ . '/../system/Core/ThemeContext.php';
 
-require_once __DIR__ . '/../system/includes/header.php';
+use Mosaic\Core\ThemeLoader;
+use Mosaic\Core\ThemeContext;
+
+$context = new ThemeContext([
+    'layout' => 'admin',
+    'pageTitle' => 'Institutional Outcomes',
+    'currentPage' => 'admin_outcomes',
+    'breadcrumbs' => [
+        ['url' => BASE_URL, 'label' => 'Home'],
+        ['url' => BASE_URL . 'administration/institution.php', 'label' => 'Institutions'],
+        ['label' => 'Institutional Outcomes']
+    ]
+]);
+
+$theme = ThemeLoader::getActiveTheme();
+$theme->showHeader($context);
 ?>
 
 <?php if ($successMessage): ?>
@@ -443,7 +452,7 @@ require_once __DIR__ . '/../system/includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>
+<?php $theme->showFooter($context); ?>
 
 <!-- Add Outcome Modal -->
 <div class="modal fade" id="addOutcomeModal" tabindex="-1">
@@ -710,4 +719,4 @@ function toggleStatus(id, code) {
 }
 </script>
 
-<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>
+<?php $theme->showFooter($context); ?>

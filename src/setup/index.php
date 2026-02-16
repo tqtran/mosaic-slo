@@ -329,8 +329,21 @@ ob_start();
 <?php
 $customStyles = ob_get_clean();
 
-require_once __DIR__ . '/../system/includes/header.php';
-echo $customStyles;
+// Load theme system
+require_once __DIR__ . '/../system/Core/ThemeLoader.php';
+require_once __DIR__ . '/../system/Core/ThemeContext.php';
+
+use Mosaic\Core\ThemeLoader;
+use Mosaic\Core\ThemeContext;
+
+$context = new ThemeContext([
+    'layout' => 'default',
+    'pageTitle' => 'MOSAIC Setup',
+    'customCss' => $customStyles
+]);
+
+$theme = ThemeLoader::getActiveTheme();
+$theme->showHeader($context);
 ?>
 
 <div class="setup-container">
@@ -575,4 +588,4 @@ echo $customStyles;
         </div>
     </div>
 
-<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>
+<?php $theme->showFooter($context); ?>

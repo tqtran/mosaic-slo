@@ -64,16 +64,25 @@ try {
     error_log('Dashboard metrics error: ' . $e->getMessage());
 }
 
-// Page setup
-$pageTitle = 'Administration Dashboard';
-$bodyClass = 'hold-transition sidebar-mini layout-fixed';
-$currentPage = 'admin_dashboard';
-$breadcrumbs = [
-    ['url' => BASE_URL, 'label' => 'Home'],
-    ['label' => 'Dashboard']
-];
+// Page setup - Load theme system
+require_once __DIR__ . '/../system/Core/ThemeLoader.php';
+require_once __DIR__ . '/../system/Core/ThemeContext.php';
 
-require_once __DIR__ . '/../system/includes/header.php';
+use Mosaic\Core\ThemeLoader;
+use Mosaic\Core\ThemeContext;
+
+$context = new ThemeContext([
+    'layout' => 'admin',
+    'pageTitle' => 'Administration Dashboard',
+    'currentPage' => 'admin_dashboard',
+    'breadcrumbs' => [
+        ['url' => BASE_URL, 'label' => 'Home'],
+        ['label' => 'Dashboard']
+    ]
+]);
+
+$theme = ThemeLoader::getActiveTheme();
+$theme->showHeader($context);
 ?>
 
 <!-- Metrics Row -->
@@ -235,4 +244,4 @@ require_once __DIR__ . '/../system/includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>
+<?php $theme->showFooter($context); ?>

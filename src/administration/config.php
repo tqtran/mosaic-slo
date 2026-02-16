@@ -233,15 +233,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$currentPage = 'admin_config';
-$pageTitle = 'System Configuration';
-$pageIcon = 'fas fa-cog';
-$bodyClass = 'hold-transition sidebar-mini layout-fixed';
-$breadcrumbs = [
-    ['url' => BASE_URL, 'label' => 'Home'],
-    ['label' => 'Configuration']
-];
-
 // Group fields by section
 $sections = [];
 foreach ($fields as $key => $meta) {
@@ -260,7 +251,25 @@ $sectionConfig = [
     'email' => ['icon' => 'fas fa-envelope', 'title' => 'Email Settings'],
 ];
 
-require_once __DIR__ . '/../system/includes/header.php';
+// Load theme system
+require_once __DIR__ . '/../system/Core/ThemeLoader.php';
+require_once __DIR__ . '/../system/Core/ThemeContext.php';
+
+use Mosaic\Core\ThemeLoader;
+use Mosaic\Core\ThemeContext;
+
+$context = new ThemeContext([
+    'layout' => 'admin',
+    'pageTitle' => 'System Configuration',
+    'currentPage' => 'admin_config',
+    'breadcrumbs' => [
+        ['url' => BASE_URL, 'label' => 'Home'],
+        ['label' => 'Configuration']
+    ]
+]);
+
+$theme = ThemeLoader::getActiveTheme();
+$theme->showHeader($context);
 ?>
 
 <?php if ($successMessage): ?>
@@ -320,4 +329,4 @@ require_once __DIR__ . '/../system/includes/header.php';
     </div>
 </form>
 
-<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>
+<?php $theme->showFooter($context); ?>

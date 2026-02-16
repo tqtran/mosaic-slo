@@ -291,10 +291,9 @@ if ($selectedSloId > 0) {
     }
 }
 
-$pageTitle = 'SLO Assessment Entry - ' . SITE_NAME;
-require_once __DIR__ . '/../system/includes/header.php';
+// Capture custom styles
+ob_start();
 ?>
-
 <style>
     :root {
         --primary-dark: #0D47A1;
@@ -330,6 +329,25 @@ require_once __DIR__ . '/../system/includes/header.php';
         font-size: 0.875rem;
     }
 </style>
+<?php
+$customStyles = ob_get_clean();
+
+// Load theme system
+require_once __DIR__ . '/../system/Core/ThemeLoader.php';
+require_once __DIR__ . '/../system/Core/ThemeContext.php';
+
+use Mosaic\Core\ThemeLoader;
+use Mosaic\Core\ThemeContext;
+
+$context = new ThemeContext([
+    'layout' => 'default',
+    'pageTitle' => 'SLO Assessment Entry - ' . SITE_NAME,
+    'customCss' => $customStyles
+]);
+
+$theme = ThemeLoader::getActiveTheme();
+$theme->showHeader($context);
+?>
 
 <div class="lti-header">
     <div class="container-fluid">
@@ -621,4 +639,4 @@ function setAllOutcomes(outcome) {
 }
 </script>
 
-<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>
+<?php $theme->showFooter($context); ?>

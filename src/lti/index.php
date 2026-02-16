@@ -10,15 +10,25 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../system/includes/init.php';
 
-$pageTitle = 'LTI Integration';
-$bodyClass = 'hold-transition sidebar-mini layout-fixed';
-$currentPage = 'admin_lti';
-$breadcrumbs = [
-    ['url' => BASE_URL . 'administration/', 'label' => 'Home'],
-    ['label' => 'LTI Integration']
-];
+// Load theme system
+require_once __DIR__ . '/../system/Core/ThemeLoader.php';
+require_once __DIR__ . '/../system/Core/ThemeContext.php';
 
-require_once __DIR__ . '/../system/includes/header.php';
+use Mosaic\Core\ThemeLoader;
+use Mosaic\Core\ThemeContext;
+
+$context = new ThemeContext([
+    'layout' => 'admin',
+    'pageTitle' => 'LTI Integration',
+    'currentPage' => 'admin_lti',
+    'breadcrumbs' => [
+        ['url' => BASE_URL . 'administration/', 'label' => 'Home'],
+        ['label' => 'LTI Integration']
+    ]
+]);
+
+$theme = ThemeLoader::getActiveTheme();
+$theme->showHeader($context);
 ?>
 
 <div class="row">
@@ -128,4 +138,4 @@ require_once __DIR__ . '/../system/includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>
+<?php $theme->showFooter($context); ?>

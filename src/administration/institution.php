@@ -236,16 +236,25 @@ $totalInstitutions = count($institutions);
 $activeInstitutions = count(array_filter($institutions, fn($i) => $i['is_active']));
 $inactiveInstitutions = $totalInstitutions - $activeInstitutions;
 
-$currentPage = 'admin_institution';
-$pageTitle = 'Institution Management';
-$pageIcon = 'fas fa-university';
-$bodyClass = 'hold-transition sidebar-mini layout-fixed';
-$breadcrumbs = [
-    ['url' => BASE_URL, 'label' => 'Home'],
-    ['label' => 'Institutions']
-];
+// Load theme system
+require_once __DIR__ . '/../system/Core/ThemeLoader.php';
+require_once __DIR__ . '/../system/Core/ThemeContext.php';
 
-require_once __DIR__ . '/../system/includes/header.php';
+use Mosaic\Core\ThemeLoader;
+use Mosaic\Core\ThemeContext;
+
+$context = new ThemeContext([
+    'layout' => 'admin',
+    'pageTitle' => 'Institution Management',
+    'currentPage' => 'admin_institution',
+    'breadcrumbs' => [
+        ['url' => BASE_URL, 'label' => 'Home'],
+        ['label' => 'Institutions']
+    ]
+]);
+
+$theme = ThemeLoader::getActiveTheme();
+$theme->showHeader($context);
 ?>
 
 <?php if ($successMessage): ?>
@@ -364,7 +373,7 @@ require_once __DIR__ . '/../system/includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>
+<?php $theme->showFooter($context); ?>
 
 <!-- Add Institution Modal -->
 <div class="modal fade" id="addInstitutionModal" tabindex="-1">
@@ -578,4 +587,4 @@ function toggleStatus(id, name) {
 }
 </script>
 
-<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>
+<?php $theme->showFooter($context); ?>

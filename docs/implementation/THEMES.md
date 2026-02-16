@@ -125,23 +125,32 @@ Responsibilities:
 
 ## Usage in Pages
 
+**IMPORTANT:** The old `theme_loader.php` include pattern is deprecated. All pages must use `ThemeLoader` directly.
+
+### Basic Pattern
+
 ```php
 <?php
-// Load configuration
-require_once __DIR__ . '/system/Core/Config.php';
-$config = new \Mosaic\Core\Config();
-$config->load();
+declare(strict_types=1);
+require_once __DIR__ . '/../system/includes/init.php';
 
-// Session handling
-session_start();
+// Load theme system
+require_once __DIR__ . '/../system/Core/ThemeLoader.php';
+require_once __DIR__ . '/../system/Core/ThemeContext.php';
 
-// Page variables
-$pageTitle = 'My Page Title';
-$currentPage = 'admin_dashboard'; // for sidebar active states
-$layout = 'admin'; // optional, uses theme default if omitted
+use Mosaic\Core\ThemeLoader;
+use Mosaic\Core\ThemeContext;
 
-// Load theme
-require_once __DIR__ . '/system/includes/theme_loader.php';
+// Create context with page variables
+$context = new ThemeContext([
+    'layout' => 'admin',          // Layout to use
+    'pageTitle' => 'My Page',     // Page title
+    'currentPage' => 'page_id'     // For sidebar active state
+]);
+
+// Load active theme and show header
+$theme = ThemeLoader::getActiveTheme();
+$theme->showHeader($context);
 ?>
 
 <!-- Your page content here -->
@@ -152,34 +161,147 @@ require_once __DIR__ . '/system/includes/theme_loader.php';
     </div>
 </div>
 
-<?php closeThemeLayout(); ?>
+<?php $theme->showFooter($context); ?>
 ```
 
-## Theme Loader
+### Admin Page Example
 
-**Location:** `src/system/includes/theme_loader.php`
+```php
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/../system/includes/init.php';
+
+// Load theme system
+require_once __DIR__ . '/../system/Core/ThemeLoader.php';
+require_once __DIR__ . '/../system/Core/ThemeContext.php';
+
+use Mosaic\Core\ThemeLoader;
+use Mosaic\Core\ThemeContext;
+
+// Create context
+$context = new ThemeContext([
+    'layout' => 'admin',
+    'pageTitle' => 'Administration Dashboard',
+    'currentPage' => 'admin_dashboard',
+    'breadcrumbs' => [
+        ['url' => BASE_URL, 'label' => 'Home'],
+        ['label' => 'Dashboard']
+    ]
+]);
+
+// Show header
+$theme = ThemeLoader::getActiveTheme();
+$theme->showHeader($context);
+?>
+
+<div class="row">
+    <!-- Dashboard content -->
+</div>
+
+<?php $theme->showFooter($context); ?>
+```
+
+### Page with Custom Styles
+
+```php
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/../system/includes/init.php';
+
+// Capture custom styles
+ob_start();
+?>
+<style>
+    .custom-header {
+        background: linear-gradient(135deg, #1976D2, #1565C0);
+        color: white;
+        padding: 20px;
+    }
+</style>
+<?php
+$customStyles = ob_get_clean();
+
+// Load theme system
+require_once __DIR__ . '/../system/Core/ThemeLoader.php';
+require_once __DIR__ . '/../system/Core/ThemeContext.php';
+
+use Mosaic\Core\ThemeLoader;
+use Mosaic\Core\ThemeContext;
+
+$context = new ThemeContext([
+    'layout' => 'default',
+    'pageTitle' => 'My Page',
+    'customCss' => $customStyles
+]);
+
+$theme = ThemeLoader::getActiveTheme();
+$theme->showHeader($context);
+?>
+
+<div class="custom-header">
+    <h1>Welcome!</h1>
+</div>
+
+<?php $theme->showFooter($context); ?>
+```
+
+### Context Variables
+
+All variables are optional except `layout`:
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `layout` | string | Layout name (defaults to theme's default_layout) |
+| `pageTitle` | string | Page title for `<title>` tag |
+| `currentPage` | string | Page ID for sidebar active state |
+| `breadcrumbs` | array | Breadcrumb trail `[['url' => '...', 'label' => '...'], ...]` |
+| `customCss` | string | Custom CSS block to inject in `<head>` |
+| `customScripts` | string | Custom JavaScript to inject before `</body>` |
+
+## Theme Loader Architecture
+
+**Core Classes:**
+
+- `ThemeLoader` (`src/system/Core/ThemeLoader.php`) - Static factory for loading active theme
+- `Theme` (`src/system/Core/Theme.php`) - Base theme class with rendering logic
+- `ThemeContext` (`src/system/Core/ThemeContext.php`) - Value object for passing variables to layouts
+- `{ThemeName}` (`src/system/plugins/local/theme-*/ThemeRenderer.php`) - Optional custom theme class
 
 **How it works:**
-1. Determines active theme (hard-coded for now, later from database)
-2. Loads theme's plugin.yaml
-3. Validates requested layout exists
-4. Includes appropriate header file
-5. Stores footer path for closeThemeLayout()
+
+1. **Determine active theme** - `ThemeLoader::getActiveTheme()` reads `theme.active_theme` from `config.yaml`
+2. **Load theme class** - Requires `ThemeRenderer.php` from theme plugin directory (extends base `Theme` class)
+3. **Parse plugin.yaml** - Loads layout paths from theme configuration
+4. **Validate layout** - Checks requested layout exists, falls back to default layout if not  
+5. **Render header** - `$theme->showHeader($context)` includes layout's header.php file
+6. **Render footer** - `$theme->showFooter($context)` includes layout's footer.php file
 
 **Fallback behavior:**
-- If theme not found → use legacy includes (header.php/footer.php)
-- If layout not found → use theme's default layout
-- If header file missing → error message
-- If footer file missing → basic HTML close tags
+
+- If `config.yaml` missing or no theme set → uses `theme-default`
+- If requested layout not found → uses theme's `default_layout` from plugin.yaml
+- If default layout missing → throws exception
+- Layout files have access to all ThemeContext variables via `extract()`
+
+**Configuration:**
+
+Active theme is set in `config.yaml`:
+
+```yaml
+theme:
+  active_theme: theme-default  # or theme-adminlte, theme-metis
+```
+
+Users can change themes via Administration → Configuration without code changes.
 
 ## Available Themes
 
-### theme-bootstrap5
+### theme-default (renamed from theme-bootstrap5)
 
-Clean, minimal theme using vanilla Bootstrap 5.
+Clean, minimal theme using vanilla Bootstrap 5. **System default theme.**
 
 **Layouts:**
-- **simple** - Basic container layout
+- **default** - Basic container layout (theme default)
 - **navbar** - Layout with top navigation bar
 - **fluid** - Full-width fluid container
 
@@ -199,8 +321,8 @@ Clean, minimal theme using vanilla Bootstrap 5.
 Professional admin theme based on AdminLTE 4.
 
 **Layouts:**
-- **admin** - Full sidebar navigation for administration
-- **simple** - Top navbar only, no sidebar
+- **admin** - Full sidebar navigation for administration (theme default)
+- **default** - Simple layout, no sidebar
 - **embedded** - Minimal layout for LTI/iframe embedding
 
 **Features:**
@@ -220,9 +342,9 @@ Professional admin theme based on AdminLTE 4.
 Modern material design dashboard theme.
 
 **Layouts:**
+- **default** - Simple layout with gradient banner (theme default)
 - **dashboard** - Full sidebar with material design
 - **compact** - Collapsed sidebar (70px wide, icons only)
-- **simple** - No sidebar, gradient banner
 
 **Features:**
 - Material Design principles
