@@ -22,18 +22,29 @@ Clean, minimal theme using Bootstrap 5 framework - the system default.
 - Maximizes screen space
 - Ideal for dashboards and data tables
 
+**Note:** If you request an `admin` layout with this theme, it will automatically fall back to the `default` layout. For full admin functionality with sidebar navigation, use `theme-adminlte` instead.
+
 ## Usage
 
 ```php
 <?php
-$pageTitle = 'My Page';
-$layout = 'navbar'; // or 'simple', 'fluid'
-require_once __DIR__ . '/system/includes/theme_loader.php';
+require_once __DIR__ . '/../system/Core/ThemeLoader.php';
+use Mosaic\Core\ThemeLoader;
+use Mosaic\Core\ThemeContext;
+
+$context = new ThemeContext([
+    'layout' => 'admin', // or 'default', 'navbar', 'fluid'
+    'pageTitle' => 'My Page',
+    'currentPage' => 'page_id'
+]);
+
+$theme = ThemeLoader::getActiveTheme();
+$theme->showHeader($context);
 ?>
 
 <!-- Your page content here -->
 
-<?php closeThemeLayout(); ?>
+<?php $theme->showFooter($context); ?>
 ```
 
 ## Customization

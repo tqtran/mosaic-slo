@@ -5,8 +5,6 @@
  * Pages should use ThemeLoader directly instead:
  * 
  * require_once __DIR__ . '/../system/Core/ThemeLoader.php';
- * require_once __DIR__ . '/../system/Core/ThemeContext.php';
- * 
  * use Mosaic\Core\ThemeLoader;
  * use Mosaic\Core\ThemeContext;
  * 
@@ -19,6 +17,8 @@
  * 
  * $theme = ThemeLoader::getActiveTheme();
  * $theme->showHeader($context);
+ * 
+ * Note: ThemeLoader auto-loads ThemeContext and Theme classes.
  */
 
 trigger_error(

@@ -34,20 +34,20 @@
     <?= $customCss ?>
     <?php endif; ?>
 </head>
-<body class="hold-transition sidebar-mini layout-fixed">
-<div class="wrapper">
+<body class="layout-fixed sidebar-mini">
+<div class="app-wrapper">
 
 <!-- Navbar -->
-<nav class="main-header navbar navbar-expand navbar-white navbar-light">
+<nav class="app-header navbar navbar-expand bg-body">
     <ul class="navbar-nav">
         <li class="nav-item">
-            <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+            <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button"><i class="fas fa-bars"></i></a>
         </li>
         <li class="nav-item d-none d-sm-inline-block">
             <a href="<?= BASE_URL ?>" class="nav-link"><i class="fas fa-home"></i> Home</a>
         </li>
     </ul>
-    <ul class="navbar-nav ml-auto">
+    <ul class="navbar-nav ms-auto">
         <li class="nav-item">
             <span class="nav-link"><strong><?= htmlspecialchars(SITE_NAME ?? 'MOSAIC') ?></strong></span>
         </li>
@@ -55,12 +55,14 @@
 </nav>
 
 <!-- Sidebar -->
-<aside class="main-sidebar sidebar-dark-primary elevation-4">
-    <a href="<?= BASE_URL ?>" class="brand-link">
-        <i class="bi bi-graph-up ms-3"></i>
-        <span class="brand-text fw-light">MOSAIC</span>
-    </a>
-    <div class="sidebar">
+<aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
+    <div class="sidebar-brand">
+        <a href="<?= BASE_URL ?>" class="brand-link">
+            <i class="bi bi-graph-up ms-3"></i>
+            <span class="brand-text fw-light"><?= htmlspecialchars(SITE_NAME ?? 'MOSAIC') ?></span>
+        </a>
+    </div>
+    <div class="sidebar-wrapper">
         <div class="user-panel mt-3 pb-3 mb-3 d-flex">
             <div class="info">
                 <a href="#" class="d-block">
@@ -70,7 +72,7 @@
             </div>
         </div>
         <nav class="mt-2">
-            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+            <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
                 <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/" class="nav-link <?= ($currentPage ?? '') === 'admin_dashboard' ? 'active' : '' ?>">
                         <i class="nav-icon bi bi-speedometer2"></i>
@@ -109,13 +111,13 @@
 </aside>
 
 <!-- Content Wrapper -->
-<div class="content-wrapper">
+<main class="app-main">
     <?php if (isset($pageTitle)): ?>
-    <section class="content-header">
+    <div class="app-content-header">
         <div class="container-fluid">
-            <h1><?= htmlspecialchars($pageTitle) ?></h1>
+            <h3 class="mb-0"><?= htmlspecialchars($pageTitle) ?></h3>
         </div>
-    </section>
+    </div>
     <?php endif; ?>
-    <section class="content">
+    <div class="app-content">
         <div class="container-fluid">

@@ -116,19 +116,25 @@ class Theme
      */
     public function showHeader(ThemeContext $context): void
     {
-        $layout = $context->get('layout') ?? $this->defaultLayout;
-        $layoutConfig = $this->getLayoutConfig($layout);
+        $requestedLayout = $context->get('layout') ?? $this->defaultLayout;
         
+        // Try requested layout first, fall back to default if not found
+        $layout = $requestedLayout;
+        if (!isset($this->config['theme']['layouts'][$layout])) {
+            $layout = $this->defaultLayout;
+        }
+        
+        $layoutConfig = $this->getLayoutConfig($layout);
         $headerPath = $this->pluginPath . '/' . $layoutConfig['header'];
         
         // Fallback to default layout if specific layout file doesn't exist
-        if (!file_exists($headerPath)) {
-            $defaultConfig = $this->getLayoutConfig('default');
+        if (!file_exists($headerPath) && $layout !== $this->defaultLayout) {
+            $defaultConfig = $this->getLayoutConfig($this->defaultLayout);
             $headerPath = $this->pluginPath . '/' . $defaultConfig['header'];
-            
-            if (!file_exists($headerPath)) {
-                throw new \RuntimeException("Header file not found for layout '{$layout}' and no default fallback exists");
-            }
+        }
+        
+        if (!file_exists($headerPath)) {
+            throw new \RuntimeException("Header file not found for layout '{$requestedLayout}' and no default fallback exists");
         }
         
         // Extract context variables for use in template
@@ -147,19 +153,25 @@ class Theme
      */
     public function showFooter(ThemeContext $context): void
     {
-        $layout = $context->get('layout') ?? $this->defaultLayout;
-        $layoutConfig = $this->getLayoutConfig($layout);
+        $requestedLayout = $context->get('layout') ?? $this->defaultLayout;
         
+        // Try requested layout first, fall back to default if not found
+        $layout = $requestedLayout;
+        if (!isset($this->config['theme']['layouts'][$layout])) {
+            $layout = $this->defaultLayout;
+        }
+        
+        $layoutConfig = $this->getLayoutConfig($layout);
         $footerPath = $this->pluginPath . '/' . $layoutConfig['footer'];
         
         // Fallback to default layout if specific layout file doesn't exist
-        if (!file_exists($footerPath)) {
-            $defaultConfig = $this->getLayoutConfig('default');
+        if (!file_exists($footerPath) && $layout !== $this->defaultLayout) {
+            $defaultConfig = $this->getLayoutConfig($this->defaultLayout);
             $footerPath = $this->pluginPath . '/' . $defaultConfig['footer'];
-            
-            if (!file_exists($footerPath)) {
-                throw new \RuntimeException("Footer file not found for layout '{$layout}' and no default fallback exists");
-            }
+        }
+        
+        if (!file_exists($footerPath)) {
+            throw new \RuntimeException("Footer file not found for layout '{$requestedLayout}' and no default fallback exists");
         }
         
         // Extract context variables for use in template

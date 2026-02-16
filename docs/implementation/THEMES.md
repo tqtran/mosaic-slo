@@ -134,10 +134,8 @@ Responsibilities:
 declare(strict_types=1);
 require_once __DIR__ . '/../system/includes/init.php';
 
-// Load theme system
+// Load theme system (auto-loads ThemeContext and Theme)
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
-require_once __DIR__ . '/../system/Core/ThemeContext.php';
-
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
@@ -171,10 +169,8 @@ $theme->showHeader($context);
 declare(strict_types=1);
 require_once __DIR__ . '/../system/includes/init.php';
 
-// Load theme system
+// Load theme system (auto-loads ThemeContext and Theme)
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
-require_once __DIR__ . '/../system/Core/ThemeContext.php';
-
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
@@ -221,10 +217,8 @@ ob_start();
 <?php
 $customStyles = ob_get_clean();
 
-// Load theme system
+// Load theme system (auto-loads ThemeContext and Theme)
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
-require_once __DIR__ . '/../system/Core/ThemeContext.php';
-
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
@@ -279,9 +273,11 @@ All variables are optional except `layout`:
 **Fallback behavior:**
 
 - If `config.yaml` missing or no theme set → uses `theme-default`
-- If requested layout not found → uses theme's `default_layout` from plugin.yaml
+- If requested layout not found in YAML → uses theme's `default_layout`
+- If layout file missing → uses default layout file
 - If default layout missing → throws exception
-- Layout files have access to all ThemeContext variables via `extract()`
+
+**Example:** Requesting `'admin'` layout on theme-default falls back to 'default' layout if admin isn't defined (but theme-default includes admin layout for convenience).
 
 **Configuration:**
 
@@ -306,10 +302,12 @@ Clean, minimal theme using vanilla Bootstrap 5. **System default theme.**
 - **fluid** - Full-width fluid container
 
 **Features:**
-- No jQuery dependency
+- Pure Bootstrap 5 (no AdminLTE)
 - Lightweight and fast
 - Responsive design
 - Bootstrap Icons included
+
+**Note:** Requesting `admin` layout automatically falls back to `default` layout. For admin interfaces, use `theme-adminlte`.
 
 **Best for:**
 - Simple pages

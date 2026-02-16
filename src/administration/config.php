@@ -251,10 +251,8 @@ $sectionConfig = [
     'email' => ['icon' => 'fas fa-envelope', 'title' => 'Email Settings'],
 ];
 
-// Load theme system
+// Load theme system (auto-loads ThemeContext and Theme)
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
-require_once __DIR__ . '/../system/Core/ThemeContext.php';
-
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 

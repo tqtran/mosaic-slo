@@ -236,10 +236,8 @@ $totalInstitutions = count($institutions);
 $activeInstitutions = count(array_filter($institutions, fn($i) => $i['is_active']));
 $inactiveInstitutions = $totalInstitutions - $activeInstitutions;
 
-// Load theme system
+// Load theme system (auto-loads ThemeContext and Theme)
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
-require_once __DIR__ . '/../system/Core/ThemeContext.php';
-
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
@@ -336,6 +334,17 @@ $theme->showHeader($context);
                                     <th>Actions</th>
                                 </tr>
                             </thead>
+                            <tfoot>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Institution Name</th>
+                                    <th>Code</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </tfoot>
                             <tbody>
                                 <?php foreach ($institutions as $inst): ?>
                                     <tr>
@@ -534,6 +543,38 @@ $theme->showHeader($context);
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 
+<style>
+/* DataTables Export Buttons Styling */
+.dt-buttons {
+    float: right;
+    margin-bottom: 0.5rem;
+}
+.dt-button {
+    margin-left: 0.25rem !important;
+}
+.dt-button-collection .dt-button {
+    display: block;
+    width: 100%;
+    margin: 0 !important;
+    border-radius: 0;
+}
+.dt-button-collection .dt-button:first-child {
+    border-top-left-radius: 0.25rem;
+    border-top-right-radius: 0.25rem;
+}
+.dt-button-collection .dt-button:last-child {
+    border-bottom-left-radius: 0.25rem;
+    border-bottom-right-radius: 0.25rem;
+}
+/* Column filters in footer */
+tfoot input {
+    width: 100%;
+}
+tfoot th {
+    padding: 5px;
+}
+</style>
+
 <!-- DataTables JS -->
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
@@ -548,16 +589,72 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-    $('#institutionsTable').DataTable({
+    var table = $('#institutionsTable').DataTable({
         responsive: true,
         lengthChange: true,
         autoWidth: false,
         pageLength: 25,
         order: [[1, "asc"]],
-        dom: 'Blfrtip',
+        dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'B>>" +
+             "<'row'<'col-sm-12'tr>>" +
+             "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
         buttons: [
-            'copy', 'csv', 'excel', 'pdf', 'print', 'colvis'
-        ]
+            {
+                extend: 'collection',
+                text: '<i class="fas fa-download"></i> Export',
+                className: 'btn btn-primary btn-sm',
+                buttons: [
+                    {
+                        extend: 'copy',
+                        text: '<i class="fas fa-copy"></i> Copy to Clipboard',
+                        exportOptions: { columns: ':visible:not(:last-child)' }
+                    },
+                    {
+                        extend: 'csv',
+                        text: '<i class="fas fa-file-csv"></i> CSV',
+                        exportOptions: { columns: ':visible:not(:last-child)' },
+                        filename: 'institutions_' + new Date().toISOString().split('T')[0]
+                    },
+                    {
+                        extend: 'excel',
+                        text: '<i class="fas fa-file-excel"></i> Excel',
+                        exportOptions: { columns: ':visible:not(:last-child)' },
+                        filename: 'institutions_' + new Date().toISOString().split('T')[0]
+                    },
+                    {
+                        extend: 'pdf',
+                        text: '<i class="fas fa-file-pdf"></i> PDF',
+                        exportOptions: { columns: ':visible:not(:last-child)' },
+                        filename: 'institutions_' + new Date().toISOString().split('T')[0],
+                        orientation: 'landscape'
+                    },
+                    {
+                        extend: 'print',
+                        text: '<i class="fas fa-print"></i> Print',
+                        exportOptions: { columns: ':visible:not(:last-child)' }
+                    }
+                ]
+            },
+            {
+                extend: 'colvis',
+                text: '<i class="fas fa-columns"></i> Columns',
+                className: 'btn btn-secondary btn-sm'
+            }
+        ],
+        initComplete: function () {
+            // Add column filters
+            this.api().columns([1, 2, 3]).every(function () {
+                var column = this;
+                var title = column.header().textContent;
+                var input = $('<input type="text" class="form-control form-control-sm" placeholder="Filter ' + title + '" />')
+                    .appendTo($(column.footer()).empty())
+                    .on('keyup change clear', function () {
+                        if (column.search() !== this.value) {
+                            column.search(this.value).draw();
+                        }
+                    });
+            });
+        }
     });
 });
 

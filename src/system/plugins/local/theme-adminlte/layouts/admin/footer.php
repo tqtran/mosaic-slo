@@ -1,9 +1,14 @@
 
         </div>
-    </section>
-</div><!-- /.content-wrapper -->
+    </div>
+</main>
 
-</div><!-- /.wrapper -->
+<footer class="app-footer">
+    <div class="float-end d-none d-sm-inline">Version 1.0.0</div>
+    <strong>&copy; 2024-2026 MOSAIC</strong> - Student Learning Outcomes Assessment
+</footer>
+
+</div><!-- /.app-wrapper -->
 
 <!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>

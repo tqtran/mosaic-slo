@@ -99,9 +99,9 @@ theme:
   # @description: Theme plugin to use for frontend rendering
   # @required: false
   # @type: select
-  # @options: theme-default|Default (Bootstrap 5),theme-adminlte|AdminLTE 4 Professional,theme-metis|Metis Material Design
+  # @options: theme-default|Default (Bootstrap 5 - Minimal),theme-adminlte|AdminLTE 4 (Recommended for Admin),theme-metis|Metis Material Design
   # @default: theme-default
-  # @help: If not specified, theme-default is used automatically
+  # @help: Use theme-adminlte for admin interface with sidebar navigation
   active_theme: theme-default
 
 # Email Configuration

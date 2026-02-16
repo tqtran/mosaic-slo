@@ -16,6 +16,10 @@ declare(strict_types=1);
 
 namespace Mosaic\Core;
 
+// Load dependencies required by ThemeLoader and themes
+require_once __DIR__ . '/ThemeContext.php';
+require_once __DIR__ . '/Theme.php';
+
 class ThemeLoader
 {
     private static ?Theme $activeTheme = null;

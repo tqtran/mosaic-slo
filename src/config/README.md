@@ -18,8 +18,8 @@ If you need to manually create or update the configuration:
 ## Theme Configuration
 
 Available themes:
-- `theme-default` - Clean Bootstrap 5 theme (system default)
-- `theme-adminlte` - Professional admin dashboard theme
+- `theme-default` - Clean Bootstrap 5 theme (system default, minimal)
+- `theme-adminlte` - Professional admin dashboard with sidebar (recommended for admin pages)
 - `theme-metis` - Modern material design theme
 
 To change the active theme, edit `config.yaml`:
@@ -28,6 +28,8 @@ To change the active theme, edit `config.yaml`:
 theme:
   active_theme: theme-adminlte
 ```
+
+**Recommendation:** Use `theme-adminlte` for installations that primarily use the administration interface. Use `theme-default` for simple deployments or public-facing pages.
 
 If no theme is specified, `theme-default` is used automatically.
 

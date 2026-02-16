@@ -5,7 +5,7 @@ id: theme-default
 name: Default Theme
 version: 1.0.0
 type: theme
-description: Clean, minimal Bootstrap 5 theme - system default with multiple layout options
+description: Clean, minimal Bootstrap 5 theme - system default
 author: MOSAIC Project
 
 # Theme-specific configuration

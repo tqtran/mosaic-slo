@@ -10,10 +10,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../system/includes/init.php';
 
-// Load theme system
+// Load theme system (auto-loads ThemeContext and Theme)
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
-require_once __DIR__ . '/../system/Core/ThemeContext.php';
-
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
