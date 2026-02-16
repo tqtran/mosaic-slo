@@ -40,9 +40,9 @@ if (empty($_SESSION['csrf_token'])) {
 
 // Initialize common variables and database
 require_once __DIR__ . '/../system/includes/init.php';
+require_once __DIR__ . '/../system/includes/message_page.php';
 
-// Initialize logger
-$logger = \Mosaic\Core\Logger::getInstance();
+// $logger is now available from init.php
 
 // Check LTI authentication
 if (empty($_SESSION['lti_authenticated']) || !$_SESSION['lti_is_instructor']) {
@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Check if assessment already exists
                 $existing = $db->query(
-                    "SELECT assessments_pk FROM assessments 
+                    "SELECT assessments_pk FROM {$dbPrefix}assessments 
                      WHERE enrollment_fk = ? AND student_learning_outcome_fk = ?",
                     [$enrollmentId, $sloId],
                     'ii'
@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Update existing assessment
                     $row = $existing->fetch_assoc();
                     $db->query(
-                        "UPDATE assessments 
+                        "UPDATE {$dbPrefix}assessments 
                          SET achievement_level = ?, score_value = ?, assessed_date = CURDATE(), 
                              updated_at = NOW(), assessed_by_fk = ?
                          WHERE assessments_pk = ?",
@@ -138,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Insert new assessment
                     $db->query(
-                        "INSERT INTO assessments 
+                        "INSERT INTO {$dbPrefix}assessments 
                          (enrollment_fk, student_learning_outcome_fk, achievement_level, score_value, 
                           assessed_date, is_finalized, assessed_by_fk, created_at, updated_at)
                          VALUES (?, ?, ?, ?, CURDATE(), FALSE, ?, NOW(), NOW())",
@@ -189,10 +189,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Filter by LTI course context if available
 $courseSectionsQuery = "
     SELECT cs.course_sections_pk, cs.section_code, c.course_code, c.course_name,
-           t.term_name, t.academic_year
-    FROM course_sections cs
-    INNER JOIN courses c ON cs.course_fk = c.courses_pk
-    INNER JOIN terms t ON cs.term_fk = t.terms_pk
+           t.term_name, t.term_year
+    FROM {$dbPrefix}course_sections cs
+    INNER JOIN {$dbPrefix}courses c ON cs.course_fk = c.courses_pk
+    INNER JOIN {$dbPrefix}terms t ON cs.term_fk = t.terms_pk
     WHERE cs.is_active = TRUE
 ";
 
@@ -201,12 +201,12 @@ $types = '';
 
 // Filter by academic year from LTI launch if available
 if ($ltiAcademicYear) {
-    $courseSectionsQuery .= " AND t.academic_year = ?";
+    $courseSectionsQuery .= " AND t.term_year = ?";
     $params[] = $ltiAcademicYear;
     $types .= 's';
 }
 
-$courseSectionsQuery .= " ORDER BY t.academic_year DESC, t.term_name DESC, c.course_code ASC";
+$courseSectionsQuery .= " ORDER BY t.term_year DESC, t.term_name DESC, c.course_code ASC";
 
 if (!empty($params)) {
     $courseSectionsResult = $db->query($courseSectionsQuery, $params, $types);
@@ -225,8 +225,8 @@ $slos = [];
 if ($selectedCourseSectionId > 0) {
     $slosResult = $db->query(
         "SELECT slo.student_learning_outcomes_pk, slo.code, slo.description
-         FROM student_learning_outcomes slo
-         INNER JOIN course_sections cs ON slo.course_fk = cs.course_fk
+         FROM {$dbPrefix}student_learning_outcomes slo
+         INNER JOIN {$dbPrefix}course_sections cs ON slo.course_fk = cs.course_fk
          WHERE cs.course_sections_pk = ? AND slo.is_active = TRUE
          ORDER BY slo.sequence_num ASC",
         [$selectedCourseSectionId],
@@ -246,9 +246,9 @@ if ($selectedCourseSectionId > 0 && $selectedSloId > 0) {
     $studentsQuery = "
         SELECT e.enrollment_pk, e.crn, s.student_id, s.first_name, s.last_name,
                a.achievement_level, a.score_value
-        FROM enrollment e
-        INNER JOIN students s ON e.student_fk = s.students_pk
-        LEFT JOIN assessments a ON e.enrollment_pk = a.enrollment_fk 
+        FROM {$dbPrefix}enrollment e
+        INNER JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
+        LEFT JOIN {$dbPrefix}assessments a ON e.enrollment_pk = a.enrollment_fk 
                                  AND a.student_learning_outcome_fk = ?
         WHERE e.course_section_fk = ? AND e.enrollment_status = 'enrolled'
     ";
@@ -423,7 +423,7 @@ require_once __DIR__ . '/../system/includes/header.php';
                                     <?php foreach ($courseSections as $cs): ?>
                                         <option value="<?= $cs['course_sections_pk'] ?>" <?= $cs['course_sections_pk'] == $selectedCourseSectionId ? 'selected' : '' ?>>
                                             <?= htmlspecialchars($cs['course_code']) ?> - <?= htmlspecialchars($cs['section_code']) ?> 
-                                            (<?= htmlspecialchars($cs['term_name']) ?> <?= htmlspecialchars($cs['academic_year']) ?>)
+                                            (<?= htmlspecialchars($cs['term_name']) ?> <?= htmlspecialchars($cs['term_year']) ?>)
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -467,7 +467,7 @@ require_once __DIR__ . '/../system/includes/header.php';
                                     <?php foreach ($courseSections as $cs): ?>
                                         <option value="<?= $cs['course_sections_pk'] ?>" <?= $cs['course_sections_pk'] == $selectedCourseSectionId ? 'selected' : '' ?>>
                                             <?= htmlspecialchars($cs['course_code']) ?> - <?= htmlspecialchars($cs['section_code']) ?> 
-                                            (<?= htmlspecialchars($cs['term_name']) ?> <?= htmlspecialchars($cs['academic_year']) ?>)
+                                            (<?= htmlspecialchars($cs['term_name']) ?> <?= htmlspecialchars($cs['term_year']) ?>)
                                         </option>
                                     <?php endforeach; ?>
                                 </select>

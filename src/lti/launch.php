@@ -35,9 +35,9 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Initialize common variables and database
 require_once __DIR__ . '/../system/includes/init.php';
+require_once __DIR__ . '/../system/includes/message_page.php';
 
-// Initialize logger
-$logger = \Mosaic\Core\Logger::getInstance();
+// $logger is now available from init.php
 
 // Only accept POST requests
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

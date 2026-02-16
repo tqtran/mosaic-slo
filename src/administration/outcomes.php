@@ -301,7 +301,7 @@ $inactiveOutcomes = $totalOutcomes - $activeOutcomes;
 // Count program outcomes mapped
 foreach ($outcomes as &$outcome) {
     $result = $db->query(
-        "SELECT COUNT(*) as count FROM program_outcomes 
+        "SELECT COUNT(*) as count FROM {$dbPrefix}program_outcomes 
          WHERE institutional_outcomes_fk = ? AND is_active = 1",
         [$outcome['institutional_outcomes_pk']],
         'i'

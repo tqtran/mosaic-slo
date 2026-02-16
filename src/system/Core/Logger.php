@@ -8,7 +8,7 @@
 
 declare(strict_types=1);
 
-namespace MOSAIC\Core;
+namespace Mosaic\Core;
 
 use mysqli;
 use Exception;
@@ -19,6 +19,7 @@ class Logger
     private array $config;
     private ?mysqli $db = null;
     private string $logDirectory;
+    private string $dbPrefix;
     
     // Log levels
     public const DEBUG = 'debug';
@@ -45,6 +46,7 @@ class Logger
         $this->config = $config;
         $this->db = $db;
         $this->logDirectory = $config['logging']['log_directory'] ?? 'logs';
+        $this->dbPrefix = $config['database']['prefix'] ?? '';
         
         // Ensure log directory exists
         if (!is_dir($this->logDirectory)) {
@@ -265,7 +267,7 @@ class Logger
     ): void {
         try {
             $stmt = $this->db->prepare(
-                "INSERT INTO error_log (
+                "INSERT INTO {$this->dbPrefix}error_log (
                     error_type, error_message, error_code, stack_trace, 
                     file_path, line_number, user_fk, request_uri, 
                     request_method, request_data, ip_address, user_agent, severity
@@ -317,7 +319,7 @@ class Logger
     ): void {
         try {
             $stmt = $this->db->prepare(
-                "INSERT INTO security_log (
+                "INSERT INTO {$this->dbPrefix}security_log (
                     event_type, event_description, user_fk, username,
                     ip_address, user_agent, request_uri, severity, 
                     is_threat, metadata
@@ -365,7 +367,7 @@ class Logger
     ): void {
         try {
             $stmt = $this->db->prepare(
-                "INSERT INTO audit_log (
+                "INSERT INTO {$this->dbPrefix}audit_log (
                     table_name, record_pk, action, changed_by_fk,
                     changed_data, old_data, ip_address, user_agent
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -424,19 +426,19 @@ class Logger
             $cutoffDate = date('Y-m-d H:i:s', time() - ($daysToKeep * 86400));
             
             // Clean audit logs
-            $stmt = $this->db->prepare("DELETE FROM audit_log WHERE created_at < ?");
+            $stmt = $this->db->prepare("DELETE FROM {$this->dbPrefix}audit_log WHERE created_at < ?");
             $stmt->bind_param("s", $cutoffDate);
             $stmt->execute();
             $stmt->close();
             
             // Clean error logs (only resolved errors)
-            $stmt = $this->db->prepare("DELETE FROM error_log WHERE created_at < ? AND is_resolved = 1");
+            $stmt = $this->db->prepare("DELETE FROM {$this->dbPrefix}error_log WHERE created_at < ? AND is_resolved = 1");
             $stmt->bind_param("s", $cutoffDate);
             $stmt->execute();
             $stmt->close();
             
             // Clean security logs (only non-threats)
-            $stmt = $this->db->prepare("DELETE FROM security_log WHERE created_at < ? AND is_threat = 0");
+            $stmt = $this->db->prepare("DELETE FROM {$this->dbPrefix}security_log WHERE created_at < ? AND is_threat = 0");
             $stmt->bind_param("s", $cutoffDate);
             $stmt->execute();
             $stmt->close();

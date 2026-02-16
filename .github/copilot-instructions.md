@@ -76,7 +76,6 @@ Organized procedural PHP with optional data access layer:
     - `footer.php` - Loads JavaScript libraries
     - `sidebar.php` - AdminLTE sidebar navigation (for admin pages)
     - `message_page.php` - Helper function for error/success pages
-  - **Scripts** (`src/system/scripts/`): CLI utilities
   - **Plugins** (`src/system/plugins/`): Plugin framework
 
 **Using Common Includes:**

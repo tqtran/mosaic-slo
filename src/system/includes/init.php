@@ -11,6 +11,7 @@ declare(strict_types=1);
  *   $config      - Config instance (use $config->get('key'))
  *   $configData  - Full config array (use $configData['section']['key'])
  *   $db          - Database connection instance
+ *   $logger      - Logger instance for error and security logging
  *   $baseUrl     - Application base URL
  *   $basePath    - Application base filesystem path
  *   $siteName    - Site name from config
@@ -37,6 +38,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/../Core/Config.php';
 require_once __DIR__ . '/../Core/Database.php';
 require_once __DIR__ . '/../Core/Path.php';
+require_once __DIR__ . '/../Core/Logger.php';
 
 // Check if configured
 if (!file_exists(__DIR__ . '/../../config/config.yaml')) {
@@ -61,5 +63,8 @@ if (!defined('SITE_NAME')) define('SITE_NAME', $siteName);
 
 // Initialize database connection
 $db = \Mosaic\Core\Database::getInstance($configData['database']);
+
+// Initialize logger
+$logger = \Mosaic\Core\Logger::getInstance($configData, $db->getConnection());
 
 // TODO: Authentication and authorization checks will go here

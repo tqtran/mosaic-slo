@@ -34,32 +34,9 @@ The setup wizard will:
 - Save credentials and base URL to `src/config/config.yaml`
 - Protect the config directory with `.htaccess`
 
-### 2. Create Admin User
+**Note:** Authentication system is in development. For now, all administration pages are accessible without login.
 
-After setup completes, create an admin user from the command line:
-
-```powershell
-# From project root
-php src/system/scripts/create_admin_user.php
-```
-
-This script will:
-- Prompt for admin user details
-- Hash the password with bcrypt (cost 12)
-- Create the user in the `users` table
-- Assign the global `admin` role
-
-**Example interaction:**
-```
-Username (user_id): admin
-First Name: System
-Last Name: Administrator
-Email: admin@example.edu
-Password (minimum 12 characters): ************
-Confirm Password: ************
-```
-
-### 3. Verify Setup
+### 2. Verify Setup
 
 Start the development server:
 
@@ -116,16 +93,6 @@ Complete MySQL schema for MOSAIC platform.
 - `students`, `assessments`
 - `users`, `roles`, `user_roles`
 - `lti_nonces`
-
-### `../src/system/scripts/create_admin_user.php`
-Creates an admin user with global privileges.
-
-**Features:**
-- Password strength validation (minimum 12 characters)
-- Email validation
-- Secure password input (hidden on Windows/Unix)
-- Bcrypt hashing with cost 12
-- Automatic admin role assignment
 
 ## Configuration File
 
@@ -222,27 +189,14 @@ $logger->debug('Variable value', ['var' => $value]);
 
 ### Log Cleanup
 
-Run periodically to remove old logs:
+**Note:** Log cleanup functionality will be available through the administration interface. For now, manage logs directly in MySQL if needed.
 
-```powershell
-# Keep logs for 90 days (default)
-php src/scripts/cleanup_logs.php
-
-# Keep logs for 30 days
-php src/scripts/cleanup_logs.php 30
-```
-
-**Cleanup Policy:**
-- Audit logs: All entries older than specified days
-- Error logs: Only resolved errors older than specified days
-- Security logs: Only non-threat entries older than specified days
-- File logs: All files older than specified days
-
-**Automated Cleanup (Windows Task Scheduler):**
-```powershell
-$action = New-ScheduledTaskAction -Execute 'php' -Argument 'C:\path\to\mosaic-slo\src\scripts\cleanup_logs.php 90'
-$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 2am
-Register-ScheduledTask -TaskName "MOSAIC Log Cleanup" -Action $action -Trigger $trigger
+**Manual Database Cleanup (if needed):**
+```sql
+-- Keep logs for 90 days
+DELETE FROM audit_log WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
+DELETE FROM error_log WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY) AND is_resolved = 1;
+DELETE FROM security_log WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY) AND is_threat = 0;
 ```
 
 ## Troubleshooting

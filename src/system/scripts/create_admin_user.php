@@ -26,8 +26,9 @@ function log_message(string $message, string $level = 'INFO'): void {
 
 // Security logging to database
 function log_security_event(mysqli $db, string $eventType, string $description, ?int $userFk = null, ?string $username = null): void {
+    global $dbPrefix;
     $stmt = $db->prepare(
-        "INSERT INTO security_log (event_type, event_description, user_fk, username, ip_address, severity) 
+        "INSERT INTO {$dbPrefix}security_log (event_type, event_description, user_fk, username, ip_address, severity) 
          VALUES (?, ?, ?, ?, ?, 'info')"
     );
     
@@ -118,6 +119,7 @@ if (preg_match('/port:\s*(\d+)/', $yaml, $matches)) $config['port'] = (int)$matc
 if (preg_match('/database:\s*(.+)/', $yaml, $matches)) $config['database'] = trim($matches[1]);
 if (preg_match('/username:\s*(.+)/', $yaml, $matches)) $config['username'] = trim($matches[1]);
 if (preg_match('/password:\s*(.+)/', $yaml, $matches)) $config['password'] = trim($matches[1]);
+if (preg_match('/prefix:\s*(.+)/', $yaml, $matches)) $config['prefix'] = trim($matches[1]); else $config['prefix'] = '';
 
 // Connect to database
 try {
@@ -139,6 +141,8 @@ try {
     color_output("[X] " . $e->getMessage(), 'red');
     exit(1);
 }
+
+$dbPrefix = $config['prefix'];
 
 color_output("[OK] Connected to database", 'green');
 echo PHP_EOL;
@@ -203,7 +207,7 @@ $passwordHash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
 // Insert user
 log_message("Inserting user record for: $userId");
 $stmt = $mysqli->prepare(
-    "INSERT INTO users (user_id, first_name, last_name, email, password_hash, is_active) 
+    "INSERT INTO {$dbPrefix}users (user_id, first_name, last_name, email, password_hash, is_active) 
      VALUES (?, ?, ?, ?, ?, 1)"
 );
 
@@ -232,8 +236,8 @@ log_security_event($mysqli, 'admin_user_created', "Admin user created: $userId (
 // Assign admin role
 log_message("Assigning admin role to user PK: $userPk");
 $stmt = $mysqli->prepare(
-    "INSERT INTO user_roles (user_fk, role_fk, context_type, context_id) 
-     VALUES (?, (SELECT roles_pk FROM roles WHERE role_name = 'admin'), NULL, NULL)"
+    "INSERT INTO {$dbPrefix}user_roles (user_fk, role_fk, context_type, context_id) 
+     VALUES (?, (SELECT roles_pk FROM {$dbPrefix}roles WHERE role_name = 'admin'), NULL, NULL)"
 );
 
 if (!$stmt) {
