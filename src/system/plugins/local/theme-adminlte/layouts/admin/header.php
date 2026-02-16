@@ -87,9 +87,15 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="<?= BASE_URL ?>administration/outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_outcomes' ? 'active' : '' ?>">
+                    <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_institutional_outcomes' ? 'active' : '' ?>">
                         <i class="nav-icon bi bi-diagram-3"></i>
-                        <p>Outcome Hierarchy</p>
+                        <p>Institutional Outcomes</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/programs.php" class="nav-link <?= ($currentPage ?? '') === 'admin_programs' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-mortarboard"></i>
+                        <p>Programs</p>
                     </a>
                 </li>
                 <li class="nav-header">SYSTEM</li>

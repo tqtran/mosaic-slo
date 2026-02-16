@@ -118,7 +118,7 @@
             <a href="<?= BASE_URL ?>administration/institution.php" class="<?= ($currentPage ?? '') === 'admin_institution' ? 'active' : '' ?>" title="Institution">
                 <i class="bi bi-building"></i>
             </a>
-            <a href="<?= BASE_URL ?>administration/outcomes.php" class="<?= ($currentPage ?? '') === 'admin_outcomes' ? 'active' : '' ?>" title="Outcomes">
+            <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="<?= ($currentPage ?? '') === 'admin_institutional_outcomes' ? 'active' : '' ?>" title="Outcomes">
                 <i class="bi bi-diagram-3"></i>
             </a>
             <a href="<?= BASE_URL ?>administration/config.php" class="<?= ($currentPage ?? '') === 'admin_config' ? 'active' : '' ?>" title="Configuration">

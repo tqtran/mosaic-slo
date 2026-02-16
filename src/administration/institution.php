@@ -248,7 +248,21 @@ $context = new ThemeContext([
     'breadcrumbs' => [
         ['url' => BASE_URL, 'label' => 'Home'],
         ['label' => 'Institutions']
-    ]
+    ],
+    'customCss' => '
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+<style>
+/* Column filters in footer */
+tfoot input {
+    width: 100%;
+}
+tfoot th {
+    padding: 5px;
+}
+</style>
+'
 ]);
 
 $theme = ThemeLoader::getActiveTheme();
@@ -346,33 +360,37 @@ $theme->showHeader($context);
                                 </tr>
                             </tfoot>
                             <tbody>
-                                <?php foreach ($institutions as $inst): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($inst['institution_pk']) ?></td>
-                                        <td><?= htmlspecialchars($inst['institution_name']) ?></td>
-                                        <td><span class="badge bg-primary"><?= htmlspecialchars($inst['institution_code']) ?></span></td>
-                                        <td>
-                                            <?php if ($inst['is_active']): ?>
-                                                <span class="badge bg-success">Active</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-secondary">Inactive</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td><?= htmlspecialchars($inst['created_at']) ?></td>
-                                        <td><?= htmlspecialchars($inst['updated_at']) ?></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-info" title="View" onclick="viewInstitution(<?= htmlspecialchars(json_encode($inst)) ?>)">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-primary" title="Edit" onclick="editInstitution(<?= htmlspecialchars(json_encode($inst)) ?>)">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-<?= $inst['is_active'] ? 'warning' : 'success' ?>" title="Toggle Status" onclick="toggleStatus(<?= $inst['institution_pk'] ?>, '<?= htmlspecialchars($inst['institution_name']) ?>')">
-                                                <i class="fas fa-<?= $inst['is_active'] ? 'ban' : 'check' ?>"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
+                                <?php
+                                // Load institutions from database
+                                $result = $db->query("SELECT * FROM {$dbPrefix}institution ORDER BY institution_name ASC");
+                                while ($row = $result->fetch_assoc()):
+                                    $status = $row['is_active'] ? 'Active' : 'Inactive';
+                                    $statusClass = $row['is_active'] ? 'success' : 'secondary';
+                                    $toggleIcon = $row['is_active'] ? 'ban' : 'check';
+                                    $toggleClass = $row['is_active'] ? 'warning' : 'success';
+                                    $rowJson = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
+                                ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($row['institution_pk']) ?></td>
+                                    <td><?= htmlspecialchars($row['institution_name']) ?></td>
+                                    <td><span class="badge bg-primary"><?= htmlspecialchars($row['institution_code']) ?></span></td>
+                                    <td><span class="badge bg-<?= $statusClass ?>"><?= $status ?></span></td>
+                                    <td><?= htmlspecialchars($row['created_at'] ?? '') ?></td>
+                                    <td><?= htmlspecialchars($row['updated_at'] ?? '') ?></td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info" title="View" onclick='viewInstitution(<?= $rowJson ?>)'>
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-primary" title="Edit" onclick='editInstitution(<?= $rowJson ?>)'>
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-<?= $toggleClass ?>" title="Toggle Status" 
+                                                onclick="toggleStatus(<?= $row['institution_pk'] ?>, '<?= htmlspecialchars($row['institution_name'], ENT_QUOTES) ?>')">
+                                            <i class="fas fa-<?= $toggleIcon ?>"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <?php endwhile; ?>
                             </tbody>
                         </table>
                     </div>
@@ -381,8 +399,6 @@ $theme->showHeader($context);
         </div>
     </div>
 </div>
-
-<?php $theme->showFooter($context); ?>
 
 <!-- Add Institution Modal -->
 <div class="modal fade" id="addInstitutionModal" tabindex="-1">
@@ -539,43 +555,7 @@ $theme->showHeader($context);
     <input type="hidden" name="institution_id" id="toggleInstitutionId">
 </form>
 
-<!-- DataTables CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
-
-<style>
-/* DataTables Export Buttons Styling */
-.dt-buttons {
-    float: right;
-    margin-bottom: 0.5rem;
-}
-.dt-button {
-    margin-left: 0.25rem !important;
-}
-.dt-button-collection .dt-button {
-    display: block;
-    width: 100%;
-    margin: 0 !important;
-    border-radius: 0;
-}
-.dt-button-collection .dt-button:first-child {
-    border-top-left-radius: 0.25rem;
-    border-top-right-radius: 0.25rem;
-}
-.dt-button-collection .dt-button:last-child {
-    border-bottom-left-radius: 0.25rem;
-    border-bottom-right-radius: 0.25rem;
-}
-/* Column filters in footer */
-tfoot input {
-    width: 100%;
-}
-tfoot th {
-    padding: 5px;
-}
-</style>
-
-<!-- DataTables JS -->
+<!-- DataTables JS (must load after jQuery in footer) -->
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
@@ -588,60 +568,22 @@ tfoot th {
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
 
 <script>
+console.log('jQuery loaded:', typeof jQuery !== 'undefined');
+console.log('DataTables loaded:', typeof jQuery.fn.DataTable !== 'undefined');
+
 $(document).ready(function() {
-    var table = $('#institutionsTable').DataTable({
-        responsive: true,
-        lengthChange: true,
-        autoWidth: false,
-        pageLength: 25,
-        order: [[1, "asc"]],
-        dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'B>>" +
-             "<'row'<'col-sm-12'tr>>" +
-             "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-        buttons: [
-            {
-                extend: 'collection',
-                text: '<i class="fas fa-download"></i> Export',
-                className: 'btn btn-primary btn-sm',
-                buttons: [
-                    {
-                        extend: 'copy',
-                        text: '<i class="fas fa-copy"></i> Copy to Clipboard',
-                        exportOptions: { columns: ':visible:not(:last-child)' }
-                    },
-                    {
-                        extend: 'csv',
-                        text: '<i class="fas fa-file-csv"></i> CSV',
-                        exportOptions: { columns: ':visible:not(:last-child)' },
-                        filename: 'institutions_' + new Date().toISOString().split('T')[0]
-                    },
-                    {
-                        extend: 'excel',
-                        text: '<i class="fas fa-file-excel"></i> Excel',
-                        exportOptions: { columns: ':visible:not(:last-child)' },
-                        filename: 'institutions_' + new Date().toISOString().split('T')[0]
-                    },
-                    {
-                        extend: 'pdf',
-                        text: '<i class="fas fa-file-pdf"></i> PDF',
-                        exportOptions: { columns: ':visible:not(:last-child)' },
-                        filename: 'institutions_' + new Date().toISOString().split('T')[0],
-                        orientation: 'landscape'
-                    },
-                    {
-                        extend: 'print',
-                        text: '<i class="fas fa-print"></i> Print',
-                        exportOptions: { columns: ':visible:not(:last-child)' }
-                    }
-                ]
-            },
-            {
-                extend: 'colvis',
-                text: '<i class="fas fa-columns"></i> Columns',
-                className: 'btn btn-secondary btn-sm'
-            }
-        ],
-        initComplete: function () {
+    console.log('Initializing DataTable...');
+    
+    $('#institutionsTable').DataTable({
+        dom: 'Bfrtip',
+        buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
+        "responsive": true,
+        "lengthChange": true,
+        "autoWidth": false,
+        "pageLength": 25,
+        "order": [[1, "asc"]],
+        "initComplete": function () {
+            console.log('DataTable initialized successfully');
             // Add column filters
             this.api().columns([1, 2, 3]).every(function () {
                 var column = this;
@@ -656,6 +598,8 @@ $(document).ready(function() {
             });
         }
     });
+    
+    console.log('DataTable initialization complete');
 });
 
 function viewInstitution(inst) {

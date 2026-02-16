@@ -139,7 +139,7 @@
             <a href="<?= BASE_URL ?>administration/institution.php" class="<?= ($currentPage ?? '') === 'admin_institution' ? 'active' : '' ?>">
                 <i class="bi bi-building"></i> Institution
             </a>
-            <a href="<?= BASE_URL ?>administration/outcomes.php" class="<?= ($currentPage ?? '') === 'admin_outcomes' ? 'active' : '' ?>">
+            <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="<?= ($currentPage ?? '') === 'admin_institutional_outcomes' ? 'active' : '' ?>">
                 <i class="bi bi-diagram-3"></i> Outcome Hierarchy
             </a>
             <div class="nav-header">System</div>

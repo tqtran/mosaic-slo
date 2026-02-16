@@ -319,12 +319,48 @@ use Mosaic\Core\ThemeContext;
 $context = new ThemeContext([
     'layout' => 'admin',
     'pageTitle' => 'Institutional Outcomes',
-    'currentPage' => 'admin_outcomes',
+    'currentPage' => 'admin_institutional_outcomes',
     'breadcrumbs' => [
         ['url' => BASE_URL, 'label' => 'Home'],
         ['url' => BASE_URL . 'administration/institution.php', 'label' => 'Institutions'],
         ['label' => 'Institutional Outcomes']
-    ]
+    ],
+    'customCss' => '
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+<style>
+/* DataTables Export Buttons Styling */
+.dt-buttons {
+    float: right;
+    margin-bottom: 0.5rem;
+}
+.dt-button {
+    margin-left: 0.25rem !important;
+}
+.dt-button-collection .dt-button {
+    display: block;
+    width: 100%;
+    margin: 0 !important;
+    border-radius: 0;
+}
+.dt-button-collection .dt-button:first-child {
+    border-top-left-radius: 0.25rem;
+    border-top-right-radius: 0.25rem;
+}
+.dt-button-collection .dt-button:last-child {
+    border-bottom-left-radius: 0.25rem;
+    border-bottom-right-radius: 0.25rem;
+}
+/* Column filters in footer */
+tfoot input {
+    width: 100%;
+}
+tfoot th {
+    padding: 5px;
+}
+</style>
+'
 ]);
 
 $theme = ThemeLoader::getActiveTheme();
@@ -422,37 +458,7 @@ $theme->showHeader($context);
                                 </tr>
                             </tfoot>
                             <tbody>
-                                <?php foreach ($outcomes as $outcome): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($outcome['sequence_num']) ?></td>
-                                        <td><span class="badge bg-primary"><?= htmlspecialchars($outcome['code']) ?></span></td>
-                                        <td><?= htmlspecialchars($outcome['description']) ?></td>
-                                        <td>
-                                            <span class="badge bg-info"><?= htmlspecialchars($outcome['institution_code']) ?></span>
-                                            <?= htmlspecialchars($outcome['institution_name']) ?>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-secondary"><?= $outcome['program_outcome_count'] ?> mapped</span>
-                                        </td>
-                                        <td>
-                                            <?php if ($outcome['is_active']): ?>
-                                                <span class="badge bg-success">Active</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-secondary">Inactive</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-info" title="View" onclick="viewOutcome(<?= htmlspecialchars(json_encode($outcome)) ?>)">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-primary" title="Edit" onclick="editOutcome(<?= htmlspecialchars(json_encode($outcome)) ?>)">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-<?= $outcome['is_active'] ? 'warning' : 'success' ?>" title="Toggle Status" onclick="toggleStatus(<?= $outcome['institutional_outcomes_pk'] ?>, '<?= htmlspecialchars($outcome['code']) ?>')">
-                                                <i class="fas fa-<?= $outcome['is_active'] ? 'ban' : 'check' ?>"></i>
-                                            </button>
-                                    </tr>
-                                <?php endforeach; ?>
+                                <!-- Data loaded via AJAX -->
                             </tbody>
                         </table>
                 </div>
@@ -462,6 +468,18 @@ $theme->showHeader($context);
 </div>
 
 <?php $theme->showFooter($context); ?>
+
+<!-- DataTables JS (must load after jQuery in footer) -->
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
 
 <!-- Add Outcome Modal -->
 <div class="modal fade" id="addOutcomeModal" tabindex="-1">
@@ -666,62 +684,59 @@ $theme->showHeader($context);
     <input type="hidden" name="outcome_id" id="toggleOutcomeId">
 </form>
 
-<!-- DataTables CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
-
-<style>
-/* DataTables Export Buttons Styling */
-.dt-buttons {
-    float: right;
-    margin-bottom: 0.5rem;
-}
-.dt-button {
-    margin-left: 0.25rem !important;
-}
-.dt-button-collection .dt-button {
-    display: block;
-    width: 100%;
-    margin: 0 !important;
-    border-radius: 0;
-}
-.dt-button-collection .dt-button:first-child {
-    border-top-left-radius: 0.25rem;
-    border-top-right-radius: 0.25rem;
-}
-.dt-button-collection .dt-button:last-child {
-    border-bottom-left-radius: 0.25rem;
-    border-bottom-right-radius: 0.25rem;
-}
-/* Column filters in footer */
-tfoot input {
-    width: 100%;
-}
-tfoot th {
-    padding: 5px;
-}
-</style>
-
-<!-- DataTables JS -->
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
-
 <script>
 $(document).ready(function() {
     var table = $('#outcomesTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: '<?= BASE_URL ?>administration/institutional_outcomes_data.php',
         responsive: true,
         lengthChange: true,
         autoWidth: false,
         pageLength: 25,
         order: [[0, "asc"]],
+        columns: [
+            { data: 'sequence_num' },
+            { 
+                data: 'code',
+                render: function(data) {
+                    return '<span class="badge bg-primary">' + data + '</span>';
+                }
+            },
+            { data: 'description' },
+            { 
+                data: null,
+                render: function(data, type, row) {
+                    return '<span class="badge bg-info">' + row.institution_code + '</span> ' + row.institution_name;
+                }
+            },
+            { 
+                data: 'program_outcome_count',
+                render: function(data) {
+                    return '<span class="badge bg-secondary">' + data + ' mapped</span>';
+                }
+            },
+            { 
+                data: 'is_active',
+                render: function(data) {
+                    return data ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>';
+                }
+            },
+            {
+                data: null,
+                orderable: false,
+                searchable: false,
+                render: function(data, type, row) {
+                    var json = JSON.stringify(row).replace(/"/g, '&quot;');
+                    return '<button class="btn btn-sm btn-info" title="View" onclick=\'viewOutcome(' + json + ')\'>' +
+                           '<i class="fas fa-eye"></i></button> ' +
+                           '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editOutcome(' + json + ')\'>' +
+                           '<i class="fas fa-edit"></i></button> ' +
+                           '<button class="btn btn-sm btn-' + (row.is_active ? 'warning' : 'success') + '" title="Toggle Status" onclick="toggleStatus(' + row.institutional_outcomes_pk + ', \'' + row.code.replace(/'/g, "\\'") + '\')">' +
+                           '<i class="fas fa-' + (row.is_active ? 'ban' : 'check') + '"></i></button>';
+                }
+            }
+        ],
         dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'B>>" +
              "<'row'<'col-sm-12'tr>>" +
              "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",

@@ -127,7 +127,7 @@ $theme->showHeader($context);
             <div class="icon">
                 <i class="fas fa-bullseye"></i>
             </div>
-            <a href="<?= BASE_URL ?>administration/outcomes.php" class="small-box-footer">
+            <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="small-box-footer">
                 Manage <i class="fas fa-arrow-circle-right"></i>
             </a>
         </div>
@@ -135,15 +135,15 @@ $theme->showHeader($context);
     
     <!-- Assessments -->
     <div class="col-lg-3 col-6">
-        <div class="small-box bg-danger">
+        <div class="small-box bg-warning">
             <div class="inner">
                 <h3><?= $metrics['assessments'] ?></h3>
                 <p>Assessments</p>
             </div>
             <div class="icon">
-                <i class="fas fa-chart-line"></i>
+                <i class="fas fa-clipboard-check"></i>
             </div>
-            <a href="#" class="small-box-footer">
+            <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="small-box-footer">
                 View Reports <i class="fas fa-arrow-circle-right"></i>
             </a>
         </div>
@@ -167,7 +167,7 @@ $theme->showHeader($context);
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="<?= BASE_URL ?>administration/outcomes.php" class="btn btn-app">
+                        <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="btn btn-app">
                             <i class="fas fa-bullseye"></i> Manage Outcomes
                         </a>
                     </div>
@@ -232,7 +232,7 @@ $theme->showHeader($context);
             <div class="card-body">
                 <ol>
                     <li><a href="<?= BASE_URL ?>administration/institution.php">Configure institution details</a></li>
-                    <li><a href="<?= BASE_URL ?>administration/outcomes.php">Set up institutional outcomes</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/institutional_outcomes.php">Set up institutional outcomes</a></li>
                     <li>Create programs and program outcomes</li>
                     <li>Define course SLOs</li>
                     <li>Configure LTI integration with your LMS</li>
