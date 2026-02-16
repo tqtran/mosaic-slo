@@ -328,38 +328,41 @@ $theme->showHeader($context);
         <!-- Statistics Row -->
         <div class="row">
             <div class="col-lg-4 col-6">
-                <div class="small-box bg-info">
+                <div class="small-box text-bg-info">
                     <div class="inner">
                         <h3><?= $totalPrograms ?></h3>
                         <p>Total Programs</p>
                     </div>
-                    <div class="icon">
-                        <i class="fas fa-graduation-cap"></i>
-                    </div>
+                    <i class="small-box-icon fa-solid fa-graduation-cap"></i>
+                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
+                        More info <i class="bi bi-link-45deg"></i>
+                    </a>
                 </div>
             </div>
             
             <div class="col-lg-4 col-6">
-                <div class="small-box bg-success">
+                <div class="small-box text-bg-success">
                     <div class="inner">
                         <h3><?= $activePrograms ?></h3>
                         <p>Active Programs</p>
                     </div>
-                    <div class="icon">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
+                    <i class="small-box-icon fa-solid fa-circle-check"></i>
+                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
+                        More info <i class="bi bi-link-45deg"></i>
+                    </a>
                 </div>
             </div>
             
             <div class="col-lg-4 col-6">
-                <div class="small-box bg-warning">
+                <div class="small-box text-bg-warning">
                     <div class="inner">
                         <h3><?= $inactivePrograms ?></h3>
                         <p>Inactive Programs</p>
                     </div>
-                    <div class="icon">
-                        <i class="fas fa-ban"></i>
-                    </div>
+                    <i class="small-box-icon fa-solid fa-ban"></i>
+                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
+                        More info <i class="bi bi-link-45deg"></i>
+                    </a>
                 </div>
             </div>
         </div>
@@ -391,6 +394,18 @@ $theme->showHeader($context);
                             <th>Actions</th>
                         </tr>
                     </thead>
+                    <tfoot>
+                        <tr>
+                            <th>ID</th>
+                            <th>Program Code</th>
+                            <th>Program Name</th>
+                            <th>Department</th>
+                            <th>Degree Type</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </tfoot>
                     <tbody>
                         <?php foreach ($programs as $row):
                             $status = $row['is_active'] ? 'Active' : 'Inactive';
@@ -642,11 +657,32 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-    $('#programsTable').DataTable({
+    // Setup - add a text input to each footer cell
+    $('#programsTable tfoot th').each(function() {
+        var title = $(this).text();
+        if (title !== 'Actions') {
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+        } else {
+            $(this).html(''); // No filter for Actions column
+        }
+    });
+    
+    var table = $('#programsTable').DataTable({
         dom: 'Bfrtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
-        ]
+        ],
+        initComplete: function() {
+            // Apply the search
+            this.api().columns().every(function() {
+                var column = this;
+                $('input', this.footer()).on('keyup change clear', function() {
+                    if (column.search() !== this.value) {
+                        column.search(this.value).draw();
+                    }
+                });
+            });
+        }
     });
 });
 
