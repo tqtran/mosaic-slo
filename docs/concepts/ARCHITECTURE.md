@@ -8,24 +8,53 @@ MOSAIC (Modular Outcomes System for Achievement and Institutional Compliance) is
 
 ```
 mosaic-slo/
-├── design_concepts/       # Architecture & design documentation
-│   ├── ARCHITECTURE.md    # This file - system overview
-│   ├── MVC.md            # MVC pattern documentation
-│   ├── PLUGIN.md         # Plugin architecture
-│   └── SCHEMA.md         # Database schema documentation
-├── src/                   # Source code (to be created)
+├── docs/                  # Architecture & implementation documentation
+│   ├── concepts/         # High-level architecture decisions
+│   └── implementation/   # Step-by-step implementation guides
+├── src/                   # Web root - drop-in install directory
+│   ├── index.php         # Application entry point (front controller)
 │   ├── controllers/      # Application controllers
 │   ├── models/           # Data models
 │   ├── views/            # View templates
-│   └── config/           # Configuration files
-├── public/                # Public web files (to be created)
-│   ├── css/              # Stylesheets
-│   ├── js/               # JavaScript files
-│   └── index.php         # Application entry point
-├── database/              # Database files (to be created)
-│   ├── migrations/       # Database migration scripts
-│   └── seeds/            # Sample data
-└── README.md             # Project overview (to be created)
+│   ├── config/           # Configuration files
+│   ├── Core/             # Core framework classes
+│   ├── database/         # Database schema files
+│   ├── scripts/          # CLI maintenance scripts
+│   ├── setup/            # Installation scripts
+│   ├── assets/           # Static assets
+│   │   ├── css/          # Stylesheets
+│   │   └── js/           # JavaScript files
+│   └── plugins/          # Plugin directory
+│       └── local/        # Local plugins
+├── database/              # Database files
+├── database/              # Database files
+│   └── schema.sql        # Master schema file
+├── logs/                  # Application logs
+└── README.md             # Project overview
+```
+
+## Drop-in Installation
+
+MOSAIC is designed as a drop-in install where the `src/` directory is the web root. Point your web server document root at `src/` and you're ready to go.
+
+**Security Requirements:**
+
+Since `src/` is web-accessible, protect sensitive directories:
+
+1. **config/** - Database credentials, API keys
+   - Add `.htaccess` with `Deny from all` (Apache)
+   - Add `index.php` that exits immediately (fallback)
+   - Never commit `config.yaml` to version control
+
+2. **logs/** - Stored at project root, outside web root
+
+3. **uploads/** (if implemented) - User-uploaded files
+   - Add `.htaccess` with appropriate restrictions
+   - Serve files through PHP script with authentication checks
+
+**Example .htaccess for src/config/:**
+```apache
+Deny from all
 ```
 
 ## Architecture Layers
@@ -135,7 +164,12 @@ users
   - No database abstraction layer - direct MySQL implementation
   - For alternative storage needs, use data connector plugins
 - **Web Server**: Apache, Nginx, or any PHP 8.1+ compatible server
-- **Frontend**: HTML5, CSS3, JavaScript (Bootstrap 5)
+- **Frontend**: 
+  - AdminLTE 4.0 (admin dashboard framework)
+  - Bootstrap 5.3.2 (CSS framework, included with AdminLTE)
+  - jQuery 3.7.0 (optional, for custom scripting)
+  - Font Awesome 6.4.0 (icons)
+  - All frameworks loaded via CDN from `src/includes/header.php`
 
 ## Security Features
 

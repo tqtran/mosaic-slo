@@ -1,0 +1,35 @@
+<?php
+/**
+ * Simple Error/Success Page Helper
+ * 
+ * Usage:
+ *   render_message_page('error', 'Title', 'Message', 'icon-class');
+ */
+function render_message_page(string $type, string $title, string $message, string $icon = ''): void {
+    $siteName = defined('SITE_NAME') ? SITE_NAME : 'MOSAIC';
+    $pageTitle = $title . ' - ' . $siteName;
+    $bodyClass = 'bg-light';
+    require __DIR__ . '/header.php';
+    
+    $iconClass = $icon ?: ($type === 'error' ? 'fa-times-circle text-danger' : 'fa-check-circle text-success');
+    ?>
+    
+    <div class="container">
+        <div class="row justify-content-center align-items-center min-vh-100">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <i class="fas <?= $iconClass ?> fa-4x"></i>
+                        </div>
+                        <h1 class="h4 text-center mb-3"><?= htmlspecialchars($title) ?></h1>
+                        <p class="text-muted text-center mb-0"><?= $message ?></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <?php
+    require __DIR__ . '/footer.php';
+}

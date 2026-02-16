@@ -1,6 +1,6 @@
 # MOSAIC Demo
 
-This directory contains demonstration pages for the MOSAIC platform using AdminLTE 3 framework.
+This directory contains demonstration pages for the MOSAIC platform using AdminLTE 4 framework.
 
 **Access via:** Navigate to `/mosaic-slo/demo/` in your browser
 
@@ -58,7 +58,7 @@ Instructor-facing assessment interface (no sidebar menu, clean interface).
 
 ## Framework
 
-**AdminLTE 3** - Modern admin dashboard template built on Bootstrap 4
+**AdminLTE 4** - Modern admin dashboard template built on Bootstrap 5
 - Responsive design
 - Professional UI components
 - Sidebar navigation with menu items
@@ -96,7 +96,7 @@ http://localhost:8000/mosaic-slo/demo/lti_endpoint.php
 
 ## Framework Features
 
-- **AdminLTE 3:** Professional admin dashboard framework
+- **AdminLTE 4:** Professional admin dashboard framework
 - **Navigation:** Consistent sidebar menu across admin pages
 - **Layout:** Responsive admin dashboard layout
 - **Components:** AdminLTE widgets, cards, and UI elements

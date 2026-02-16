@@ -67,7 +67,7 @@ Constructor receives:
 **activate()**
 - Called when plugin is enabled
 - Create plugin-specific tables
-- Copy assets to public directory
+- Copy assets to src/assets/ directory
 - Initialize configuration
 - Return true on success, false on failure
 
@@ -131,7 +131,7 @@ Provides alternative visual styling.
 
 **Implementation steps:**
 1. Create CSS file with style overrides
-2. On activation, copy theme CSS to public directory
+2. On activation, copy theme CSS to src/assets/css/ directory
 3. Hook into `themes.available`
 4. Add theme option to list
 5. System loads chosen theme CSS for user

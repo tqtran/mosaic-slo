@@ -4,7 +4,7 @@
 
 **MOSAIC** (Modular Outcomes System for Achievement and Institutional Compliance) is an open-source Student Learning Outcomes (SLO) assessment platform for higher education with LTI 1.1/1.3 integration. Built in PHP 8.1+ with MySQL, following MVC architecture. FERPA-compliant student data handling is critical.
 
-**Current Status:** Early development phase with comprehensive design docs in `design_concepts/` and working demo implementations in `mosaic-slo/demo/` using AdminLTE 3 framework.
+**Current Status:** Early development phase with comprehensive design docs in `design_concepts/` and working demo implementations in `mosaic-slo/demo/` using AdminLTE 4 framework.
 
 AVOID UNICODE characters in code and documentation to ensure compatibility across all environments. Use ASCII characters only.
 
@@ -31,6 +31,7 @@ AVOID UNICODE characters in code and documentation to ensure compatibility acros
 
 ### Before You Code
 
+- **Configuration**: Read [CONFIGURATION.md](../docs/concepts/CONFIGURATION.md) for config structure and available constants
 - **Models**: Read [SCHEMA.md](../docs/concepts/SCHEMA.md) for tables, then [MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md) for patterns
 - **Controllers**: Read [MVC.md](../docs/concepts/MVC.md) for responsibilities, then [MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md) for implementation
 - **Auth**: Read [AUTH.md](../docs/concepts/AUTH.md) and [SECURITY.md](../docs/concepts/SECURITY.md)
@@ -42,6 +43,10 @@ AVOID UNICODE characters in code and documentation to ensure compatibility acros
 
 ## Architecture Overview
 
+**Drop-in Install:** The `src/` directory is designed as the web root for drop-in installation. Point your web server document root at `src/` and the application is ready to run after database setup. See [ARCHITECTURE.md](../docs/concepts/ARCHITECTURE.md) for security requirements.
+
+**Base URL Handling:** The application automatically detects its installation path during setup and stores it in `config.yaml` for optimal performance. The `BASE_URL` constant is available throughout the application for building URLs. This supports installations at domain root (`/`) or subdirectories (`/beta/`, `/mosaic/`). Use `BASE_URL` for all internal links and redirects.
+
 ### Hierarchical Assessment Model
 
 ```text
@@ -52,6 +57,7 @@ Department → Program → Course → Course Section → Student Enrollment
 **Critical Files:**
 
 - [docs/concepts/ARCHITECTURE.md](../docs/concepts/ARCHITECTURE.md) - System architecture and entity relationships
+- [docs/concepts/CONFIGURATION.md](../docs/concepts/CONFIGURATION.md) - Configuration structure, constants, and settings
 - [docs/concepts/SCHEMA.md](../docs/concepts/SCHEMA.md) - Complete database schema with naming conventions
 - [docs/concepts/MVC.md](../docs/concepts/MVC.md) - MVC architecture overview
 - [docs/implementation/MVC_GUIDE.md](../docs/implementation/MVC_GUIDE.md) - MVC implementation patterns
@@ -60,7 +66,25 @@ Department → Program → Course → Course Section → Student Enrollment
 
 - **Models** (`src/Models/`): Base class in `src/Core/Model.php` with CRUD operations. All models extend this base.
 - **Controllers** (`src/controllers/`): Handle routing, validation, and business logic
-- **Views** (`src/views/`): PHP templates with Bootstrap 5, no template engine
+- **Views** (`src/views/`): PHP templates with AdminLTE 4 framework (Bootstrap 5), no template engine
+- **Common Includes** (`src/includes/`):
+  - `header.php` - Loads all framework assets (Bootstrap 5, jQuery, AdminLTE 4, Font Awesome)
+  - `footer.php` - Loads JavaScript libraries
+  - `message_page.php` - Helper function for error/success pages
+
+**Using Common Includes:**
+
+```php
+<?php
+$pageTitle = 'My Page Title';
+$bodyClass = 'custom-class'; // optional
+require_once __DIR__ . '/includes/header.php';
+?>
+
+<!-- Your page content here -->
+
+<?php require_once __DIR__ . '/includes/footer.php'; ?>
+```
 
 **Naming Conventions:**
 
@@ -93,6 +117,9 @@ Department → Program → Course → Course Section → Student Enrollment
 # Start from project root
 php -S localhost:8000
 
+# Access main application (once index.php exists)
+http://localhost:8000/src/
+
 # Access demo portal
 http://localhost:8000/mosaic-slo/demo/
 ```
@@ -109,10 +136,16 @@ http://localhost:8000/mosaic-slo/demo/
 **Demo Pattern:**
 
 - No authentication required (bypassed for demos)
+- Uses `mosaic-slo/demo/includes/header.php` and `footer.php` (includes AdminLTE sidebar for admin pages)
 - CSV parsing with file operations (`fopen`, `fgetcsv`)
 - Session storage for selected course (`$_SESSION['selected_crn']`)
 - GET parameter filtering with validation
-- AdminLTE 3 framework with responsive sidebar navigation
+- AdminLTE 4 framework with responsive sidebar navigation
+
+**Application Pattern:**
+
+- Uses `src/includes/header.php` and `footer.php` (no sidebar, just framework assets)
+- For pages with AdminLTE sidebar, copy pattern from demo includes
 
 ### Session Handling Pattern
 
@@ -169,8 +202,9 @@ See [docs/concepts/TESTING.md](../docs/concepts/TESTING.md) for comprehensive te
 
 **HTML/CSS:**
 
-- AdminLTE 3 framework (CDN: `https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css`)
-- Bootstrap 4 (AdminLTE dependency)
+- AdminLTE 4 framework (CDN: `https://cdn.jsdelivr.net/npm/admin-lte@4.0/dist/css/adminlte.min.css`)
+- Bootstrap 5 (AdminLTE dependency)
+- jQuery 3.7 (optional, for custom scripting)
 - Font Awesome icons (`https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css`)
 - Semantic HTML5 elements
 - Color scheme: `--primary-dark: #0D47A1`, `--accent-blue: #1976D2`, `--brand-teal: #1565C0`
@@ -232,8 +266,9 @@ See [docs/concepts/TESTING.md](../docs/concepts/TESTING.md) for comprehensive te
 
 **Frontend (CDN):**
 
-- Bootstrap 5.3.2
-- Bootstrap Icons 1.11.3
+- AdminLTE 4.0 (includes Bootstrap 5.3.2)
+- jQuery 3.7.0 (optional, for custom scripting)
+- Font Awesome 6.4.0
 
 **Note:** For external system integration (SIS, LMS), use data connector plugins rather than attempting database substitution. See [docs/concepts/PLUGIN.md](../docs/concepts/PLUGIN.md).
 

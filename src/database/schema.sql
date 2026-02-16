@@ -26,8 +26,6 @@ DROP TABLE IF EXISTS institutional_outcomes;
 DROP TABLE IF EXISTS institution;
 DROP TABLE IF EXISTS users;
 
-SET FOREIGN_KEY_CHECKS = 1;
-
 -- ============================================================================
 -- 1. USER MANAGEMENT (Created First - Referenced by Audit Fields)
 -- ============================================================================

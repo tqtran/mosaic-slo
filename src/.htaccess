@@ -1,0 +1,61 @@
+# MOSAIC Apache Configuration
+# Requires mod_rewrite, mod_headers
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # RewriteBase is intentionally omitted to auto-detect subdirectory installations
+    # Apache will use the directory containing this .htaccess as the base
+    
+    # If the file or directory exists, serve it directly
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # Route all other requests through index.php
+    RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
+</IfModule>
+
+# Security Headers
+<IfModule mod_headers.c>
+    # Prevent clickjacking
+    Header always set X-Frame-Options "SAMEORIGIN"
+    
+    # Prevent MIME type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+    
+    # Enable XSS protection
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Referrer policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # Remove server signature
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
+</IfModule>
+
+# Disable directory browsing
+Options -Indexes
+
+# Protect sensitive files
+<FilesMatch "^(config\.yaml|\.env|\.git.*|composer\.(json|lock))$">
+    Require all denied
+</FilesMatch>
+
+# PHP Security Settings
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_flag log_errors On
+    php_value error_log ../logs/php_errors.log
+</IfModule>
+
+# Character encoding
+AddDefaultCharset UTF-8
+
+# File upload limits (adjust as needed)
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>

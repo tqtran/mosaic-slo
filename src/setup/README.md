@@ -1,8 +1,6 @@
-# MOSAIC Database Setup
+# MOSAIC Setup
 
-This directory contains documentation for setting up the MOSAIC database and initial configuration.
-
-**Note:** The actual setup script (`setup.php`) is located in the `src/` directory so it can be deployed with the application to a web server.
+This directory contains the web-based setup interface for MOSAIC.
 
 ## Prerequisites
 
@@ -12,30 +10,33 @@ This directory contains documentation for setting up the MOSAIC database and ini
 
 ## Quick Start
 
-### 1. Run Database Setup
+### 1. Initial Installation
 
-```powershell
-# From project root
-php src/setup.php
-```
+When you first access MOSAIC in your browser:
 
-This script will:
-- Prompt for database credentials (host, username, password, database name)
+1. Browse to your MOSAIC installation (e.g., `http://localhost/` or `http://yourserver/beta/`)
+2. You'll be automatically redirected to `/setup/` (or `/beta/setup/` if in subdirectory)
+3. Fill in the database connection form:
+   - **Database Host**: Usually `localhost` or `127.0.0.1`
+   - **Port**: Default MySQL port is `3306`
+   - **Database Name**: Will be created if it doesn't exist (e.g., `mosaic`)
+   - **Username**: MySQL username with CREATE DATABASE privileges
+   - **Password**: MySQL user password
+   - **Base URL Path**: Auto-detected (e.g., `/` or `/beta/`). Confirm or adjust if needed.
+
+4. Click "Install MOSAIC"
+
+The setup wizard will:
+- Auto-detect the base URL path (supports subdirectory installations)
 - Test the database connection
 - Create the database if it doesn't exist
 - Execute the complete schema (all tables, indexes, foreign keys)
-- Save credentials to `src/config/config.yaml`
-
-**Example interaction:**
-```
-Database host [localhost]: localhost
-Database port [3306]: 3306
-Database username [root]: mosaic_user
-Database password: ********
-Database name [mosaic_slo]: mosaic_slo
-```
+- Save credentials and base URL to `src/config/config.yaml`
+- Protect the config directory with `.htaccess`
 
 ### 2. Create Admin User
+
+After setup completes, create an admin user from the command line:
 
 ```powershell
 # From project root
@@ -73,15 +74,25 @@ http://localhost:8000/mosaic-slo/demo/
 
 ## Files
 
-### `../src/setup.php`
-Main database setup script. Creates database, executes schema, and saves configuration.
+### `index.php`
+Web-based database setup wizard. Creates database, executes schema, and saves configuration.
 
 **Features:**
-- Interactive CLI prompts
+- Browser-based form interface (no CLI required)
+- Auto-detects base URL path for subdirectory installations
 - Connection testing before schema execution
 - UTF8MB4 charset enforcement
-- Colored output for readability
-- Error handling with rollback
+- User-friendly success/error messages
+- Security: Protects config directory with .htaccess after installation
+
+**Process:**
+1. Displays form for database credentials
+2. Tests connection on form submission
+3. Creates database if it doesn't exist
+4. Executes schema.sql (all tables, indexes, constraints)
+5. Saves config.yaml with credentials
+6. Creates .htaccess to protect config directory
+7. Shows success message with next steps
 
 ### `../src/database/schema.sql`
 Complete MySQL schema for MOSAIC platform.
@@ -118,7 +129,7 @@ Creates an admin user with global privileges.
 
 ## Configuration File
 
-After running `setup.php`, credentials are saved to:
+After running the setup wizard, credentials are saved to:
 
 ```
 src/config/config.yaml
@@ -126,40 +137,26 @@ src/config/config.yaml
 
 **Structure:**
 ```yaml
-secrets:
-  database:
-    host: localhost
-    port: 3306
-    database: mosaic_slo
-    username: mosaic_user
-    password: ********
-    charset: utf8mb4
-
-session:
-  cookie_httponly: true
-  cookie_secure: true
-  cookie_samesite: 'Strict'
-  timeout: 7200
-
-security:
-  bcrypt_cost: 12
-  csrf_token_length: 32
-  password_min_length: 12
-
-logging:
-  enabled: true
-  log_to_database: true
-  log_to_file: true
-  log_directory: 'logs'
-  max_log_age_days: 90
-  audit_enabled: true
-  security_log_enabled: true
+database:
+  host: localhost
+  port: 3306
+  name: mosaic_slo
+  username: mosaic_user
+  password: ********
+  charset: utf8mb4
 
 app:
-  name: 'MOSAIC'
-  timezone: 'America/Los_Angeles'
-  debug: false
+  name: MOSAIC
+  timezone: America/Los_Angeles
+  base_url: /
 ```
+
+**base_url Examples:**
+- Root installation: `base_url: /`
+- Subdirectory installation: `base_url: /beta/`
+- Multiple levels: `base_url: /apps/mosaic/`
+
+The `base_url` is used throughout the application for generating correct URLs and redirects. It's auto-detected during setup but can be manually adjusted in the config file if you move the installation.
 
 **Security Note:** The config file contains sensitive credentials. On Unix-like systems, permissions are automatically set to `0600` (owner read/write only). Do not commit this file to version control.
 
@@ -190,8 +187,7 @@ MOSAIC includes comprehensive logging for audit trails, errors, and security eve
 
 ### Log Files
 
-Located in `logs/` directory:
-- `setup_YYYY-MM-DD_HHMMSS.log` - Database setup logs
+Located in `logs/` directory (outside web root):
 - `admin_user_YYYY-MM-DD_HHMMSS.log` - User creation logs
 - `error_YYYY-MM-DD.log` - Daily error logs
 - `security_YYYY-MM-DD.log` - Daily security logs
@@ -251,20 +247,31 @@ Register-ScheduledTask -TaskName "MOSAIC Log Cleanup" -Action $action -Trigger $
 
 ## Troubleshooting
 
-### Connection Failed
+### Setup Failed
 
-**Error:** "Connection failed: Access denied for user"
+**Error:** Setup wizard shows error message
 
 **Solution:**
-- Verify MySQL is running
-- Check username and password
+- Check MySQL is running and accessible
+- Verify username and password are correct
 - Ensure user has CREATE DATABASE privilege
+- Check browser console for JavaScript errors
 
 ```sql
 -- Grant privileges to user
 GRANT ALL PRIVILEGES ON mosaic_slo.* TO 'mosaic_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
+
+### Cannot Access Setup
+
+**Error:** Browser shows 404 when accessing /setup/
+
+**Solution:**
+- Verify web server is running and document root points to src/
+- Check that setup/index.php exists in src/setup/ directory
+- Verify .htaccess mod_rewrite is enabled (Apache)
+- For Nginx, configure proper location blocks
 
 ### Schema Execution Error
 
@@ -293,10 +300,10 @@ Use a strong password with at least 12 characters. Recommended:
 
 ### Config File Not Found
 
-**Error:** "Configuration file not found. Please run setup.php first."
+**Error:** "Configuration file not found. Please run setup first."
 
 **Solution:**
-Run `src/setup.php` before `src/scripts/create_admin_user.php`. The config file is created by the setup script.
+Browse to your MOSAIC installation and complete the setup wizard at /setup/. The config file is created by the setup wizard.
 
 ## Manual Schema Execution
 

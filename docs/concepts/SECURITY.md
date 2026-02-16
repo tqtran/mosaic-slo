@@ -134,7 +134,7 @@ Data (Prepared Statements, Encryption, Audit)
 - Whitelist file types
 - Size limits
 - Virus scanning (if available)
-- Store outside web root
+- Store in protected directory (src/uploads/ with .htaccess deny)
 - Serve with Content-Disposition: attachment
 
 ## FERPA Compliance

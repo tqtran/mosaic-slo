@@ -12,7 +12,7 @@
     <title>MOSAIC Demo Portal</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0/dist/css/adminlte.min.css">
     <style>
         :root {
             --primary-dark: #0D47A1;
@@ -256,7 +256,7 @@
                 <div>
                     <span class="tech-badge"><i class="fab fa-php"></i> PHP 8.1+</span>
                     <span class="tech-badge"><i class="fas fa-database"></i> MySQL 8.0+</span>
-                    <span class="tech-badge"><i class="fab fa-bootstrap"></i> AdminLTE 3</span>
+                    <span class="tech-badge"><i class="fab fa-bootstrap"></i> AdminLTE 4</span>
                     <span class="tech-badge"><i class="fas fa-chart-bar"></i> Chart.js</span>
                     <span class="tech-badge"><i class="fas fa-table"></i> DataTables</span>
                     <span class="tech-badge"><i class="fas fa-plug"></i> LTI 1.1/1.3</span>
@@ -285,6 +285,6 @@
     </div>
     
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

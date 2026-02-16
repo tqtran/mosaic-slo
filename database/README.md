@@ -7,13 +7,10 @@ All operational files now reside in the `src/` directory, which is the only dire
 ## New Location
 
 - Schema: `src/database/schema.sql`
-- Setup script: `src/setup.php`
+- Web setup interface: `src/setup/index.php`
 
 ## Usage
 
-```powershell
-# From project root
-php src/setup.php
-```
+Browse to your MOSAIC installation and you'll be automatically redirected to the web-based setup interface.
 
-See `setup/README.md` for complete setup documentation.
+See `src/setup/README.md` for complete setup documentation.

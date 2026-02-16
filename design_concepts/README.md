@@ -88,7 +88,7 @@ Replace fragmented, manual assessment processes with an integrated, automated sy
 - **Modern PHP Stack:** PHP 8.1+ with MySQL 8.0+
 - **Standards-Based:** LTI 1.1/1.3, OAuth, SAML 2.0
 - **Plugin Architecture:** Extensible for institution-specific needs
-- **AdminLTE 3 UI:** Responsive, accessible admin dashboard framework
+- **AdminLTE 4 UI:** Responsive, accessible admin dashboard framework
 - **Security-First:** FERPA-compliant data handling, prepared statements, CSRF protection
 
 ---
@@ -98,7 +98,7 @@ Replace fragmented, manual assessment processes with an integrated, automated sy
 **Current Phase:** Early development with comprehensive design documentation and working prototypes.
 
 - ✅ Complete design specifications in `design_concepts/`
-- ✅ Working demo implementations in `mosaic-slo/demo/` using AdminLTE 3
+- [OK] Working demo implementations in `mosaic-slo/demo/` using AdminLTE 4
 - 🚧 Core MVC architecture implementation in progress
 - 📋 Authentication systems (local, LTI, SAML) planned
 - 📋 Plugin system specification complete
@@ -111,7 +111,7 @@ Replace fragmented, manual assessment processes with an integrated, automated sy
 
 We prioritize usability and pragmatic solutions over theoretical flexibility:
 
-- ✅ **Opinionated Choices:** MySQL-only, PHP 8.1+, AdminLTE 3 (no alternatives)
+- [OK] **Opinionated Choices:** MySQL-only, PHP 8.1+, AdminLTE 4 (no alternatives)
 - ✅ **Clear Requirements:** Hard technical requirements prevent compatibility chaos
 - ✅ **Concrete Implementation:** Ship working features, not abstract frameworks
 - ✅ **Strategic Flexibility:** Plugin system for real institutional differences
@@ -139,7 +139,7 @@ We prioritize usability and pragmatic solutions over theoretical flexibility:
 - **[ACCESSIBILITY.md](design_concepts/ACCESSIBILITY.md)** - WCAG compliance guidelines
 
 ### Implementation (`mosaic-slo/`)
-- **Demo Applications:** Working prototypes in `mosaic-slo/demo/` using AdminLTE 3 framework
+- **Demo Applications:** Working prototypes in `mosaic-slo/demo/` using AdminLTE 4 framework
 - **MVC Structure:** Models, Controllers, Views (planned)
 - **Core Components:** Authentication, routing, database abstraction (planned)
 

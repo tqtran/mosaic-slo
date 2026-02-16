@@ -2,6 +2,67 @@
 
 This guide provides practical implementation patterns for the MVC architecture described in [../concepts/MVC.md](../concepts/MVC.md).
 
+## Application Constants
+
+The application defines several constants for use throughout the codebase:
+
+### Core Constants
+- **`APP_ROOT`** - Absolute filesystem path to the `src/` directory
+- **`BASE_URL`** - URL path from web root to the application (e.g., `/`, `/beta/`, `/mosaic/`)
+- **`BASE_PATH`** - Same as `APP_ROOT`, for filesystem operations
+- **`CONFIG_PATH`** - Path to `config.yaml` file
+- **`SITE_NAME`** - Display name for the installation from config
+
+### Email Constants
+- **`EMAIL_METHOD`** - Email delivery method (`disabled`, `server`, or `smtp`)
+- **`EMAIL_FROM_EMAIL`** - Sender email address
+- **`EMAIL_FROM_NAME`** - Sender display name
+
+**Configuration Details:** See [../concepts/CONFIGURATION.md](../concepts/CONFIGURATION.md) for complete configuration documentation.
+
+**BASE_URL Performance Note:**
+
+The `BASE_URL` is detected once during setup and stored in `config.yaml` for optimal performance. On each request, it's read from the config file rather than being recalculated. This avoids filesystem operations on every page load.
+
+During initial setup (when config doesn't exist yet), the `BASE_URL` is auto-detected from the request path. The setup wizard displays the detected value in an editable form field, allowing administrators to confirm or adjust it before installation.
+
+**Using Constants in Code:**
+
+```php
+// Display site name
+echo htmlspecialchars(SITE_NAME);
+
+// Check if email is enabled
+if (EMAIL_METHOD !== 'disabled') {
+    // Send notification email
+    sendEmail(EMAIL_FROM_EMAIL, EMAIL_FROM_NAME, $recipient, $subject, $body);
+}
+```
+
+**Using BASE_URL for Links and Redirects:**
+
+```php
+// Building URLs
+<a href="<?php echo BASE_URL; ?>admin/users">User Management</a>
+<a href="<?php echo BASE_URL; ?>reports/slo">SLO Reports</a>
+
+// Form actions
+<form method="POST" action="<?php echo BASE_URL; ?>admin/users/create">
+
+// Redirects using Path helper
+\Mosaic\Core\Path::redirect('admin/users'); // Prepends BASE_URL automatically
+
+// Manual redirects
+header('Location: ' . BASE_URL . 'admin/dashboard');
+```
+
+**Why BASE_URL is Important:**
+
+- Supports installation in subdirectories (e.g., `mosaic-slo.org/beta/`)
+- Prevents broken links when moving between environments
+- Automatically detected by the `Path` helper class
+- Hardcoding `/` breaks subdirectory installations
+
 ## Model Implementation Pattern
 
 ### Base Model Setup
@@ -154,6 +215,78 @@ Include partials in main template:
 - Load partial file
 - Pass data to partial scope
 - Render in place
+
+### Common Includes Pattern
+
+MOSAIC uses common includes to centralize framework asset loading and ensure consistency across all pages.
+
+**Available Common Includes** (located in `src/includes/`):
+
+1. **header.php** - Loads all frontend framework assets:
+   - AdminLTE 4.0 CSS
+   - Bootstrap 5.3.2 CSS (AdminLTE dependency)
+   - Font Awesome 6.4.0 icons
+   - Custom CSS (if defined)
+   - Accepts `$pageTitle` and optional `$bodyClass` variables
+
+2. **footer.php** - Loads JavaScript libraries:
+   - jQuery 3.7.0
+   - Bootstrap 5.3.2 JS
+   - AdminLTE 4.0 JS
+
+3. **message_page.php** - Provides `render_message_page()` function:
+   - Displays consistent error/success/info pages
+   - Parameters: type, title, message, icon (optional)
+   - Types: 'error', 'success', 'info', 'warning'
+
+**Usage Pattern:**
+
+```php
+<?php
+// Set page-specific variables before including header
+$pageTitle = 'Student Management';
+$bodyClass = 'sidebar-mini';  // optional
+
+// Include common header (loads all framework assets)
+require_once __DIR__ . '/includes/header.php';
+?>
+
+<!-- Your page content here -->
+<div class="content-wrapper">
+    <h1>Student Management</h1>
+    <!-- page content -->
+</div>
+
+<?php 
+// Include common footer (loads JavaScript libraries)
+require_once __DIR__ . '/includes/footer.php'; 
+?>
+```
+
+**Error Page Example:**
+
+```php
+<?php
+require_once __DIR__ . '/includes/message_page.php';
+require_once __DIR__ . '/includes/header.php';
+
+render_message_page(
+    'error',
+    'Database Connection Failed',
+    'Could not connect to the database. Please check configuration.',
+    'fa-database'
+);
+
+require_once __DIR__ . '/includes/footer.php';
+?>
+```
+
+**Benefits:**
+- Ensures all pages use the same framework versions
+- Single location to update CDN URLs or add new libraries
+- Consistent styling across the application
+- Reduces code duplication
+- Makes it easy to add AdminLTE sidebar navigation when needed
 
 ### Form Patterns
 
