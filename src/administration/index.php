@@ -37,13 +37,7 @@ define('DB_PREFIX', $config->get('database.prefix', ''));
 // For now, allow access (will implement auth later)
 
 // Get database connection for metrics
-$db = \Mosaic\Core\Database::getInstance([
-    'host' => $config->get('database.host'),
-    'username' => $config->get('database.username'),
-    'password' => $config->get('database.password'),
-    'database' => $config->get('database.name'),
-    'port' => (int)$config->get('database.port', 3306)
-]);
+$db = \Mosaic\Core\Database::getInstance($configData['database']);
 
 // Fetch basic metrics (TODO: optimize with proper queries)
 $metrics = [

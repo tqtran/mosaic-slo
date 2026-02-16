@@ -93,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Check uniqueness
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM institutional_outcomes WHERE code = ?",
+                        "SELECT COUNT(*) as count FROM " . DB_PREFIX . "institutional_outcomes WHERE code = ?",
                         [$code],
                         's'
                     );
@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Auto-assign sequence if not provided
                     if ($sequenceNum <= 0) {
                         $result = $db->query(
-                            "SELECT MAX(sequence_num) as max_seq FROM institutional_outcomes WHERE institution_fk = ?",
+                            "SELECT MAX(sequence_num) as max_seq FROM " . DB_PREFIX . "institutional_outcomes WHERE institution_fk = ?",
                             [$institutionFk],
                             'i'
                         );
@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     $db->query(
-                        "INSERT INTO institutional_outcomes 
+                        "INSERT INTO " . DB_PREFIX . "institutional_outcomes 
                          (institution_fk, code, description, sequence_num, is_active, created_at, updated_at) 
                          VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
                         [$institutionFk, $code, $description, $sequenceNum, $isActive],
@@ -154,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Check uniqueness (excluding current record)
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM institutional_outcomes 
+                        "SELECT COUNT(*) as count FROM " . DB_PREFIX . "institutional_outcomes 
                          WHERE code = ? AND institutional_outcomes_pk != ?",
                         [$code, $id],
                         'si'
@@ -170,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (empty($errors)) {
                     $db->query(
-                        "UPDATE institutional_outcomes 
+                        "UPDATE " . DB_PREFIX . "institutional_outcomes 
                          SET institution_fk = ?, code = ?, description = ?, 
                              sequence_num = ?, is_active = ?, updated_at = NOW()
                          WHERE institutional_outcomes_pk = ?",
@@ -187,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id = (int)($_POST['outcome_id'] ?? 0);
                 if ($id > 0) {
                     $db->query(
-                        "UPDATE institutional_outcomes 
+                        "UPDATE " . DB_PREFIX . "institutional_outcomes 
                          SET is_active = NOT is_active, updated_at = NOW()
                          WHERE institutional_outcomes_pk = ?",
                         [$id],
@@ -218,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 if (!empty($code) && !empty($description) && !empty($institutionCode) && preg_match('/^[A-Z0-9_-]+$/i', $code)) {
                                     // Find institution
                                     $result = $db->query(
-                                        "SELECT institution_pk FROM institution WHERE institution_code = ?",
+                                        "SELECT institution_pk FROM " . DB_PREFIX . "institution WHERE institution_code = ?",
                                         [$institutionCode],
                                         's'
                                     );
@@ -229,7 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         
                                         // Check if outcome exists
                                         $result = $db->query(
-                                            "SELECT institutional_outcomes_pk FROM institutional_outcomes WHERE code = ?",
+                                            "SELECT institutional_outcomes_pk FROM " . DB_PREFIX . "institutional_outcomes WHERE code = ?",
                                             [$code],
                                             's'
                                         );
@@ -238,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             // Update existing
                                             $existing = $result->fetch_assoc();
                                             $db->query(
-                                                "UPDATE institutional_outcomes 
+                                                "UPDATE " . DB_PREFIX . "institutional_outcomes 
                                                  SET institution_fk = ?, description = ?, sequence_num = ?, 
                                                      is_active = ?, updated_at = NOW()
                                                  WHERE institutional_outcomes_pk = ?",
@@ -249,7 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             // Auto-assign sequence if not provided
                                             if ($sequenceNum <= 0) {
                                                 $result = $db->query(
-                                                    "SELECT MAX(sequence_num) as max_seq FROM institutional_outcomes WHERE institution_fk = ?",
+                                                    "SELECT MAX(sequence_num) as max_seq FROM " . DB_PREFIX . "institutional_outcomes WHERE institution_fk = ?",
                                                     [$institutionFk],
                                                     'i'
                                                 );
@@ -259,7 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             
                                             // Insert new
                                             $db->query(
-                                                "INSERT INTO institutional_outcomes 
+                                                "INSERT INTO " . DB_PREFIX . "institutional_outcomes 
                                                  (institution_fk, code, description, sequence_num, is_active, created_at, updated_at) 
                                                  VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
                                                 [$institutionFk, $code, $description, $sequenceNum, $isActive],
@@ -300,14 +300,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch institutions for dropdowns
-$result = $db->query("SELECT * FROM institution WHERE is_active = 1 ORDER BY institution_name ASC");
+$result = $db->query("SELECT * FROM " . DB_PREFIX . "institution WHERE is_active = 1 ORDER BY institution_name ASC");
 $institutions = $result->fetch_all(MYSQLI_ASSOC);
 
 // Fetch all institutional outcomes with institution details
 $result = $db->query(
     "SELECT io.*, i.institution_name, i.institution_code
-     FROM institutional_outcomes io
-     INNER JOIN institution i ON io.institution_fk = i.institution_pk
+     FROM " . DB_PREFIX . "institutional_outcomes io
+     INNER JOIN " . DB_PREFIX . "institution i ON io.institution_fk = i.institution_pk
      ORDER BY io.sequence_num ASC, io.code ASC"
 );
 $outcomes = $result->fetch_all(MYSQLI_ASSOC);

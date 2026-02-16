@@ -244,7 +244,7 @@ require_once __DIR__ . '/../system/includes/header.php';
                                 </div>
                                 <div class="col-md-4">
                                     <label for="dbPort" class="form-label">Port</label>
-                                    <input type="number" class="form-control" id="dbPort" name="db_port" value="<?= htmlspecialchars($configData['database']['port'] ?? '3306') ?>" required min="1" max="65535">
+                                    <input type="number" class="form-control" id="dbPort" name="db_port" value="<?= htmlspecialchars((string)($configData['database']['port'] ?? '3306')) ?>" required min="1" max="65535">
                                 </div>
                             </div>
                             <div class="row mb-3">

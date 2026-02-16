@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Check uniqueness
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM institution WHERE institution_code = ?",
+                        "SELECT COUNT(*) as count FROM " . DB_PREFIX . "institution WHERE institution_code = ?",
                         [$code],
                         's'
                     );
@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (empty($errors)) {
                     $db->query(
-                        "INSERT INTO institution (institution_name, institution_code, is_active, created_at, updated_at) 
+                        "INSERT INTO " . DB_PREFIX . "institution (institution_name, institution_code, is_active, created_at, updated_at) 
                          VALUES (?, ?, ?, NOW(), NOW())",
                         [$name, $code, $isActive],
                         'ssi'
@@ -135,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Check uniqueness (excluding current record)
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM institution WHERE institution_code = ? AND institution_pk != ?",
+                        "SELECT COUNT(*) as count FROM " . DB_PREFIX . "institution WHERE institution_code = ? AND institution_pk != ?",
                         [$code, $id],
                         'si'
                     );
@@ -147,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (empty($errors)) {
                     $db->query(
-                        "UPDATE institution 
+                        "UPDATE " . DB_PREFIX . "institution 
                          SET institution_name = ?, institution_code = ?, is_active = ?, updated_at = NOW()
                          WHERE institution_pk = ?",
                         [$name, $code, $isActive, $id],
@@ -163,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id = (int)($_POST['institution_id'] ?? 0);
                 if ($id > 0) {
                     $db->query(
-                        "UPDATE institution 
+                        "UPDATE " . DB_PREFIX . "institution 
                          SET is_active = NOT is_active, updated_at = NOW()
                          WHERE institution_pk = ?",
                         [$id],
@@ -192,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 if (!empty($name) && !empty($code) && preg_match('/^[A-Z0-9_-]+$/i', $code)) {
                                     // Check if exists
                                     $result = $db->query(
-                                        "SELECT institution_pk FROM institution WHERE institution_code = ?",
+                                        "SELECT institution_pk FROM " . DB_PREFIX . "institution WHERE institution_code = ?",
                                         [$code],
                                         's'
                                     );
@@ -201,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         // Update existing
                                         $existing = $result->fetch_assoc();
                                         $db->query(
-                                            "UPDATE institution 
+                                            "UPDATE " . DB_PREFIX . "institution 
                                              SET institution_name = ?, is_active = ?, updated_at = NOW()
                                              WHERE institution_pk = ?",
                                             [$name, $isActive, $existing['institution_pk']],
@@ -210,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     } else {
                                         // Insert new
                                         $db->query(
-                                            "INSERT INTO institution (institution_name, institution_code, is_active, created_at, updated_at) 
+                                            "INSERT INTO " . DB_PREFIX . "institution (institution_name, institution_code, is_active, created_at, updated_at) 
                                              VALUES (?, ?, ?, NOW(), NOW())",
                                             [$name, $code, $isActive],
                                             'ssi'
@@ -247,7 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch all institutions
-$result = $db->query("SELECT * FROM institution ORDER BY institution_name ASC");
+$result = $db->query("SELECT * FROM " . DB_PREFIX . "institution ORDER BY institution_name ASC");
 $institutions = $result->fetch_all(MYSQLI_ASSOC);
 
 // Calculate statistics

@@ -65,7 +65,7 @@ class Database
                 $this->config['host'],
                 $this->config['username'],
                 $this->config['password'],
-                $this->config['database'],
+                $this->config['name'],
                 $this->config['port'] ?? 3306
             );
             
