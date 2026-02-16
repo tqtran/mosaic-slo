@@ -163,6 +163,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 break;
                 
+            case 'delete':
+                $id = (int)($_POST['program_id'] ?? 0);
+                if ($id > 0) {
+                    // Check if program has associated courses or outcomes
+                    $checkResult = $db->query(
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}courses WHERE program_fk = ?",
+                        [$id],
+                        'i'
+                    );
+                    $checkRow = $checkResult->fetch_assoc();
+                    
+                    if ($checkRow['count'] > 0) {
+                        $errorMessage = 'Cannot delete program: it has associated courses. Please remove or reassign courses first.';
+                    } else {
+                        $db->query(
+                            "DELETE FROM {$dbPrefix}programs WHERE programs_pk = ?",
+                            [$id],
+                            'i'
+                        );
+                        $successMessage = 'Program deleted successfully';
+                    }
+                }
+                break;
+                
             case 'import':
                 if (isset($_FILES['program_upload']) && $_FILES['program_upload']['error'] === UPLOAD_ERR_OK) {
                     $tmpName = $_FILES['program_upload']['tmp_name'];
@@ -248,26 +272,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch all programs with department JOIN
-$result = $db->query("
-    SELECT 
-        p.*,
-        d.department_name,
-        d.department_code
-    FROM {$dbPrefix}programs p
-    LEFT JOIN {$dbPrefix}departments d ON p.department_fk = d.departments_pk
-    ORDER BY p.program_name ASC
-");
-$programs = $result->fetch_all(MYSQLI_ASSOC);
-
 // Fetch all departments for dropdown
 $deptResult = $db->query("SELECT * FROM {$dbPrefix}departments WHERE is_active = 1 ORDER BY department_name ASC");
 $departments = $deptResult->fetch_all(MYSQLI_ASSOC);
 
-// Calculate statistics
-$totalPrograms = count($programs);
-$activePrograms = count(array_filter($programs, fn($p) => $p['is_active']));
-$inactivePrograms = $totalPrograms - $activePrograms;
+// Calculate statistics (lightweight query for dashboard boxes)
+$statsResult = $db->query("
+    SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
+    FROM {$dbPrefix}programs
+");
+$stats = $statsResult->fetch_assoc();
+$totalPrograms = $stats['total'];
+$activePrograms = $stats['active'];
+$inactivePrograms = $stats['inactive'];
 
 // Load theme system
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
@@ -295,10 +315,7 @@ $theme->showHeader($context);
 <div class="app-content-header">
     <div class="container-fluid">
         <div class="row">
-            <div class="col-sm-6">
-                <h3 class="mb-0">Program Management</h3>
-            </div>
-            <div class="col-sm-6">
+            <div class="col-sm-12">
                 <ol class="breadcrumb float-sm-end">
                     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
                     <li class="breadcrumb-item active">Programs</li>
@@ -407,35 +424,7 @@ $theme->showHeader($context);
                         </tr>
                     </tfoot>
                     <tbody>
-                        <?php foreach ($programs as $row):
-                            $status = $row['is_active'] ? 'Active' : 'Inactive';
-                            $statusClass = $row['is_active'] ? 'success' : 'secondary';
-                            $toggleIcon = $row['is_active'] ? 'ban' : 'check';
-                            $toggleClass = $row['is_active'] ? 'warning' : 'success';
-                            $rowJson = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
-                        ?>
-                        <tr>
-                            <td><?= htmlspecialchars($row['programs_pk']) ?></td>
-                            <td><span class="badge bg-primary"><?= htmlspecialchars($row['program_code']) ?></span></td>
-                            <td><?= htmlspecialchars($row['program_name']) ?></td>
-                            <td><?= htmlspecialchars($row['department_name'] ?? 'N/A') ?></td>
-                            <td><?= htmlspecialchars($row['degree_type'] ?? '') ?></td>
-                            <td><span class="badge bg-<?= $statusClass ?>"><?= $status ?></span></td>
-                            <td><?= htmlspecialchars($row['created_at'] ?? '') ?></td>
-                            <td>
-                                <button class="btn btn-sm btn-info" title="View" onclick='viewProgram(<?= $rowJson ?>)'>
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn btn-sm btn-primary" title="Edit" onclick='editProgram(<?= $rowJson ?>)'>
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-sm btn-<?= $toggleClass ?>" title="Toggle Status" 
-                                        onclick="toggleStatus(<?= $row['programs_pk'] ?>, '<?= htmlspecialchars($row['program_name'], ENT_QUOTES) ?>')">
-                                    <i class="fas fa-<?= $toggleIcon ?>"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
+                        <!-- Data loaded via AJAX -->
                     </tbody>
                 </table>
             </div>
@@ -642,6 +631,13 @@ $theme->showHeader($context);
     <input type="hidden" name="program_id" id="toggleProgramId">
 </form>
 
+<!-- Delete Form (hidden) -->
+<form id="deleteForm" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+    <input type="hidden" name="action" value="delete">
+    <input type="hidden" name="program_id" id="deleteProgramId">
+</form>
+
 <?php $theme->showFooter($context); ?>
 
 <!-- DataTables JS -->
@@ -668,9 +664,22 @@ $(document).ready(function() {
     });
     
     var table = $('#programsTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: '<?= BASE_URL ?>administration/programs_data.php',
         dom: 'Bfrtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
+        ],
+        columns: [
+            { data: 0, name: 'programs_pk' },
+            { data: 1, name: 'program_code' },
+            { data: 2, name: 'program_name' },
+            { data: 3, name: 'department_name' },
+            { data: 4, name: 'degree_type' },
+            { data: 5, name: 'is_active' },
+            { data: 6, name: 'created_at' },
+            { data: 7, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             // Apply the search
@@ -712,6 +721,13 @@ function toggleStatus(id, name) {
     if (confirm('Are you sure you want to toggle the status of "' + name + '"?')) {
         $('#toggleProgramId').val(id);
         $('#toggleStatusForm').submit();
+    }
+}
+
+function deleteProgram(id, name) {
+    if (confirm('Are you sure you want to DELETE "' + name + '"? This action cannot be undone.')) {
+        $('#deleteProgramId').val(id);
+        $('#deleteForm').submit();
     }
 }
 </script>
