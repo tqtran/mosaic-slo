@@ -95,18 +95,18 @@ try {
 
 // Page setup
 $pageTitle = 'Administration Dashboard - ' . SITE_NAME;
-$bodyClass = 'sidebar-mini layout-fixed';
+$bodyClass = 'layout-fixed sidebar-mini';
 $currentPage = 'admin_dashboard';
 
 require_once __DIR__ . '/../system/includes/header.php';
 ?>
 
-<!-- Wrapper -->
-<div class="wrapper">
+<!-- App Wrapper -->
+<div class="app-wrapper">
     <?php require_once __DIR__ . '/../system/includes/sidebar.php'; ?>
     
     <!-- Content Wrapper -->
-    <div class="content-wrapper">
+    <div class="app-main">
         <!-- Content Header -->
         <div class="content-header">
             <div class="container-fluid">
