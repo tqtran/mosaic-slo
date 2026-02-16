@@ -159,7 +159,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                     $configContent .= "app:\n";
                                     $configContent .= "  name: " . $site_name . "\n";
                                     $configContent .= "  timezone: America/Los_Angeles\n";
-                                    $configContent .= "  base_url: " . $base_url . "\n\n";
+                                    $configContent .= "  base_url: " . $base_url . "\n";
+                                    $configContent .= "  debug_mode: true\n\n";
                                     $configContent .= "# Email configuration for notifications\n";
                                     $configContent .= "email:\n";
                                     $configContent .= "  method: " . $mail_method . "\n";

@@ -78,6 +78,12 @@ if (file_exists(CONFIG_PATH)) {
     define('EMAIL_METHOD', $emailMethod);
     define('EMAIL_FROM_EMAIL', $emailFromEmail);
     define('EMAIL_FROM_NAME', $emailFromName);
+    define('DEBUG_MODE', ($config->get('app.debug_mode', 'false') === 'true' || $config->get('app.debug_mode', false) === true));
+    
+    // Update error display based on debug mode
+    if (DEBUG_MODE) {
+        ini_set('display_errors', '1');
+    }
     
     // TODO: Autoloader will go here
     // require_once APP_ROOT . '/Core/Autoloader.php';
@@ -103,10 +109,30 @@ if (file_exists(CONFIG_PATH)) {
                         </div>
                         <h1 class="h3 text-center mb-3"><?php echo htmlspecialchars(SITE_NAME); ?></h1>
                         <p class="text-center text-muted mb-4">Configuration loaded successfully. Application framework is ready.</p>
+                        
+                        <div class="card bg-light mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-cogs mr-2"></i>Administration Pages
+                                </h5>
+                                <div class="d-grid gap-2">
+                                    <a href="<?= BASE_URL ?>admin_config.php" class="btn btn-outline-primary">
+                                        <i class="fas fa-cog"></i> System Configuration
+                                    </a>
+                                    <a href="<?= BASE_URL ?>admin_institution.php" class="btn btn-outline-primary">
+                                        <i class="fas fa-university"></i> Institution Management
+                                    </a>
+                                    <a href="<?= BASE_URL ?>admin_institutional_outcomes.php" class="btn btn-outline-primary">
+                                        <i class="fas fa-graduation-cap"></i> Institutional Outcomes
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="card bg-light">
                             <div class="card-body">
                                 <h5 class="card-title">
-                                    <i class="fas fa-tasks mr-2"></i>Next Steps
+                                    <i class="fas fa-tasks mr-2"></i>Development Tasks
                                 </h5>
                                 <ul class="mb-0">
                                     <li>Implement autoloader</li>

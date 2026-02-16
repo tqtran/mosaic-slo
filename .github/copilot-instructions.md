@@ -327,3 +327,38 @@ See [docs/concepts/TESTING.md](../docs/concepts/TESTING.md) for comprehensive te
 - Simple, maintainable code
 - Shipping working features over theoretical flexibility
 - Real user problems over hypothetical scenarios
+
+## Design Patterns & Code Reuse
+
+**Detect opportunities to reuse, don't theorize abstractions.**
+
+When building multiple similar features (admin tables, reports, data exports), actively look for patterns worth sharing:
+
+**Consistent patterns across similar features:**
+
+- **DataTables**: Use server-side AJAX everywhere for admin tables
+  - Even if client-side works for small datasets now
+  - Rationale: Shared handler matures over time, benefits all consumers
+  - "It's not if, but when" - tables grow, requirements change
+  - Consistency reduces cognitive load and maintenance burden
+
+- **CRUD operations**: Establish one pattern, apply consistently
+  - Don't mix direct queries in some places and models in others without reason
+  - Pick the simplest approach that works for the current case
+
+- **Form validation**: Shared validation handlers for common patterns
+  - Email, dates, foreign keys, etc.
+
+**Factor shared components when:**
+
+- You're actively building multiple consumers (not theoretically)
+- The pattern has proven itself in 2-3 real implementations
+- Sharing reduces duplication without adding complexity
+
+**Don't prematurely abstract when:**
+
+- Building the first version of something
+- The "pattern" only exists in one place
+- The abstraction adds layers without clear benefit
+
+**User will steer as needed.** Focus on shipping working features, but keep eyes open for practical reuse opportunities.
