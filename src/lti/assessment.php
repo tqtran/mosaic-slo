@@ -38,29 +38,10 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Load core classes
-require_once __DIR__ . '/../system/Core/Config.php';
-require_once __DIR__ . '/../system/Core/Database.php';
-require_once __DIR__ . '/../system/Core/Logger.php';
-require_once __DIR__ . '/../system/Core/Path.php';
-require_once __DIR__ . '/../system/includes/message_page.php';
+// Initialize common variables and database
+require_once __DIR__ . '/../system/includes/init.php';
 
-// Check if configured
-if (!file_exists(__DIR__ . '/../config/config.yaml')) {
-    \Mosaic\Core\Path::redirect('setup/');
-}
-
-// Load configuration
-$config = \Mosaic\Core\Config::getInstance(__DIR__ . '/../config/config.yaml');
-$configData = $config->all();
-
-// Define constants
-define('BASE_URL', $configData['app']['base_url'] ?? '/');
-define('SITE_NAME', $configData['app']['name'] ?? 'MOSAIC');
-define('DEBUG_MODE', ($configData['app']['debug_mode'] ?? 'false') === 'true' || ($configData['app']['debug_mode'] ?? false) === true);
-
-// Initialize database and logger
-$db = \Mosaic\Core\Database::getInstance($configData['database']);
+// Initialize logger
 $logger = \Mosaic\Core\Logger::getInstance();
 
 // Check LTI authentication

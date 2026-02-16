@@ -1,13 +1,18 @@
 <?php
 /**
  * Common Header Include
- * Loads all framework assets (Bootstrap 5, jQuery, AdminLTE 4, Font Awesome)
+ * Loads all framework assets and theme structure
  * 
  * Usage:
  *   $pageTitle = 'My Page Title';
- *   $bodyClass = 'custom-class'; // optional
+ *   $pageIcon = 'fas fa-dashboard'; // optional
+ *   $breadcrumbs = [['url' => BASE_URL, 'label' => 'Home'], ['label' => 'Current Page']]; // optional
+ *   $bodyClass = 'hold-transition sidebar-mini layout-fixed'; // for admin pages
+ *   $currentPage = 'admin_dashboard'; // for sidebar active state
  *   require_once __DIR__ . '/../system/includes/header.php';
  */
+
+$isAdminLayout = isset($bodyClass) && strpos($bodyClass, 'sidebar-mini') !== false;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -40,3 +45,41 @@
     <?php endif; ?>
 </head>
 <body class="<?= htmlspecialchars($bodyClass ?? '') ?>">
+<?php if ($isAdminLayout): ?>
+<div class="wrapper">
+<?php require_once __DIR__ . '/navbar.php'; ?>
+<?php require_once __DIR__ . '/sidebar.php'; ?>
+
+<!-- Content Wrapper -->
+<div class="content-wrapper">
+    <!-- Content Header -->
+    <div class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1 class="m-0">
+                        <?php if (isset($pageIcon)): ?><i class="<?= htmlspecialchars($pageIcon) ?>"></i> <?php endif; ?>
+                        <?= htmlspecialchars($pageTitle ?? 'Page') ?>
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <?php if (isset($breadcrumbs) && is_array($breadcrumbs)): ?>
+                            <?php foreach ($breadcrumbs as $crumb): ?>
+                                <?php if (isset($crumb['url'])): ?>
+                                    <li class="breadcrumb-item"><a href="<?= htmlspecialchars($crumb['url']) ?>"><?= htmlspecialchars($crumb['label']) ?></a></li>
+                                <?php else: ?>
+                                    <li class="breadcrumb-item active"><?= htmlspecialchars($crumb['label']) ?></li>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main content -->
+    <section class="content">
+        <div class="container-fluid">
+<?php endif; ?>

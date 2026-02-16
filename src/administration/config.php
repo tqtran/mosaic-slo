@@ -37,7 +37,7 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Load core classes
+// Initialize common variables and database (config.php needs custom handling)
 require_once __DIR__ . '/../system/Core/Config.php';
 require_once __DIR__ . '/../system/Core/Path.php';
 
@@ -51,10 +51,16 @@ if (!file_exists($configPath)) {
 $config = \Mosaic\Core\Config::getInstance($configPath);
 $configData = $config->all();
 
-// Define constants
-define('BASE_URL', $configData['app']['base_url'] ?? '/');
-define('SITE_NAME', $configData['app']['name'] ?? 'MOSAIC');
-define('DEBUG_MODE', ($configData['app']['debug_mode'] ?? 'false') === 'true' || ($configData['app']['debug_mode'] ?? false) === true);
+// Define variables (config.php doesn't use database)
+$baseUrl = \Mosaic\Core\Path::getBaseUrl();
+$basePath = \Mosaic\Core\Path::getBasePath();
+$siteName = $config->get('app.name', 'MOSAIC');
+$debugMode = $config->get('app.debug_mode', false) === true || $config->get('app.debug_mode', 'false') === 'true';
+
+// Define constants for templates
+if (!defined('BASE_URL')) define('BASE_URL', $baseUrl);
+if (!defined('BASE_PATH')) define('BASE_PATH', $basePath);
+if (!defined('SITE_NAME')) define('SITE_NAME', $siteName);
 
 // Handle POST requests
 $successMessage = '';
@@ -121,61 +127,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $currentPage = 'admin_config';
-$pageTitle = 'Configuration - ' . SITE_NAME;
+$pageTitle = 'System Configuration';
+$pageIcon = 'fas fa-cog';
 $bodyClass = 'hold-transition sidebar-mini layout-fixed';
+$breadcrumbs = [
+    ['url' => BASE_URL, 'label' => 'Home'],
+    ['label' => 'Configuration']
+];
+
 require_once __DIR__ . '/../system/includes/header.php';
 ?>
 
-<div class="wrapper">
-    <!-- Navbar -->
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-        <!-- Left navbar links -->
-        <ul class="navbar-nav">
-            <li class="nav-item">
-                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
-            </li>
-            <li class="nav-item d-none d-sm-inline-block">
-                <a href="<?= BASE_URL ?>" class="nav-link"><i class="fas fa-home"></i> Home</a>
-            </li>
-        </ul>
-        
-        <!-- Right navbar links -->
-        <ul class="navbar-nav ml-auto">
-            <li class="nav-item">
-                <span class="nav-link">
-                    <strong><?= htmlspecialchars(SITE_NAME) ?></strong>
-                </span>
-            </li>
-        </ul>
-    </nav>
-    <!-- /.navbar -->
-
-<?php require_once __DIR__ . '/../system/includes/sidebar.php'; ?>
-
-    <!-- Content Wrapper -->
-    <div class="content-wrapper">
-        <!-- Content Header -->
-        <div class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1 class="m-0"><i class="fas fa-cog"></i> System Configuration</h1>
-                    </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                            <li class="breadcrumb-item active">Configuration</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main content -->
-        <section class="content">
-            <div class="container-fluid">
-                <?php if ($successMessage): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+<?php if ($successMessage): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
                         <i class="fas fa-check-circle"></i> <?= htmlspecialchars($successMessage) ?>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
@@ -344,16 +308,14 @@ require_once __DIR__ . '/../system/includes/header.php';
                             <a href="<?= BASE_URL ?>" class="btn btn-secondary btn-lg">
                                 <i class="fas fa-times"></i> Cancel
                             </a>
-                            <div class="float-end">
-                                <small class="text-muted">Config file: <?= htmlspecialchars($configPath) ?></small>
-                            </div>
                         </div>
-                    </div>
-                </form>
-            </div>
-        </section>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
+
+<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>
 
 <script>
 $(document).ready(function() {

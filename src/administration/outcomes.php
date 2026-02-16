@@ -37,27 +37,8 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Load core classes
-require_once __DIR__ . '/../system/Core/Config.php';
-require_once __DIR__ . '/../system/Core/Database.php';
-require_once __DIR__ . '/../system/Core/Path.php';
-
-// Check if configured
-if (!file_exists(__DIR__ . '/../config/config.yaml')) {
-    \Mosaic\Core\Path::redirect('setup/');
-}
-
-// Load configuration
-$config = \Mosaic\Core\Config::getInstance(__DIR__ . '/../config/config.yaml');
-$configData = $config->all();
-
-// Define constants
-define('BASE_URL', $configData['app']['base_url'] ?? '/');
-define('SITE_NAME', $configData['app']['name'] ?? 'MOSAIC');
-define('DEBUG_MODE', ($configData['app']['debug_mode'] ?? 'false') === 'true' || ($configData['app']['debug_mode'] ?? false) === true);
-
-// Initialize database
-$db = \Mosaic\Core\Database::getInstance($configData['database']);
+// Initialize common variables and database
+require_once __DIR__ . '/../system/includes/init.php';
 
 // Handle POST requests
 $successMessage = '';
@@ -93,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Check uniqueness
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM " . DB_PREFIX . "institutional_outcomes WHERE code = ?",
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}institutional_outcomes WHERE code = ?",
                         [$code],
                         's'
                     );
@@ -110,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Auto-assign sequence if not provided
                     if ($sequenceNum <= 0) {
                         $result = $db->query(
-                            "SELECT MAX(sequence_num) as max_seq FROM " . DB_PREFIX . "institutional_outcomes WHERE institution_fk = ?",
+                            "SELECT MAX(sequence_num) as max_seq FROM {$dbPrefix}institutional_outcomes WHERE institution_fk = ?",
                             [$institutionFk],
                             'i'
                         );
@@ -119,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     $db->query(
-                        "INSERT INTO " . DB_PREFIX . "institutional_outcomes 
+                        "INSERT INTO {$dbPrefix}institutional_outcomes 
                          (institution_fk, code, description, sequence_num, is_active, created_at, updated_at) 
                          VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
                         [$institutionFk, $code, $description, $sequenceNum, $isActive],
@@ -154,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Check uniqueness (excluding current record)
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM " . DB_PREFIX . "institutional_outcomes 
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}institutional_outcomes 
                          WHERE code = ? AND institutional_outcomes_pk != ?",
                         [$code, $id],
                         'si'
@@ -170,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (empty($errors)) {
                     $db->query(
-                        "UPDATE " . DB_PREFIX . "institutional_outcomes 
+                        "UPDATE {$dbPrefix}institutional_outcomes 
                          SET institution_fk = ?, code = ?, description = ?, 
                              sequence_num = ?, is_active = ?, updated_at = NOW()
                          WHERE institutional_outcomes_pk = ?",
@@ -187,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id = (int)($_POST['outcome_id'] ?? 0);
                 if ($id > 0) {
                     $db->query(
-                        "UPDATE " . DB_PREFIX . "institutional_outcomes 
+                        "UPDATE {$dbPrefix}institutional_outcomes 
                          SET is_active = NOT is_active, updated_at = NOW()
                          WHERE institutional_outcomes_pk = ?",
                         [$id],
@@ -218,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 if (!empty($code) && !empty($description) && !empty($institutionCode) && preg_match('/^[A-Z0-9_-]+$/i', $code)) {
                                     // Find institution
                                     $result = $db->query(
-                                        "SELECT institution_pk FROM " . DB_PREFIX . "institution WHERE institution_code = ?",
+                                        "SELECT institution_pk FROM {$dbPrefix}institution WHERE institution_code = ?",
                                         [$institutionCode],
                                         's'
                                     );
@@ -229,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         
                                         // Check if outcome exists
                                         $result = $db->query(
-                                            "SELECT institutional_outcomes_pk FROM " . DB_PREFIX . "institutional_outcomes WHERE code = ?",
+                                            "SELECT institutional_outcomes_pk FROM {$dbPrefix}institutional_outcomes WHERE code = ?",
                                             [$code],
                                             's'
                                         );
@@ -238,7 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             // Update existing
                                             $existing = $result->fetch_assoc();
                                             $db->query(
-                                                "UPDATE " . DB_PREFIX . "institutional_outcomes 
+                                                "UPDATE {$dbPrefix}institutional_outcomes 
                                                  SET institution_fk = ?, description = ?, sequence_num = ?, 
                                                      is_active = ?, updated_at = NOW()
                                                  WHERE institutional_outcomes_pk = ?",
@@ -249,7 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             // Auto-assign sequence if not provided
                                             if ($sequenceNum <= 0) {
                                                 $result = $db->query(
-                                                    "SELECT MAX(sequence_num) as max_seq FROM " . DB_PREFIX . "institutional_outcomes WHERE institution_fk = ?",
+                                                    "SELECT MAX(sequence_num) as max_seq FROM {$dbPrefix}institutional_outcomes WHERE institution_fk = ?",
                                                     [$institutionFk],
                                                     'i'
                                                 );
@@ -259,7 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             
                                             // Insert new
                                             $db->query(
-                                                "INSERT INTO " . DB_PREFIX . "institutional_outcomes 
+                                                "INSERT INTO {$dbPrefix}institutional_outcomes 
                                                  (institution_fk, code, description, sequence_num, is_active, created_at, updated_at) 
                                                  VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
                                                 [$institutionFk, $code, $description, $sequenceNum, $isActive],
@@ -300,14 +281,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch institutions for dropdowns
-$result = $db->query("SELECT * FROM " . DB_PREFIX . "institution WHERE is_active = 1 ORDER BY institution_name ASC");
+$result = $db->query("SELECT * FROM {$dbPrefix}institution WHERE is_active = 1 ORDER BY institution_name ASC");
 $institutions = $result->fetch_all(MYSQLI_ASSOC);
 
 // Fetch all institutional outcomes with institution details
 $result = $db->query(
     "SELECT io.*, i.institution_name, i.institution_code
-     FROM " . DB_PREFIX . "institutional_outcomes io
-     INNER JOIN " . DB_PREFIX . "institution i ON io.institution_fk = i.institution_pk
+     FROM {$dbPrefix}institutional_outcomes io
+     INNER JOIN {$dbPrefix}institution i ON io.institution_fk = i.institution_pk
      ORDER BY io.sequence_num ASC, io.code ASC"
 );
 $outcomes = $result->fetch_all(MYSQLI_ASSOC);
@@ -331,64 +312,19 @@ foreach ($outcomes as &$outcome) {
 unset($outcome);
 
 $currentPage = 'admin_outcomes';
-$pageTitle = 'Outcome Hierarchy - ' . SITE_NAME;
+$pageTitle = 'Institutional Outcomes';
+$pageIcon = 'fas fa-graduation-cap';
 $bodyClass = 'hold-transition sidebar-mini layout-fixed';
+$breadcrumbs = [
+    ['url' => BASE_URL, 'label' => 'Home'],
+    ['url' => BASE_URL . 'administration/institution.php', 'label' => 'Institutions'],
+    ['label' => 'Institutional Outcomes']
+];
+
 require_once __DIR__ . '/../system/includes/header.php';
 ?>
 
-<div class="wrapper">
-    <!-- Navbar -->
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-        <!-- Left navbar links -->
-        <ul class="navbar-nav">
-            <li class="nav-item">
-                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
-            </li>
-            <li class="nav-item d-none d-sm-inline-block">
-                <a href="<?= BASE_URL ?>" class="nav-link"><i class="fas fa-home"></i> Home</a>
-            </li>
-            <li class="nav-item d-none d-sm-inline-block">
-                <a class="nav-link" href="<?= BASE_URL ?>admin_institution.php"><i class="fas fa-university"></i> Institutions</a>
-            </li>
-        </ul>
-        
-        <!-- Right navbar links -->
-        <ul class="navbar-nav ml-auto">
-            <li class="nav-item">
-                <span class="nav-link">
-                    <strong><?= htmlspecialchars(SITE_NAME) ?></strong>
-                </span>
-            </li>
-        </ul>
-    </nav>
-    <!-- /.navbar -->
-
-<?php require_once __DIR__ . '/../system/includes/sidebar.php'; ?>
-
-    <!-- Content Wrapper -->
-    <div class="content-wrapper">
-        <!-- Content Header -->
-        <div class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1 class="m-0"><i class="fas fa-graduation-cap"></i> Institutional Outcomes</h1>
-                    </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                            <li class="breadcrumb-item"><a href="<?= BASE_URL ?>admin_institution.php">Institutions</a></li>
-                            <li class="breadcrumb-item active">Institutional Outcomes</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main content -->
-        <section class="content">
-            <div class="container-fluid">
-                <?php if ($successMessage): ?>
+<?php if ($successMessage): ?>
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         <i class="fas fa-check-circle"></i> <?= htmlspecialchars($successMessage) ?>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -497,17 +433,17 @@ require_once __DIR__ . '/../system/includes/header.php';
                                             <button class="btn btn-sm btn-<?= $outcome['is_active'] ? 'warning' : 'success' ?>" title="Toggle Status" onclick="toggleStatus(<?= $outcome['institutional_outcomes_pk'] ?>, '<?= htmlspecialchars($outcome['code']) ?>')">
                                                 <i class="fas fa-<?= $outcome['is_active'] ? 'ban' : 'check' ?>"></i>
                                             </button>
-                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
-                    </div>
                 </div>
             </div>
-        </section>
+        </div>
     </div>
 </div>
+
+<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>
 
 <!-- Add Outcome Modal -->
 <div class="modal fade" id="addOutcomeModal" tabindex="-1">

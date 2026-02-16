@@ -37,27 +37,8 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// Load core classes
-require_once __DIR__ . '/../system/Core/Config.php';
-require_once __DIR__ . '/../system/Core/Database.php';
-require_once __DIR__ . '/../system/Core/Path.php';
-
-// Check if configured
-if (!file_exists(__DIR__ . '/../config/config.yaml')) {
-    \Mosaic\Core\Path::redirect('setup/');
-}
-
-// Load configuration
-$config = \Mosaic\Core\Config::getInstance(__DIR__ . '/../config/config.yaml');
-$configData = $config->all();
-
-// Define constants
-define('BASE_URL', $configData['app']['base_url'] ?? '/');
-define('SITE_NAME', $configData['app']['name'] ?? 'MOSAIC');
-define('DEBUG_MODE', ($configData['app']['debug_mode'] ?? 'false') === 'true' || ($configData['app']['debug_mode'] ?? false) === true);
-
-// Initialize database
-$db = \Mosaic\Core\Database::getInstance($configData['database']);
+// Initialize common variables and database
+require_once __DIR__ . '/../system/includes/init.php';
 
 // Handle POST requests
 $successMessage = '';
@@ -91,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Check uniqueness
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM " . DB_PREFIX . "institution WHERE institution_code = ?",
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}institution WHERE institution_code = ?",
                         [$code],
                         's'
                     );
@@ -103,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (empty($errors)) {
                     $db->query(
-                        "INSERT INTO " . DB_PREFIX . "institution (institution_name, institution_code, is_active, created_at, updated_at) 
+                        "INSERT INTO {$dbPrefix}institution (institution_name, institution_code, is_active, created_at, updated_at) 
                          VALUES (?, ?, ?, NOW(), NOW())",
                         [$name, $code, $isActive],
                         'ssi'
@@ -135,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Check uniqueness (excluding current record)
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM " . DB_PREFIX . "institution WHERE institution_code = ? AND institution_pk != ?",
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}institution WHERE institution_code = ? AND institution_pk != ?",
                         [$code, $id],
                         'si'
                     );
@@ -147,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (empty($errors)) {
                     $db->query(
-                        "UPDATE " . DB_PREFIX . "institution 
+                        "UPDATE {$dbPrefix}institution 
                          SET institution_name = ?, institution_code = ?, is_active = ?, updated_at = NOW()
                          WHERE institution_pk = ?",
                         [$name, $code, $isActive, $id],
@@ -163,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id = (int)($_POST['institution_id'] ?? 0);
                 if ($id > 0) {
                     $db->query(
-                        "UPDATE " . DB_PREFIX . "institution 
+                        "UPDATE {$dbPrefix}institution 
                          SET is_active = NOT is_active, updated_at = NOW()
                          WHERE institution_pk = ?",
                         [$id],
@@ -192,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 if (!empty($name) && !empty($code) && preg_match('/^[A-Z0-9_-]+$/i', $code)) {
                                     // Check if exists
                                     $result = $db->query(
-                                        "SELECT institution_pk FROM " . DB_PREFIX . "institution WHERE institution_code = ?",
+                                        "SELECT institution_pk FROM {$dbPrefix}institution WHERE institution_code = ?",
                                         [$code],
                                         's'
                                     );
@@ -201,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         // Update existing
                                         $existing = $result->fetch_assoc();
                                         $db->query(
-                                            "UPDATE " . DB_PREFIX . "institution 
+                                            "UPDATE {$dbPrefix}institution 
                                              SET institution_name = ?, is_active = ?, updated_at = NOW()
                                              WHERE institution_pk = ?",
                                             [$name, $isActive, $existing['institution_pk']],
@@ -210,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     } else {
                                         // Insert new
                                         $db->query(
-                                            "INSERT INTO " . DB_PREFIX . "institution (institution_name, institution_code, is_active, created_at, updated_at) 
+                                            "INSERT INTO {$dbPrefix}institution (institution_name, institution_code, is_active, created_at, updated_at) 
                                              VALUES (?, ?, ?, NOW(), NOW())",
                                             [$name, $code, $isActive],
                                             'ssi'
@@ -247,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch all institutions
-$result = $db->query("SELECT * FROM " . DB_PREFIX . "institution ORDER BY institution_name ASC");
+$result = $db->query("SELECT * FROM {$dbPrefix}institution ORDER BY institution_name ASC");
 $institutions = $result->fetch_all(MYSQLI_ASSOC);
 
 // Calculate statistics
@@ -256,61 +237,19 @@ $activeInstitutions = count(array_filter($institutions, fn($i) => $i['is_active'
 $inactiveInstitutions = $totalInstitutions - $activeInstitutions;
 
 $currentPage = 'admin_institution';
-$pageTitle = 'Institution Management - ' . SITE_NAME;
+$pageTitle = 'Institution Management';
+$pageIcon = 'fas fa-university';
 $bodyClass = 'hold-transition sidebar-mini layout-fixed';
+$breadcrumbs = [
+    ['url' => BASE_URL, 'label' => 'Home'],
+    ['label' => 'Institutions']
+];
+
 require_once __DIR__ . '/../system/includes/header.php';
 ?>
 
-<div class="wrapper">
-    <!-- Navbar -->
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-        <!-- Left navbar links -->
-        <ul class="navbar-nav">
-            <li class="nav-item">
-                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
-            </li>
-            <li class="nav-item d-none d-sm-inline-block">
-                <a href="<?= BASE_URL ?>" class="nav-link"><i class="fas fa-home"></i> Home</a>
-            </li>
-        </ul>
-        
-        <!-- Right navbar links -->
-        <ul class="navbar-nav ml-auto">
-            <li class="nav-item">
-                <span class="nav-link">
-                    <strong><?= htmlspecialchars(SITE_NAME) ?></strong>
-                </span>
-            </li>
-        </ul>
-    </nav>
-    <!-- /.navbar -->
-
-<?php require_once __DIR__ . '/../system/includes/sidebar.php'; ?>
-
-    <!-- Content Wrapper -->
-    <div class="content-wrapper">
-        <!-- Content Header -->
-        <div class="content-header">
-            <div class="container-fluid">
-                <div class="row mb-2">
-                    <div class="col-sm-6">
-                        <h1 class="m-0"><i class="fas fa-university"></i> Institution Management</h1>
-                    </div>
-                    <div class="col-sm-6">
-                        <ol class="breadcrumb float-sm-right">
-                            <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                            <li class="breadcrumb-item active">Institutions</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main content -->
-        <section class="content">
-            <div class="container-fluid">
-                <?php if ($successMessage): ?>
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+<?php if ($successMessage): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
                         <i class="fas fa-check-circle"></i> <?= htmlspecialchars($successMessage) ?>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
@@ -421,9 +360,11 @@ require_once __DIR__ . '/../system/includes/header.php';
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
     </div>
 </div>
+
+<?php require_once __DIR__ . '/../system/includes/footer.php'; ?>
 
 <!-- Add Institution Modal -->
 <div class="modal fade" id="addInstitutionModal" tabindex="-1">
