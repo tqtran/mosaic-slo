@@ -9,92 +9,31 @@ declare(strict_types=1);
  * @package Mosaic
  */
 
-// Security headers
-header('Content-Type: application/json');
-header('X-Content-Type-Options: nosniff');
-
-// Session configuration
-ini_set('session.cookie_httponly', '1');
-ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? '1' : '0');
-ini_set('session.cookie_samesite', 'Strict');
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Initialize database
+require_once __DIR__ . '/../system/includes/datatables_helper.php';
 require_once __DIR__ . '/../system/includes/init.php';
 
-// DataTables parameters
-$draw = (int)($_GET['draw'] ?? 1);
-$start = (int)($_GET['start'] ?? 0);
-$length = (int)($_GET['length'] ?? 10);
-$searchValue = $_GET['search']['value'] ?? '';
-$orderColumnIndex = (int)($_GET['order'][0]['column'] ?? 0);
-$orderDir = $_GET['order'][0]['dir'] ?? 'asc';
+// Get DataTables parameters
+$params = getDataTablesParams();
 
 // Column definitions (must match table columns)
 $columns = [
-    'p.programs_pk',
-    'p.program_code',
-    'p.program_name',
-    'd.department_name',
-    'p.degree_type',
-    'p.is_active',
-    'p.created_at',
+    'programs_pk',
+    'program_code',
+    'program_name',
+    'degree_type',
+    'is_active',
+    'created_at',
     'actions' // Not sortable, placeholder
 ];
 
-// Validate order direction
-$orderDir = strtoupper($orderDir) === 'DESC' ? 'DESC' : 'ASC';
-
-// Get order column name (prevent SQL injection)
-$orderColumn = $columns[$orderColumnIndex] ?? 'p.program_name';
+// Get order column name
+$orderColumn = $columns[$params['orderColumnIndex']] ?? 'program_name';
 if ($orderColumn === 'actions') {
-    $orderColumn = 'p.program_name'; // Default for actions column
+    $orderColumn = 'program_name';
 }
 
-// Build WHERE clause for global search
-$whereConditions = [];
-$params = [];
-$types = '';
-
-if (!empty($searchValue)) {
-    $searchConditions = [
-        'p.programs_pk LIKE ?',
-        'p.program_code LIKE ?',
-        'p.program_name LIKE ?',
-        'd.department_name LIKE ?',
-        'p.degree_type LIKE ?'
-    ];
-    $whereConditions[] = '(' . implode(' OR ', $searchConditions) . ')';
-    $searchParam = "%{$searchValue}%";
-    for ($i = 0; $i < count($searchConditions); $i++) {
-        $params[] = $searchParam;
-        $types .= 's';
-    }
-}
-
-// Add column-specific filters
-for ($i = 0; $i < count($columns) - 1; $i++) { // Exclude actions column
-    $columnSearch = $_GET['columns'][$i]['search']['value'] ?? '';
-    if (!empty($columnSearch) && $columns[$i] !== 'actions') {
-        if ($columns[$i] === 'p.is_active') {
-            // Handle Status column specially
-            if (stripos($columnSearch, 'active') !== false && stripos($columnSearch, 'inactive') === false) {
-                $whereConditions[] = 'p.is_active = 1';
-            } elseif (stripos($columnSearch, 'inactive') !== false) {
-                $whereConditions[] = 'p.is_active = 0';
-            }
-        } else {
-            $whereConditions[] = "{$columns[$i]} LIKE ?";
-            $params[] = "%{$columnSearch}%";
-            $types .= 's';
-        }
-    }
-}
-
-$whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
+// Build WHERE clause
+list($whereClause, $whereParams, $whereTypes) = buildSearchWhere($params, $columns, 'programs');
 
 // Get total records (without filtering)
 $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}programs");
@@ -102,14 +41,9 @@ $totalRow = $totalResult->fetch_assoc();
 $recordsTotal = $totalRow['total'];
 
 // Get filtered records count
-$countQuery = "
-    SELECT COUNT(*) as total 
-    FROM {$dbPrefix}programs p
-    LEFT JOIN {$dbPrefix}departments d ON p.department_fk = d.departments_pk
-    {$whereClause}
-";
-if (!empty($params)) {
-    $filteredResult = $db->query($countQuery, $params, $types);
+$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}programs {$whereClause}";
+if (!empty($whereParams)) {
+    $filteredResult = $db->query($countQuery, $whereParams, $whereTypes);
 } else {
     $filteredResult = $db->query($countQuery);
 }
@@ -118,23 +52,20 @@ $recordsFiltered = $filteredRow['total'];
 
 // Get data
 $dataQuery = "
-    SELECT 
-        p.*,
-        d.department_name,
-        d.department_code
-    FROM {$dbPrefix}programs p
-    LEFT JOIN {$dbPrefix}departments d ON p.department_fk = d.departments_pk
+    SELECT *
+    FROM {$dbPrefix}programs
     {$whereClause}
-    ORDER BY {$orderColumn} {$orderDir}
+    ORDER BY {$orderColumn} {$params['orderDir']}
     LIMIT ? OFFSET ?
 ";
 
 // Add limit params
-$params[] = $length;
-$params[] = $start;
-$types .= 'ii';
+$queryParams = $whereParams;
+$queryParams[] = $params['length'];
+$queryParams[] = $params['start'];
+$queryTypes = $whereTypes . 'ii';
 
-$result = $db->query($dataQuery, $params, $types);
+$result = $db->query($dataQuery, $queryParams, $queryTypes);
 $programs = $result->fetch_all(MYSQLI_ASSOC);
 
 // Format data for DataTables
@@ -150,7 +81,6 @@ foreach ($programs as $row) {
         htmlspecialchars($row['programs_pk']),
         '<span class="badge bg-primary">' . htmlspecialchars($row['program_code']) . '</span>',
         htmlspecialchars($row['program_name']),
-        htmlspecialchars($row['department_name'] ?? 'N/A'),
         htmlspecialchars($row['degree_type'] ?? ''),
         '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
         htmlspecialchars($row['created_at'] ?? ''),
@@ -161,10 +91,5 @@ foreach ($programs as $row) {
     ];
 }
 
-// Return JSON response
-echo json_encode([
-    'draw' => $draw,
-    'recordsTotal' => $recordsTotal,
-    'recordsFiltered' => $recordsFiltered,
-    'data' => $data
-]);
+// Output JSON response
+outputDataTablesJson($params['draw'], $recordsTotal, $recordsFiltered, $data);

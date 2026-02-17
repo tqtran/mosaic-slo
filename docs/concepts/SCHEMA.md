@@ -16,19 +16,21 @@ This document describes the complete database schema for the MOSAIC assessment p
 
 ## Entity Relationship Diagram
 
-```textinstitution
+```text
+institution
     └─> institutional_outcomes
         └─> program_outcomes
             └─> programs
 
 slo_sets (per year/quarter/period)
     ├─> terms
-    │   └─> course_sections
-    │       └─> enrollment (with CRN)
-    │           ├─> students
-    │           └─> assessments
+    │   └─> course_sections (with CRN) [optional reference]
     └─> student_learning_outcomes
         └─> courses
+
+enrollment (term_code, crn stored directly)
+    ├─> students (c_number)
+    └─> assessments
 
 departments
     ├─> programs
@@ -38,7 +40,8 @@ users
     ├─> user_roles -> roles
     ├─> course_sections (instructor)
     └─> audit fields (created_by, updated_by, assessed_by)
-```text
+```
+
 ## Tables
 
 ### 1. Root Entity
@@ -241,7 +244,7 @@ Academic terms/semesters. Each term is associated with an SLO set to determine w
 **Indexes**: term_code (unique), slo_set_fk, term_year, is_active
 
 #### course_sections
-Course offerings in specific terms.
+Course offerings in specific terms. Each section has a unique CRN (Course Reference Number) used for registration and LTI integration.
 
 | Column | Type | Description |
 | -------- | ------ | ------------- |
@@ -250,68 +253,79 @@ Course offerings in specific terms.
 | term_fk | INT | Foreign key to terms |
 | instructor_fk | INT | Foreign key to users |
 | section_code | VARCHAR(50) | Section identifier |
+| crn | VARCHAR(20) | Course Reference Number (unique) |
 | is_active | BOOLEAN | Soft delete flag |
 | created_at | TIMESTAMP | Record creation time |
 | updated_at | TIMESTAMP | Last update time |
 
 **Foreign Keys**: course_fk → courses(courses_pk), term_fk → terms(terms_pk), instructor_fk → users(users_pk)
 
-**Unique Constraint**: (course_fk, term_fk, section_code)
+**Unique Constraint**: (course_fk, term_fk, section_code), crn (unique)
 
-**Indexes**: course_fk, term_fk, instructor_fk, is_active
+**Indexes**: course_fk, term_fk, instructor_fk, crn, is_active
 
 ---
 
 ### 5. Students & Enrollment
 
 #### students
-Student records.
+Student records. Primary identifier is `c_number` (Banner C-Number).
 
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | students_pk | INT | Primary key |
-| student_id | VARCHAR(50) | Unique student ID |
-| first_name | VARCHAR(100) | First name |
-| last_name | VARCHAR(100) | Last name |
-| email | VARCHAR(255) | Email address |
+| c_number | VARCHAR(50) | **Student C-Number from Banner SIS (unique)** |
+| student_id | VARCHAR(50) | Alternative student ID if needed (nullable) |
+| first_name | VARCHAR(100) | First name (nullable - may be populated later) |
+| last_name | VARCHAR(100) | Last name (nullable - may be populated later) |
+| email | VARCHAR(255) | Email address (nullable) |
 | is_active | BOOLEAN | Active student flag |
 | created_at | TIMESTAMP | Record creation time |
 | updated_at | TIMESTAMP | Last update time |
 
-**Indexes**: student_id (unique), email, is_active
+**Indexes**: c_number (unique), student_id, email, is_active
+
+**Note**: Students can be auto-created during enrollment import with just the `c_number`. Other fields (name, email) can be populated later from student data feeds.
 
 #### enrollment
-Student enrollment in course sections. Each enrollment has a unique CRN (Course Reference Number). Assessments are tied to the enrollment record via CRN.
+Student enrollment records with direct CRN and term code from Banner. Independent of course_sections table for simplified Banner ENRs import.
 
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | enrollment_pk | INT | Primary key |
-| course_section_fk | INT | Foreign key to course_sections |
+| term_code | VARCHAR(20) | **Term code from Banner (e.g., 202630)** |
+| crn | VARCHAR(20) | **Course Reference Number from Banner** |
 | student_fk | INT | Foreign key to students |
-| crn | VARCHAR(50) | Course Reference Number |
-| enrollment_status | ENUM | 'enrolled', 'dropped', 'completed' |
+| course_section_fk | INT | Optional link to course_sections if available (nullable) |
+| enrollment_status | ENUM | 'enrolled', 'dropped', 'completed', 'withdrawn' |
 | enrollment_date | DATE | Date enrolled |
 | drop_date | DATE | Date dropped (nullable) |
 | created_at | TIMESTAMP | Record creation time |
 | updated_at | TIMESTAMP | Last update time |
 
-**Foreign Keys**: course_section_fk → course_sections(course_sections_pk), student_fk → students(students_pk)
+**Foreign Keys**: student_fk → students(students_pk), course_section_fk → course_sections(course_sections_pk) ON DELETE SET NULL
 
-**Unique Constraint**: (course_section_fk, student_fk), crn (unique)
+**Unique Constraint**: (term_code, crn, student_fk)
 
-**Indexes**: course_section_fk, student_fk, crn, enrollment_status
+**Indexes**: term_code, crn, course_section_fk, student_fk, enrollment_status
+
+**Design Notes**: 
+- `crn` and `term_code` stored directly for Banner ENRs import independence
+- `course_section_fk` is optional - can be populated later if course catalog exists
+- Enables direct CSV import from Banner without pre-populating courses/sections
+- LTI launches can use CRN to find enrollment records even without course_sections
 
 ---
 
 ### 6. Assessment Data
 
 #### assessments
-Individual student assessments for SLOs. Each assessment is tied to an enrollment record (which contains the CRN) and a specific SLO from the term's SLO set.
+Individual student assessments for SLOs. Each assessment is tied to an enrollment record (which has the CRN directly) and a specific SLO from the term's SLO set.
 
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | assessments_pk | INT | Primary key |
-| enrollment_fk | INT | Foreign key to enrollment (includes CRN) |
+| enrollment_fk | INT | Foreign key to enrollment (links to course_section with CRN) |
 | student_learning_outcome_fk | INT | Foreign key to SLOs |
 | score_value | DECIMAL(5,2) | Numeric score (nullable) |
 | achievement_level | ENUM | 'met', 'partially_met', 'not_met', 'pending' |
@@ -412,20 +426,25 @@ Nonce tracking for LTI security (prevents replay attacks).
 
 ### 1. Assessment Chain with SLO Sets
 
-```textSLO Set (per year/quarter) → Student Learning Outcomes → Assessments
+```text
+SLO Set (per year/quarter) → Student Learning Outcomes → Assessments
                            ↓
-                         Terms → Course Sections → Enrollment (with CRN) → Student
-                                                                         ↓
-                                                                    Assessment
+                         Terms
+
+Enrollment (term_code + crn) → Students
+                             ↓
+                        Assessment
                                                        
 SLO → Program Outcome → Institutional Outcome
-```text
+```
+
 **Assessment Flow:**
 1. SLOs are uploaded into an SLO Set (e.g., "Academic Year 2024")
 2. Each Term is linked to an SLO Set
-3. Course Sections run within Terms
-4. Students enroll in Course Sections (Enrollment record includes CRN)
-5. Assessments are recorded per Enrollment (CRN) for specific SLOs from the Term's SLO Set
+3. Enrollments are created with term_code and CRN (from Banner ENRs table)
+4. Students are auto-created during enrollment import if needed
+5. Assessments are recorded per Enrollment for specific SLOs from the Term's SLO Set
+6. Course Sections table is optional - can be populated separately for course catalog
 
 ### 2. Institutional Reporting
 
@@ -440,10 +459,10 @@ SLO Set contains SLOs mapped to Program Outcomes
     → student_learning_outcomes records with program_outcomes_fk and slo_set_fk
     
 Query: Get all assessments rolling up to Institutional Outcome #3 for AY2024
-    → JOIN assessments → enrollment → course_sections → terms → slo_sets
+    → JOIN assessments → enrollment (has term_code, crn)
     → JOIN assessments → student_learning_outcomes → program_outcomes → institutional_outcomes
-    → WHERE institutional_outcomes_pk = 3 AND slo_sets.set_code = 'AY2024'
-```text
+    → WHERE institutional_outcomes_pk = 3 AND enrollment.term_code IN (SELECT term_code FROM terms WHERE slo_set has 'AY2024')
+```
 ### 3. Access Control
 
 ```textUser assigned role at different contexts:
@@ -486,7 +505,7 @@ Assessment table adds:
 
 **Data Retrieved:**
 - Student identification (ID, name)
-- Enrollment CRN
+- Course Section CRN (via course_section)
 - SLO details (code, description)
 - SLO Set information
 - Program outcome code (if aligned)
@@ -494,10 +513,10 @@ Assessment table adds:
 - Assessment results (achievement level, score)
 
 **Relationships Traversed:**
-- Assessments → Enrollments (with CRN) → Students
+- Assessments → Enrollments (has CRN, term_code) → Students
 - Assessments → SLOs → SLO Sets
 - SLOs → Program Outcomes → Institutional Outcomes
-- Enrollments → Course Sections → Terms → SLO Sets
+- Enrollments via term_code → Terms → SLO Sets (optional)
 
 **Filters:**
 - Specific course section
@@ -519,7 +538,7 @@ Assessment table adds:
 
 **Relationships Traversed:**
 - Program Outcomes → SLOs → SLO Sets
-- SLOs → Assessments → Enrollments (with CRN)
+- SLOs → Assessments → Enrollments → Course Sections (with CRN)
 
 **Aggregations:**
 - Count total assessments per outcome per SLO set
@@ -531,18 +550,19 @@ Assessment table adds:
 **Query Concept**: Retrieve all assessments for a specific CRN
 
 **Data Retrieved:**
-- Course section details
+- Course section details (including CRN)
 - Student information
-- All SLO assessments for that enrollment
+- All SLO assessments for enrollments in that section
 - Assessment status and scores
 
 **Relationships Traversed:**
-- Enrollment (via CRN) → Assessments → SLOs
-- Enrollment → Student
-- Enrollment → Course Section → Course
+- Course Sections (via CRN) → Enrollments → Assessments → SLOs
+- Enrollments → Students
+- Course Sections → Courses
 
 **Filters:**
-- CRN match
+- CRN match on course_sections table
+- Active records only
 - Active records only
 - Calculate achievement rate percentage
 

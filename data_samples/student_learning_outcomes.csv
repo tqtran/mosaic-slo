@@ -1,0 +1,27 @@
+SLO Set Code,Course Code,Program Outcome Code,SLO Code,Description,Assessment Method,Sequence,Status
+SLO-AY2024-25,CS101,PO-CS-1,SLO-CS101-1,Students will design algorithms to solve basic programming problems,Lab assignments and exams,1,Active
+SLO-AY2024-25,CS101,PO-CS-2,SLO-CS101-2,Students will document code and explain programming concepts clearly,Code documentation and presentations,2,Active
+SLO-AY2024-25,CS102,PO-CS-1,SLO-CS102-1,Students will implement and analyze fundamental data structures,Programming projects,1,Active
+SLO-AY2024-25,CS102,PO-CS-3,SLO-CS102-2,Students will analyze algorithm efficiency using Big-O notation,Written exams and problem sets,2,Active
+SLO-AY2024-25,CS301,PO-CS-4,SLO-CS301-1,Students will apply software development methodologies in team projects,Group project and peer evaluations,1,Active
+SLO-AY2024-25,CS301,PO-CS-5,SLO-CS301-2,Students will identify and address ethical issues in software development,Case study analysis,2,Active
+SLO-AY2024-25,BUS101,PO-BUS-1,SLO-BUS101-1,Students will analyze business case studies using analytical frameworks,Case analysis assignments,1,Active
+SLO-AY2024-25,BUS101,PO-BUS-3,SLO-BUS101-2,Students will evaluate ethical dilemmas in business scenarios,Ethics paper and discussion,2,Active
+SLO-AY2024-25,BUS301,PO-BUS-2,SLO-BUS301-1,Students will create comprehensive marketing plans,Marketing plan project,1,Active
+SLO-AY2024-25,BUS301,PO-BUS-5,SLO-BUS301-2,Students will analyze international marketing strategies,Research paper,2,Active
+SLO-AY2024-25,ENG101,PO-ENG-2,SLO-ENG101-1,Students will write clear thesis-driven essays,Essay assignments,1,Active
+SLO-AY2024-25,ENG101,PO-ENG-3,SLO-ENG101-2,Students will integrate sources effectively in research writing,Research paper,2,Active
+SLO-AY2024-25,ENG201,PO-ENG-1,SLO-ENG201-1,Students will analyze American literary works using literary theory,Literary analysis essays,1,Active
+SLO-AY2024-25,ENG201,PO-ENG-4,SLO-ENG201-2,Students will demonstrate creative interpretation of literary texts,Creative response project,2,Active
+SLO-AY2024-25,MATH201,PO-MATH-1,SLO-MATH201-1,Students will solve calculus problems using derivatives and integrals,Exams and problem sets,1,Active
+SLO-AY2024-25,MATH201,PO-MATH-4,SLO-MATH201-2,Students will explain calculus concepts and solution methods,Written explanations on exams,2,Active
+SLO-AY2024-25,MATH301,PO-MATH-2,SLO-MATH301-1,Students will construct proofs for linear algebra theorems,Proof assignments,1,Active
+SLO-AY2024-25,MATH301,PO-MATH-3,SLO-MATH301-2,Students will apply linear algebra to real-world problems,Application projects,2,Active
+SLO-AY2024-25,NURS101,PO-NURS-1,SLO-NURS101-1,Students will demonstrate basic nursing assessment skills,Clinical skills demonstration,1,Active
+SLO-AY2024-25,NURS101,PO-NURS-3,SLO-NURS101-2,Students will apply ethical principles in patient care scenarios,Case study analysis,2,Active
+SLO-AY2024-25,NURS201,PO-NURS-4,SLO-NURS201-1,Students will apply evidence-based nursing interventions,Clinical performance evaluation,1,Active
+SLO-AY2024-25,NURS201,PO-NURS-5,SLO-NURS201-2,Students will collaborate with healthcare teams in clinical settings,Clinical teamwork assessment,2,Active
+SLO-AY2024-25,PSYCH101,PO-PSYCH-1,SLO-PSYCH101-1,Students will explain major psychological theories and concepts,Exams and quizzes,1,Active
+SLO-AY2024-25,PSYCH101,PO-PSYCH-5,SLO-PSYCH101-2,Students will analyze psychological concepts across diverse populations,Discussion and reflection papers,2,Active
+SLO-AY2024-25,PSYCH201,PO-PSYCH-2,SLO-PSYCH201-1,Students will design research studies on developmental topics,Research proposal,1,Active
+SLO-AY2024-25,PSYCH201,PO-PSYCH-3,SLO-PSYCH201-2,Students will interpret developmental research data,Data analysis assignment,2,Active

@@ -1,0 +1,12 @@
+User ID,First Name,Last Name,Email,Role,Status
+jsmith,John,Smith,john.smith@example.edu,instructor,Active
+ejohnson,Emily,Johnson,emily.johnson@example.edu,instructor,Active
+mwilliams,Michael,Williams,michael.williams@example.edu,instructor,Active
+sbrown,Sarah,Brown,sarah.brown@example.edu,department_chair,Active
+djones,David,Jones,david.jones@example.edu,program_coordinator,Active
+jgarcia,Jessica,Garcia,jessica.garcia@example.edu,instructor,Active
+jmiller,James,Miller,james.miller@example.edu,instructor,Active
+adavis,Ashley,Davis,ashley.davis@example.edu,assessment_coordinator,Active
+crodriguez,Christopher,Rodriguez,christopher.rodriguez@example.edu,instructor,Active
+amartinez,Amanda,Martinez,amanda.martinez@example.edu,instructor,Active
+admin,System,Administrator,admin@example.edu,admin,Active

@@ -83,8 +83,8 @@ Institution
 
 SLO Sets (per year/quarter/period)
     ├── Terms
-    │   └── Course Sections
-    │       └── Enrollment (with CRN)
+    │   └── Course Sections (with CRN)
+    │       └── Enrollments
     │           └── Assessments
     └── Student Learning Outcomes (SLOs)
         └── Mapped to Program Outcomes
@@ -93,8 +93,9 @@ SLO Sets (per year/quarter/period)
 **Key Concepts:**
 - **SLO Sets**: SLOs are grouped by time period (academic year, quarter, semester, etc.)
 - **Terms**: Each academic term is linked to an SLO Set, determining which SLOs are assessed
-- **CRN**: Each enrollment has a unique Course Reference Number
-- **Assessments**: Tied to enrollment records (via CRN) for specific SLOs from the term's SLO Set
+- **CRN**: Each course section has a unique Course Reference Number for registration and LTI integration
+- **Enrollments**: Students enroll in course sections (which have CRNs)
+- **Assessments**: Tied to enrollment records for specific SLOs from the term's SLO Set
 
 ## Key Features
 
@@ -130,8 +131,8 @@ institution
 
 slo_sets (per year/quarter/period)
     ├─> terms
-    │   └─> course_sections
-    │       └─> enrollment (with CRN)
+    │   └─> course_sections (with CRN)
+    │       └─> enrollments
     │           ├─> students
     │           └─> assessments
     └─> student_learning_outcomes

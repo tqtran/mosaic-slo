@@ -338,7 +338,7 @@ class Student extends Model
         $stmt = $this->db->prepare("
             SELECT 
                 e.enrollment_pk,
-                e.crn,
+                cs.crn,
                 cs.course_name,
                 cs.section_number,
                 t.term_name,

@@ -244,9 +244,10 @@ $students = [];
 if ($selectedCourseSectionId > 0 && $selectedSloId > 0) {
     // Build query with optional CRN filter from LTI launch
     $studentsQuery = "
-        SELECT e.enrollment_pk, e.crn, s.student_id, s.first_name, s.last_name,
+        SELECT e.enrollment_pk, cs.crn, s.student_id, s.first_name, s.last_name,
                a.achievement_level, a.score_value
         FROM {$dbPrefix}enrollment e
+        INNER JOIN {$dbPrefix}course_sections cs ON e.course_section_fk = cs.course_sections_pk
         INNER JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
         LEFT JOIN {$dbPrefix}assessments a ON e.enrollment_pk = a.enrollment_fk 
                                  AND a.student_learning_outcome_fk = ?
@@ -258,7 +259,7 @@ if ($selectedCourseSectionId > 0 && $selectedSloId > 0) {
     
     // Filter by CRN from LTI launch if available
     if ($ltiCrn) {
-        $studentsQuery .= " AND e.crn = ?";
+        $studentsQuery .= " AND cs.crn = ?";
         $studentParams[] = $ltiCrn;
         $studentTypes .= 's';
     }

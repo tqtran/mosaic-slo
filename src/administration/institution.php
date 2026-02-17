@@ -2,14 +2,42 @@
 declare(strict_types=1);
 
 /**
- * Program Administration
+ * Institution Administration
  * 
- * Manage academic programs.
+ * Manage institution settings and LTI consumer configuration.
+ * Typically only one institution record exists.
  * 
  * @package Mosaic
  */
 
-require_once __DIR__ . '/../system/includes/admin_session.php';
+// Security headers
+header('X-Frame-Options: SAMEORIGIN');
+header('X-Content-Type-Options: nosniff');
+header('X-XSS-Protection: 1; mode=block');
+
+// Session configuration
+ini_set('session.cookie_httponly', '1');
+ini_set('session.cookie_secure', isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? '1' : '0');
+ini_set('session.cookie_samesite', 'Strict');
+ini_set('session.use_strict_mode', '1');
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+    
+    if (!isset($_SESSION['created'])) {
+        $_SESSION['created'] = time();
+    } else if (time() - $_SESSION['created'] > 1800) {
+        session_regenerate_id(true);
+        $_SESSION['created'] = time();
+    }
+}
+
+// Generate CSRF token
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Initialize common variables and database
 require_once __DIR__ . '/../system/includes/init.php';
 
 // Handle POST requests
@@ -28,133 +56,163 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         switch ($action) {
             case 'add':
-                $code = trim($_POST['program_code'] ?? '');
-                $name = trim($_POST['program_name'] ?? '');
-                $degreeType = trim($_POST['degree_type'] ?? '');
+                $code = trim($_POST['institution_code'] ?? '');
+                $name = trim($_POST['institution_name'] ?? '');
+                $ltiKey = trim($_POST['lti_consumer_key'] ?? '');
+                $ltiSecret = trim($_POST['lti_consumer_secret'] ?? '');
+                $ltiName = trim($_POST['lti_consumer_name'] ?? '');
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 // Validation
                 $errors = [];
                 if (empty($code)) {
-                    $errors[] = 'Program code is required';
+                    $errors[] = 'Institution code is required';
                 } elseif (!preg_match('/^[A-Z0-9_-]+$/i', $code)) {
-                    $errors[] = 'Program code can only contain letters, numbers, hyphens, and underscores';
+                    $errors[] = 'Institution code can only contain letters, numbers, hyphens, and underscores';
                 } else {
                     // Check uniqueness
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}programs WHERE program_code = ?",
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}institution WHERE institution_code = ?",
                         [$code],
                         's'
                     );
                     $row = $result->fetch_assoc();
                     if ($row['count'] > 0) {
-                        $errors[] = 'Program code already exists';
+                        $errors[] = 'Institution code already exists';
                     }
                 }
                 if (empty($name)) {
-                    $errors[] = 'Program name is required';
+                    $errors[] = 'Institution name is required';
+                }
+                
+                // Validate LTI consumer key uniqueness if provided
+                if (!empty($ltiKey)) {
+                    $result = $db->query(
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}institution WHERE lti_consumer_key = ?",
+                        [$ltiKey],
+                        's'
+                    );
+                    $row = $result->fetch_assoc();
+                    if ($row['count'] > 0) {
+                        $errors[] = 'LTI consumer key already exists';
+                    }
                 }
                 
                 if (empty($errors)) {
                     $db->query(
-                        "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, NOW(), NOW())",
-                        [$code, $name, $degreeType, $isActive],
-                        'sssi'
+                        "INSERT INTO {$dbPrefix}institution (institution_code, institution_name, lti_consumer_key, lti_consumer_secret, lti_consumer_name, is_active, created_at, updated_at) 
+                         VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                        [$code, $name, $ltiKey, $ltiSecret, $ltiName, $isActive],
+                        'sssssi'
                     );
-                    $successMessage = 'Program added successfully';
+                    $successMessage = 'Institution added successfully';
                 } else {
                     $errorMessage = implode('<br>', $errors);
                 }
                 break;
                 
             case 'edit':
-                $id = (int)($_POST['program_id'] ?? 0);
-                $code = trim($_POST['program_code'] ?? '');
-                $name = trim($_POST['program_name'] ?? '');
-                $degreeType = trim($_POST['degree_type'] ?? '');
+                $id = (int)($_POST['institution_id'] ?? 0);
+                $code = trim($_POST['institution_code'] ?? '');
+                $name = trim($_POST['institution_name'] ?? '');
+                $ltiKey = trim($_POST['lti_consumer_key'] ?? '');
+                $ltiSecret = trim($_POST['lti_consumer_secret'] ?? '');
+                $ltiName = trim($_POST['lti_consumer_name'] ?? '');
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 // Validation
                 $errors = [];
                 if ($id <= 0) {
-                    $errors[] = 'Invalid program ID';
+                    $errors[] = 'Invalid institution ID';
                 }
                 if (empty($code)) {
-                    $errors[] = 'Program code is required';
+                    $errors[] = 'Institution code is required';
                 } elseif (!preg_match('/^[A-Z0-9_-]+$/i', $code)) {
-                    $errors[] = 'Program code can only contain letters, numbers, hyphens, and underscores';
+                    $errors[] = 'Institution code can only contain letters, numbers, hyphens, and underscores';
                 } else {
                     // Check uniqueness (excluding current record)
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}programs WHERE program_code = ? AND programs_pk != ?",
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}institution WHERE institution_code = ? AND institution_pk != ?",
                         [$code, $id],
                         'si'
                     );
                     $row = $result->fetch_assoc();
                     if ($row['count'] > 0) {
-                        $errors[] = 'Program code already exists';
+                        $errors[] = 'Institution code already exists';
                     }
                 }
                 if (empty($name)) {
-                    $errors[] = 'Program name is required';
+                    $errors[] = 'Institution name is required';
+                }
+                
+                // Validate LTI consumer key uniqueness if provided
+                if (!empty($ltiKey)) {
+                    $result = $db->query(
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}institution WHERE lti_consumer_key = ? AND institution_pk != ?",
+                        [$ltiKey, $id],
+                        'si'
+                    );
+                    $row = $result->fetch_assoc();
+                    if ($row['count'] > 0) {
+                        $errors[] = 'LTI consumer key already exists';
+                    }
                 }
                 
                 if (empty($errors)) {
                     $db->query(
-                        "UPDATE {$dbPrefix}programs 
-                         SET program_code = ?, program_name = ?, degree_type = ?, is_active = ?, updated_at = NOW()
-                         WHERE programs_pk = ?",
-                        [$code, $name, $degreeType, $isActive, $id],
-                        'sssii'
+                        "UPDATE {$dbPrefix}institution 
+                         SET institution_code = ?, institution_name = ?, lti_consumer_key = ?, lti_consumer_secret = ?, lti_consumer_name = ?, is_active = ?, updated_at = NOW()
+                         WHERE institution_pk = ?",
+                        [$code, $name, $ltiKey, $ltiSecret, $ltiName, $isActive, $id],
+                        'sssssii'
                     );
-                    $successMessage = 'Program updated successfully';
+                    $successMessage = 'Institution updated successfully';
                 } else {
                     $errorMessage = implode('<br>', $errors);
                 }
                 break;
                 
             case 'toggle_status':
-                $id = (int)($_POST['program_id'] ?? 0);
+                $id = (int)($_POST['institution_id'] ?? 0);
                 if ($id > 0) {
                     $db->query(
-                        "UPDATE {$dbPrefix}programs 
+                        "UPDATE {$dbPrefix}institution 
                          SET is_active = NOT is_active, updated_at = NOW()
-                         WHERE programs_pk = ?",
+                         WHERE institution_pk = ?",
                         [$id],
                         'i'
                     );
-                    $successMessage = 'Program status updated';
+                    $successMessage = 'Institution status updated';
                 }
                 break;
                 
             case 'delete':
-                $id = (int)($_POST['program_id'] ?? 0);
+                $id = (int)($_POST['institution_id'] ?? 0);
                 if ($id > 0) {
-                    // Check if program has associated program outcomes
+                    // Check if institution has associated data
                     $checkResult = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}program_outcomes WHERE program_fk = ?",
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}institutional_outcomes WHERE institution_fk = ?",
                         [$id],
                         'i'
                     );
                     $checkRow = $checkResult->fetch_assoc();
                     
                     if ($checkRow['count'] > 0) {
-                        $errorMessage = 'Cannot delete program: it has associated program outcomes. Please remove outcomes first.';
+                        $errorMessage = 'Cannot delete institution: it has associated institutional outcomes. Please remove outcomes first.';
                     } else {
                         $db->query(
-                            "DELETE FROM {$dbPrefix}programs WHERE programs_pk = ?",
+                            "DELETE FROM {$dbPrefix}institution WHERE institution_pk = ?",
                             [$id],
                             'i'
                         );
-                        $successMessage = 'Program deleted successfully';
+                        $successMessage = 'Institution deleted successfully';
                     }
                 }
                 break;
                 
             case 'import':
-                if (isset($_FILES['program_upload']) && $_FILES['program_upload']['error'] === UPLOAD_ERR_OK) {
-                    $tmpName = $_FILES['program_upload']['tmp_name'];
+                if (isset($_FILES['institution_upload']) && $_FILES['institution_upload']['error'] === UPLOAD_ERR_OK) {
+                    $tmpName = $_FILES['institution_upload']['tmp_name'];
                     $handle = fopen($tmpName, 'r');
                     
                     if ($handle !== false) {
@@ -166,13 +224,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             if (count($row) >= 2) {
                                 $code = trim($row[0]);
                                 $name = trim($row[1]);
-                                $degreeType = isset($row[2]) ? trim($row[2]) : '';
-                                $isActive = isset($row[3]) && strtolower(trim($row[3])) === 'active' ? 1 : 0;
+                                $ltiKey = isset($row[2]) ? trim($row[2]) : '';
+                                $ltiSecret = isset($row[3]) ? trim($row[3]) : '';
+                                $ltiName = isset($row[4]) ? trim($row[4]) : '';
+                                $isActive = isset($row[5]) && strtolower(trim($row[5])) === 'active' ? 1 : 0;
                                 
                                 if (!empty($code) && !empty($name) && preg_match('/^[A-Z0-9_-]+$/i', $code)) {
                                     // Check if exists
                                     $result = $db->query(
-                                        "SELECT programs_pk FROM {$dbPrefix}programs WHERE program_code = ?",
+                                        "SELECT institution_pk FROM {$dbPrefix}institution WHERE institution_code = ?",
                                         [$code],
                                         's'
                                     );
@@ -181,19 +241,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         // Update existing
                                         $existing = $result->fetch_assoc();
                                         $db->query(
-                                            "UPDATE {$dbPrefix}programs 
-                                             SET program_name = ?, degree_type = ?, is_active = ?, updated_at = NOW()
-                                             WHERE programs_pk = ?",
-                                            [$name, $degreeType, $isActive, $existing['programs_pk']],
-                                            'ssii'
+                                            "UPDATE {$dbPrefix}institution 
+                                             SET institution_name = ?, lti_consumer_key = ?, lti_consumer_secret = ?, lti_consumer_name = ?, is_active = ?, updated_at = NOW()
+                                             WHERE institution_pk = ?",
+                                            [$name, $ltiKey, $ltiSecret, $ltiName, $isActive, $existing['institution_pk']],
+                                            'ssssii'
                                         );
                                     } else {
                                         // Insert new
                                         $db->query(
-                                            "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, is_active, created_at, updated_at) 
-                                             VALUES (?, ?, ?, ?, NOW(), NOW())",
-                                            [$code, $name, $degreeType, $isActive],
-                                            'sssi'
+                                            "INSERT INTO {$dbPrefix}institution (institution_code, institution_name, lti_consumer_key, lti_consumer_secret, lti_consumer_name, is_active, created_at, updated_at) 
+                                             VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                                            [$code, $name, $ltiKey, $ltiSecret, $ltiName, $isActive],
+                                            'sssssi'
                                         );
                                     }
                                     $imported++;
@@ -226,18 +286,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Calculate statistics
+// Calculate statistics (lightweight query for dashboard boxes)
 $statsResult = $db->query("
     SELECT 
         COUNT(*) as total,
         SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
         SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
-    FROM {$dbPrefix}programs
+    FROM {$dbPrefix}institution
 ");
 $stats = $statsResult->fetch_assoc();
-$totalPrograms = $stats['total'];
-$activePrograms = $stats['active'];
-$inactivePrograms = $stats['inactive'];
+$totalInstitutions = $stats['total'];
+$activeInstitutions = $stats['active'];
+$inactiveInstitutions = $stats['inactive'];
 
 // Load theme system
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
@@ -246,11 +306,11 @@ use Mosaic\Core\ThemeContext;
 
 $context = new ThemeContext([
     'layout' => 'admin',
-    'pageTitle' => 'Program Management',
-    'currentPage' => 'admin_programs',
+    'pageTitle' => 'Institution Management',
+    'currentPage' => 'admin_institution',
     'breadcrumbs' => [
         ['url' => BASE_URL, 'label' => 'Home'],
-        ['label' => 'Programs']
+        ['label' => 'Institution']
     ]
 ]);
 
@@ -268,7 +328,7 @@ $theme->showHeader($context);
             <div class="col-sm-12">
                 <ol class="breadcrumb float-sm-end">
                     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                    <li class="breadcrumb-item active">Programs</li>
+                    <li class="breadcrumb-item active">Institution</li>
                 </ol>
             </div>
         </div>
@@ -297,10 +357,10 @@ $theme->showHeader($context);
             <div class="col-lg-4 col-6">
                 <div class="small-box text-bg-info">
                     <div class="inner">
-                        <h3><?= $totalPrograms ?></h3>
-                        <p>Total Programs</p>
+                        <h3><?= $totalInstitutions ?></h3>
+                        <p>Total Institutions</p>
                     </div>
-                    <i class="small-box-icon fa-solid fa-graduation-cap"></i>
+                    <i class="small-box-icon fa-solid fa-university"></i>
                     <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
                         More info <i class="bi bi-link-45deg"></i>
                     </a>
@@ -310,8 +370,8 @@ $theme->showHeader($context);
             <div class="col-lg-4 col-6">
                 <div class="small-box text-bg-success">
                     <div class="inner">
-                        <h3><?= $activePrograms ?></h3>
-                        <p>Active Programs</p>
+                        <h3><?= $activeInstitutions ?></h3>
+                        <p>Active Institutions</p>
                     </div>
                     <i class="small-box-icon fa-solid fa-circle-check"></i>
                     <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
@@ -323,8 +383,8 @@ $theme->showHeader($context);
             <div class="col-lg-4 col-6">
                 <div class="small-box text-bg-warning">
                     <div class="inner">
-                        <h3><?= $inactivePrograms ?></h3>
-                        <p>Inactive Programs</p>
+                        <h3><?= $inactiveInstitutions ?></h3>
+                        <p>Inactive Institutions</p>
                     </div>
                     <i class="small-box-icon fa-solid fa-ban"></i>
                     <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
@@ -334,27 +394,27 @@ $theme->showHeader($context);
             </div>
         </div>
 
-        <!-- Programs Table -->
+        <!-- Institutions Table -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-table"></i> Academic Programs</h3>
+                <h3 class="card-title"><i class="fas fa-table"></i> Institution Settings</h3>
                 <div class="card-tools">
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
                         <i class="fas fa-file-upload"></i> Import CSV
                     </button>
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProgramModal">
-                        <i class="fas fa-plus"></i> Add Program
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addInstitutionModal">
+                        <i class="fas fa-plus"></i> Add Institution
                     </button>
                 </div>
             </div>
             <div class="card-body">
-                <table id="programsTable" class="table table-bordered table-striped">
+                <table id="institutionsTable" class="table table-bordered table-striped">
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Program Code</th>
-                            <th>Program Name</th>
-                            <th>Degree Type</th>
+                            <th>Institution Code</th>
+                            <th>Institution Name</th>
+                            <th>LTI Consumer Name</th>
                             <th>Status</th>
                             <th>Created</th>
                             <th>Actions</th>
@@ -363,9 +423,9 @@ $theme->showHeader($context);
                     <tfoot>
                         <tr>
                             <th>ID</th>
-                            <th>Program Code</th>
-                            <th>Program Name</th>
-                            <th>Degree Type</th>
+                            <th>Institution Code</th>
+                            <th>Institution Name</th>
+                            <th>LTI Consumer Name</th>
                             <th>Status</th>
                             <th>Created</th>
                             <th>Actions</th>
@@ -380,12 +440,12 @@ $theme->showHeader($context);
     </div>
 </div>
 
-<!-- Add Program Modal -->
-<div class="modal fade" id="addProgramModal" tabindex="-1">
+<!-- Add Institution Modal -->
+<div class="modal fade" id="addInstitutionModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-plus"></i> Add Program</h5>
+                <h5 class="modal-title"><i class="fas fa-plus"></i> Add Institution</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST">
@@ -394,19 +454,36 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="add">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="programCode" class="form-label">Program Code</label>
-                            <input type="text" class="form-control" id="programCode" name="program_code" maxlength="50" required>
+                            <label for="institutionCode" class="form-label">Institution Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="institutionCode" name="institution_code" maxlength="50" required>
                             <small class="form-text text-muted">Unique identifier (letters, numbers, hyphens, underscores)</small>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="degreeType" class="form-label">Degree Type</label>
-                            <input type="text" class="form-control" id="degreeType" name="degree_type" maxlength="50" placeholder="e.g., AS, BS, BA, MS">
+                            <label for="institutionName" class="form-label">Institution Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="institutionName" name="institution_name" maxlength="255" required>
                         </div>
                     </div>
+                    
+                    <hr>
+                    <h6>LTI Consumer Configuration (Optional)</h6>
+                    
                     <div class="mb-3">
-                        <label for="programName" class="form-label">Program Name</label>
-                        <input type="text" class="form-control" id="programName" name="program_name" maxlength="255" required>
+                        <label for="ltiConsumerName" class="form-label">LTI Consumer Name</label>
+                        <input type="text" class="form-control" id="ltiConsumerName" name="lti_consumer_name" maxlength="100" placeholder="e.g., Canvas LMS, Moodle">
                     </div>
+                    <div class="mb-3">
+                        <label for="ltiConsumerKey" class="form-label">LTI Consumer Key</label>
+                        <input type="text" class="form-control" id="ltiConsumerKey" name="lti_consumer_key" maxlength="255">
+                        <small class="form-text text-muted">OAuth consumer key for LTI 1.1 integration</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ltiConsumerSecret" class="form-label">LTI Consumer Secret</label>
+                        <input type="password" class="form-control" id="ltiConsumerSecret" name="lti_consumer_secret" maxlength="255">
+                        <small class="form-text text-muted">OAuth shared secret for LTI 1.1 integration</small>
+                    </div>
+                    
+                    <hr>
+                    
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
                         <label class="form-check-label" for="isActive">Active</label>
@@ -421,33 +498,49 @@ $theme->showHeader($context);
     </div>
 </div>
 
-<!-- Edit Program Modal -->
-<div class="modal fade" id="editProgramModal" tabindex="-1">
+<!-- Edit Institution Modal -->
+<div class="modal fade" id="editInstitutionModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Program</h5>
+                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Institution</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="action" value="edit">
-                    <input type="hidden" name="program_id" id="editProgramId">
+                    <input type="hidden" name="institution_id" id="editInstitutionId">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="editProgramCode" class="form-label">Program Code</label>
-                            <input type="text" class="form-control" id="editProgramCode" name="program_code" maxlength="50" required>
+                            <label for="editInstitutionCode" class="form-label">Institution Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editInstitutionCode" name="institution_code" maxlength="50" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="editDegreeType" class="form-label">Degree Type</label>
-                            <input type="text" class="form-control" id="editDegreeType" name="degree_type" maxlength="50">
+                            <label for="editInstitutionName" class="form-label">Institution Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editInstitutionName" name="institution_name" maxlength="255" required>
                         </div>
                     </div>
+                    
+                    <hr>
+                    <h6>LTI Consumer Configuration (Optional)</h6>
+                    
                     <div class="mb-3">
-                        <label for="editProgramName" class="form-label">Program Name</label>
-                        <input type="text" class="form-control" id="editProgramName" name="program_name" maxlength="255" required>
+                        <label for="editLtiConsumerName" class="form-label">LTI Consumer Name</label>
+                        <input type="text" class="form-control" id="editLtiConsumerName" name="lti_consumer_name" maxlength="100">
                     </div>
+                    <div class="mb-3">
+                        <label for="editLtiConsumerKey" class="form-label">LTI Consumer Key</label>
+                        <input type="text" class="form-control" id="editLtiConsumerKey" name="lti_consumer_key" maxlength="255">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editLtiConsumerSecret" class="form-label">LTI Consumer Secret</label>
+                        <input type="password" class="form-control" id="editLtiConsumerSecret" name="lti_consumer_secret" maxlength="255" placeholder="Leave blank to keep current value">
+                        <small class="form-text text-muted">Leave blank to keep existing secret</small>
+                    </div>
+                    
+                    <hr>
+                    
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
                         <label class="form-check-label" for="editIsActive">Active</label>
@@ -462,48 +555,67 @@ $theme->showHeader($context);
     </div>
 </div>
 
-<!-- View Program Modal -->
-<div class="modal fade" id="viewProgramModal" tabindex="-1">
+<!-- View Institution Modal -->
+<div class="modal fade" id="viewInstitutionModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="fas fa-eye"></i> Program Details</h5>
+                <h5 class="modal-title"><i class="fas fa-eye"></i> Institution Details</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <strong>Program Name:</strong>
-                        <p id="viewProgramName"></p>
+                        <strong>Institution Name:</strong>
+                        <p id="viewInstitutionName"></p>
                     </div>
                     <div class="col-md-6">
-                        <strong>Program Code:</strong>
-                        <p id="viewProgramCode"></p>
+                        <strong>Institution Code:</strong>
+                        <p id="viewInstitutionCode"></p>
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <strong>Degree Type:</strong>
-                        <p id="viewDegreeType"></p>
-                    </div>
-                    <div class="col-md-6">
                         <strong>Status:</strong>
-                        <p id="viewProgramStatus"></p>
+                        <p id="viewInstitutionStatus"></p>
                     </div>
                     <div class="col-md-6">
                         <strong>ID:</strong>
-                        <p id="viewProgramId"></p>
+                        <p id="viewInstitutionId"></p>
                     </div>
                 </div>
+                
+                <hr>
+                <h6>LTI Consumer Configuration</h6>
+                
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <strong>LTI Consumer Name:</strong>
+                        <p id="viewLtiConsumerName"></p>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <strong>LTI Consumer Key:</strong>
+                        <p id="viewLtiConsumerKey"></p>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <strong>LTI Consumer Secret:</strong>
+                        <p id="viewLtiConsumerSecret"></p>
+                    </div>
+                </div>
+                
                 <hr>
                 <div class="row">
                     <div class="col-md-6">
                         <strong>Created:</strong>
-                        <p id="viewProgramCreated"></p>
+                        <p id="viewInstitutionCreated"></p>
                     </div>
                     <div class="col-md-6">
                         <strong>Last Updated:</strong>
-                        <p id="viewProgramUpdated"></p>
+                        <p id="viewInstitutionUpdated"></p>
                     </div>
                 </div>
             </div>
@@ -519,7 +631,7 @@ $theme->showHeader($context);
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-file-upload"></i> Import Programs</h5>
+                <h5 class="modal-title"><i class="fas fa-file-upload"></i> Import Institutions</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" enctype="multipart/form-data">
@@ -527,9 +639,9 @@ $theme->showHeader($context);
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="action" value="import">
                     <div class="mb-3">
-                        <label for="programUpload" class="form-label">Upload CSV File</label>
-                        <input type="file" class="form-control" id="programUpload" name="program_upload" accept=".csv" required>
-                        <small class="form-text text-muted">CSV format: Program Code, Program Name, Degree Type, Status (Active/Inactive)</small>
+                        <label for="institutionUpload" class="form-label">Upload CSV File</label>
+                        <input type="file" class="form-control" id="institutionUpload" name="institution_upload" accept=".csv" required>
+                        <small class="form-text text-muted">CSV format: Institution Code, Institution Name, LTI Key, LTI Secret, LTI Consumer Name, Status (Active/Inactive)</small>
                     </div>
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> Existing records with matching codes will be updated.
@@ -548,14 +660,14 @@ $theme->showHeader($context);
 <form id="toggleStatusForm" method="POST" style="display: none;">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
     <input type="hidden" name="action" value="toggle_status">
-    <input type="hidden" name="program_id" id="toggleProgramId">
+    <input type="hidden" name="institution_id" id="toggleInstitutionId">
 </form>
 
 <!-- Delete Form (hidden) -->
 <form id="deleteForm" method="POST" style="display: none;">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
     <input type="hidden" name="action" value="delete">
-    <input type="hidden" name="program_id" id="deleteProgramId">
+    <input type="hidden" name="institution_id" id="deleteInstitutionId">
 </form>
 
 <?php $theme->showFooter($context); ?>
@@ -574,7 +686,7 @@ $theme->showHeader($context);
 <script>
 $(document).ready(function() {
     // Setup - add a text input to each footer cell
-    $('#programsTable tfoot th').each(function() {
+    $('#institutionsTable tfoot th').each(function() {
         var title = $(this).text();
         if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
@@ -583,19 +695,19 @@ $(document).ready(function() {
         }
     });
     
-    var table = $('#programsTable').DataTable({
+    var table = $('#institutionsTable').DataTable({
         processing: true,
         serverSide: true,
-        ajax: '<?= BASE_URL ?>administration/programs_data.php',
+        ajax: '<?= BASE_URL ?>administration/institution_data.php',
         dom: 'Bfrtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         columns: [
-            { data: 0, name: 'programs_pk' },
-            { data: 1, name: 'program_code' },
-            { data: 2, name: 'program_name' },
-            { data: 3, name: 'degree_type' },
+            { data: 0, name: 'institution_pk' },
+            { data: 1, name: 'institution_code' },
+            { data: 2, name: 'institution_name' },
+            { data: 3, name: 'lti_consumer_name' },
             { data: 4, name: 'is_active' },
             { data: 5, name: 'created_at' },
             { data: 6, name: 'actions', orderable: false, searchable: false }
@@ -614,36 +726,40 @@ $(document).ready(function() {
     });
 });
 
-function viewProgram(prog) {
-    $('#viewProgramName').text(prog.program_name);
-    $('#viewProgramCode').text(prog.program_code);
-    $('#viewDegreeType').text(prog.degree_type || 'N/A');
-    $('#viewProgramStatus').html(prog.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>');
-    $('#viewProgramId').text(prog.programs_pk);
-    $('#viewProgramCreated').text(prog.created_at);
-    $('#viewProgramUpdated').text(prog.updated_at);
-    new bootstrap.Modal(document.getElementById('viewProgramModal')).show();
+function viewInstitution(inst) {
+    $('#viewInstitutionName').text(inst.institution_name);
+    $('#viewInstitutionCode').text(inst.institution_code);
+    $('#viewInstitutionStatus').html(inst.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>');
+    $('#viewInstitutionId').text(inst.institution_pk);
+    $('#viewLtiConsumerName').text(inst.lti_consumer_name || 'N/A');
+    $('#viewLtiConsumerKey').text(inst.lti_consumer_key || 'N/A');
+    $('#viewLtiConsumerSecret').text(inst.lti_consumer_secret ? '***hidden***' : 'N/A');
+    $('#viewInstitutionCreated').text(inst.created_at);
+    $('#viewInstitutionUpdated').text(inst.updated_at);
+    new bootstrap.Modal(document.getElementById('viewInstitutionModal')).show();
 }
 
-function editProgram(prog) {
-    $('#editProgramId').val(prog.programs_pk);
-    $('#editProgramCode').val(prog.program_code);
-    $('#editProgramName').val(prog.program_name);
-    $('#editDegreeType').val(prog.degree_type);
-    $('#editIsActive').prop('checked', prog.is_active == 1);
-    new bootstrap.Modal(document.getElementById('editProgramModal')).show();
+function editInstitution(inst) {
+    $('#editInstitutionId').val(inst.institution_pk);
+    $('#editInstitutionCode').val(inst.institution_code);
+    $('#editInstitutionName').val(inst.institution_name);
+    $('#editLtiConsumerName').val(inst.lti_consumer_name);
+    $('#editLtiConsumerKey').val(inst.lti_consumer_key);
+    $('#editLtiConsumerSecret').val(''); // Don't show existing secret
+    $('#editIsActive').prop('checked', inst.is_active == 1);
+    new bootstrap.Modal(document.getElementById('editInstitutionModal')).show();
 }
 
 function toggleStatus(id, name) {
     if (confirm('Are you sure you want to toggle the status of "' + name + '"?')) {
-        $('#toggleProgramId').val(id);
+        $('#toggleInstitutionId').val(id);
         $('#toggleStatusForm').submit();
     }
 }
 
-function deleteProgram(id, name) {
+function deleteInstitution(id, name) {
     if (confirm('Are you sure you want to DELETE "' + name + '"? This action cannot be undone.')) {
-        $('#deleteProgramId').val(id);
+        $('#deleteInstitutionId').val(id);
         $('#deleteForm').submit();
     }
 }

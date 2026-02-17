@@ -1,0 +1,14 @@
+Set Code,Set Name,Set Type,Start Date,End Date,Status
+SLO-AY2023-24,Academic Year 2023-2024,year,2023-08-15,2024-05-15,Active
+SLO-AY2024-25,Academic Year 2024-2025,year,2024-08-15,2025-05-15,Active
+SLO-AY2025-26,Academic Year 2025-2026,year,2025-08-15,2026-05-15,Active
+SLO-FA2023,Fall 2023,semester,2023-08-15,2023-12-15,Active
+SLO-SP2024,Spring 2024,semester,2024-01-15,2024-05-15,Active
+SLO-FA2024,Fall 2024,semester,2024-08-15,2024-12-15,Active
+SLO-SP2025,Spring 2025,semester,2025-01-15,2025-05-15,Active
+SLO-FA2025,Fall 2025,semester,2025-08-15,2025-12-15,Active
+SLO-SP2026,Spring 2026,semester,2026-01-15,2026-05-15,Active
+SLO-Q1-2024,Quarter 1 2024,quarter,2024-01-01,2024-03-31,Active
+SLO-Q2-2024,Quarter 2 2024,quarter,2024-04-01,2024-06-30,Active
+SLO-Q3-2024,Quarter 3 2024,quarter,2024-07-01,2024-09-30,Active
+SLO-Q4-2024,Quarter 4 2024,quarter,2024-10-01,2024-12-31,Active

@@ -1,0 +1,16 @@
+Department Code,Department Name,Status
+ARTS,Arts and Humanities,Active
+BIO,Biological Sciences,Active
+BUS,Business Administration,Active
+CHEM,Chemistry,Active
+CS,Computer Science,Active
+ENG,English,Active
+HIST,History,Active
+MATH,Mathematics,Active
+NURS,Nursing,Active
+PHYS,Physics,Active
+PSYCH,Psychology,Active
+SOC,Sociology,Active
+EDUC,Education,Active
+ENGR,Engineering,Active
+MUS,Music,Inactive

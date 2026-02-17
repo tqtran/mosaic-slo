@@ -84,57 +84,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
             }
             
             // Try to select the database (works whether we created it or it already exists)
-            if (!$mysqli->select_db($db_name_escaped)) {
-                // Database doesn't exist and we couldn't create it
-                $error = 'Cannot access database "' . htmlspecialchars($db_name) . '". ';
-                if (!$createSuccess) {
-                    $error .= 'You may need to create this database first through your hosting control panel (cPanel, Plesk, etc.) and ensure your user has access to it.';
+            try {
+                $mysqli->select_db($db_name_escaped);
+                
+                // Database selected successfully - proceed with schema installation
+                // Execute schema
+                $schemaFile = __DIR__ . '/../system/database/schema.sql';
+                
+                if (!file_exists($schemaFile)) {
+                    $error = 'Schema file not found at: ' . $schemaFile;
                 } else {
-                    $error .= 'Database may exist but user does not have access. Error: ' . $mysqli->error;
-                }
-            } else {
-                    // Execute schema
-                    $schemaFile = __DIR__ . '/../system/database/schema.sql';
+                    $schema = file_get_contents($schemaFile);
                     
-                    if (!file_exists($schemaFile)) {
-                        $error = 'Schema file not found at: ' . $schemaFile;
-                    } else {
-                        $schema = file_get_contents($schemaFile);
+                    // Drop existing tables if they exist (for clean reinstall)
+                    $tables = [
+                        'lti_nonces', 'security_log', 'error_log',
+                        'audit_log', 'user_roles', 'roles', 'assessments',
+                        'enrollment', 'students', 'terms',
+                        'student_learning_outcomes', 'slo_sets',
+                        'program_outcomes', 'programs',
+                        'institutional_outcomes', 'institution', 'users'
+                    ];
                         
-                        // Drop existing tables if they exist (for clean reinstall)
-                        $tables = [
-                            'lti_nonces', 'security_log', 'error_log',
-                            'audit_log', 'user_roles', 'roles', 'assessments',
-                            'enrollment', 'students', 'course_sections', 'terms',
-                            'student_learning_outcomes', 'slo_sets', 'courses',
-                            'program_outcomes', 'programs', 'departments',
-                            'institutional_outcomes', 'institution', 'users'
-                        ];
-                        
-                        try {
-                            $mysqli->query('SET FOREIGN_KEY_CHECKS = 0');
-                            foreach ($tables as $table) {
-                                $tableName = $db_prefix . $table;
-                                @$mysqli->query("DROP TABLE IF EXISTS `$tableName`");
-                            }
-                        } catch (\mysqli_sql_exception $e) {
-                            // Ignore errors from dropping non-existent tables
+                    try {
+                        $mysqli->query('SET FOREIGN_KEY_CHECKS = 0');
+                        foreach ($tables as $table) {
+                            $tableName = $db_prefix . $table;
+                            @$mysqli->query("DROP TABLE IF EXISTS `$tableName`");
                         }
+                    } catch (\mysqli_sql_exception $e) {
+                        // Ignore errors from dropping non-existent tables
+                    }
                         
-                        // Apply table prefix if configured
-                        if (!empty($db_prefix)) {
-                            // Replace table names with prefixed versions
-                            foreach ($tables as $table) {
-                                $schema = preg_replace(
-                                    '/\b' . preg_quote($table, '/') . '\b/',
-                                    $db_prefix . $table,
-                                    $schema
-                                );
-                            }
+                    // Apply table prefix if configured
+                    if (!empty($db_prefix)) {
+                        // Replace table names with prefixed versions
+                        foreach ($tables as $table) {
+                            $schema = preg_replace(
+                                '/\b' . preg_quote($table, '/') . '\b/',
+                                $db_prefix . $table,
+                                $schema
+                            );
                         }
-                        
-                        // Execute multi-query with exception handling
-                        try {
+                    }
+                    
+                    // Execute multi-query with exception handling
+                    try {
                             if ($mysqli->multi_query($schema)) {
                                 // Clear all results
                                 do {
@@ -204,8 +199,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                         } catch (\mysqli_sql_exception $e) {
                             $error = 'Database error: ' . $e->getMessage();
                         }
-                    }
+                } // End else (schema file exists / complete installation)
+            } catch (\mysqli_sql_exception $e) {
+                // Database doesn't exist and we couldn't create or access it
+                $error = 'Cannot access database "' . htmlspecialchars($db_name) . '". ';
+                $error .= 'Error: ' . htmlspecialchars($e->getMessage()) . '. ';
+                if (!isset($createSuccess) || !$createSuccess) {
+                    $error .= 'You may need to create this database first through your hosting control panel (cPanel, Plesk, etc.) and ensure your user has access to it.';
                 }
+            }
             
             if ($mysqli !== null) {
                 $mysqli->close();

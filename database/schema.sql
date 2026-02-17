@@ -8,19 +8,17 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS lti_nonces;
+DROP TABLE IF EXISTS lti_consumers;
 DROP TABLE IF EXISTS user_roles;
 DROP TABLE IF EXISTS roles;
 DROP TABLE IF EXISTS assessments;
 DROP TABLE IF EXISTS enrollment;
 DROP TABLE IF EXISTS students;
-DROP TABLE IF EXISTS course_sections;
 DROP TABLE IF EXISTS terms;
 DROP TABLE IF EXISTS student_learning_outcomes;
 DROP TABLE IF EXISTS slo_sets;
-DROP TABLE IF EXISTS courses;
 DROP TABLE IF EXISTS program_outcomes;
 DROP TABLE IF EXISTS programs;
-DROP TABLE IF EXISTS departments;
 DROP TABLE IF EXISTS institutional_outcomes;
 DROP TABLE IF EXISTS institution;
 DROP TABLE IF EXISTS users;
@@ -112,27 +110,11 @@ CREATE TABLE institutional_outcomes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- 4. ORGANIZATIONAL STRUCTURE
+-- 4. PROGRAMS
 -- ============================================================================
-
-CREATE TABLE departments (
-    departments_pk INT AUTO_INCREMENT PRIMARY KEY,
-    department_code VARCHAR(50) NOT NULL UNIQUE,
-    department_name VARCHAR(255) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_by_fk INT,
-    updated_by_fk INT,
-    FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    INDEX idx_department_code (department_code),
-    INDEX idx_is_active (is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE programs (
     programs_pk INT AUTO_INCREMENT PRIMARY KEY,
-    department_fk INT NOT NULL,
     program_code VARCHAR(50) NOT NULL UNIQUE,
     program_name VARCHAR(255) NOT NULL,
     degree_type VARCHAR(50),
@@ -141,11 +123,9 @@ CREATE TABLE programs (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    FOREIGN KEY (department_fk) REFERENCES departments(departments_pk) ON DELETE CASCADE,
     FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
     FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
     INDEX idx_program_code (program_code),
-    INDEX idx_department_fk (department_fk),
     INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -169,26 +149,6 @@ CREATE TABLE program_outcomes (
     INDEX idx_program_fk (program_fk),
     INDEX idx_institutional_outcomes_fk (institutional_outcomes_fk),
     INDEX idx_sequence_num (sequence_num),
-    INDEX idx_is_active (is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE courses (
-    courses_pk INT AUTO_INCREMENT PRIMARY KEY,
-    department_fk INT NOT NULL,
-    course_code VARCHAR(50) NOT NULL UNIQUE,
-    course_name VARCHAR(255) NOT NULL,
-    description TEXT,
-    credit_hours INT,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_by_fk INT,
-    updated_by_fk INT,
-    FOREIGN KEY (department_fk) REFERENCES departments(departments_pk) ON DELETE CASCADE,
-    FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    INDEX idx_course_code (course_code),
-    INDEX idx_department_fk (department_fk),
     INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -220,7 +180,6 @@ CREATE TABLE slo_sets (
 CREATE TABLE student_learning_outcomes (
     student_learning_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
     slo_set_fk INT NOT NULL,
-    course_fk INT NOT NULL,
     program_outcomes_fk INT,
     slo_code VARCHAR(50) NOT NULL,
     description TEXT NOT NULL,
@@ -232,26 +191,24 @@ CREATE TABLE student_learning_outcomes (
     created_by_fk INT,
     updated_by_fk INT,
     FOREIGN KEY (slo_set_fk) REFERENCES slo_sets(slo_sets_pk) ON DELETE CASCADE,
-    FOREIGN KEY (course_fk) REFERENCES courses(courses_pk) ON DELETE CASCADE,
     FOREIGN KEY (program_outcomes_fk) REFERENCES program_outcomes(program_outcomes_pk) ON DELETE SET NULL,
     FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
     FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    UNIQUE KEY unique_slo_in_set (slo_set_fk, course_fk, slo_code),
+    UNIQUE KEY unique_slo_in_set (slo_set_fk, slo_code),
     INDEX idx_slo_set_fk (slo_set_fk),
-    INDEX idx_course_fk (course_fk),
     INDEX idx_program_outcomes_fk (program_outcomes_fk),
     INDEX idx_sequence_num (sequence_num),
     INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- 6. TERMS & SECTIONS
+-- 6. TERMS
 -- ============================================================================
 
 CREATE TABLE terms (
     terms_pk INT AUTO_INCREMENT PRIMARY KEY,
     slo_set_fk INT NOT NULL,
-    term_code VARCHAR(50) NOT NULL UNIQUE,
+    term_code VARCHAR(50) NOT NULL UNIQUE COMMENT 'Banner term code (e.g., 202630)',
     term_name VARCHAR(100) NOT NULL,
     term_year INT NOT NULL,
     start_date DATE NOT NULL,
@@ -266,38 +223,21 @@ CREATE TABLE terms (
     INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE course_sections (
-    course_sections_pk INT AUTO_INCREMENT PRIMARY KEY,
-    course_fk INT NOT NULL,
-    term_fk INT NOT NULL,
-    instructor_fk INT,
-    section_code VARCHAR(50) NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (course_fk) REFERENCES courses(courses_pk) ON DELETE CASCADE,
-    FOREIGN KEY (term_fk) REFERENCES terms(terms_pk) ON DELETE CASCADE,
-    FOREIGN KEY (instructor_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    UNIQUE KEY unique_section (course_fk, term_fk, section_code),
-    INDEX idx_course_fk (course_fk),
-    INDEX idx_term_fk (term_fk),
-    INDEX idx_instructor_fk (instructor_fk),
-    INDEX idx_is_active (is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- ============================================================================
 -- 7. STUDENTS & ENROLLMENT
 -- ============================================================================
 
 CREATE TABLE students (
     students_pk INT AUTO_INCREMENT PRIMARY KEY,
-    student_id VARCHAR(50) NOT NULL UNIQUE,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
+    c_number VARCHAR(50) NOT NULL UNIQUE COMMENT 'Student C-Number from Banner SIS (cnum)',
+    first_name VARCHAR(100) COMMENT 'First name (FN)',
+    last_name VARCHAR(100) COMMENT 'Last name (LN)',
+    student_id VARCHAR(50) COMMENT 'Alternative student ID if needed',
     email VARCHAR(255),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_c_number (c_number),
     INDEX idx_student_id (student_id),
     INDEX idx_email (email),
     INDEX idx_is_active (is_active)
@@ -305,20 +245,18 @@ CREATE TABLE students (
 
 CREATE TABLE enrollment (
     enrollment_pk INT AUTO_INCREMENT PRIMARY KEY,
-    course_section_fk INT NOT NULL,
+    term_code VARCHAR(20) NOT NULL COMMENT 'Term code from Banner (term)',
+    crn VARCHAR(20) NOT NULL COMMENT 'Course Reference Number from Banner (crn)',
     student_fk INT NOT NULL,
-    crn VARCHAR(50) NOT NULL UNIQUE,
-    enrollment_status ENUM('enrolled', 'dropped', 'completed') DEFAULT 'enrolled',
-    enrollment_date DATE NOT NULL,
-    drop_date DATE,
+    enrollment_status VARCHAR(10) NOT NULL DEFAULT '1' COMMENT 'Status from Banner (status): 1=enrolled, 2=completed, 7=dropped',
+    enrollment_date DATE NOT NULL COMMENT 'Registration date from Banner (regdate)',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (course_section_fk) REFERENCES course_sections(course_sections_pk) ON DELETE CASCADE,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update from Banner (updated)',
     FOREIGN KEY (student_fk) REFERENCES students(students_pk) ON DELETE CASCADE,
-    UNIQUE KEY unique_enrollment (course_section_fk, student_fk),
-    INDEX idx_course_section_fk (course_section_fk),
-    INDEX idx_student_fk (student_fk),
+    UNIQUE KEY unique_enrollment (term_code, crn, student_fk),
+    INDEX idx_term_code (term_code),
     INDEX idx_crn (crn),
+    INDEX idx_student_fk (student_fk),
     INDEX idx_enrollment_status (enrollment_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

@@ -1,0 +1,77 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * DataTables Helper
+ * 
+ * Reusable functions for DataTables server-side processing.
+ * 
+ * @package Mosaic
+ */
+
+/**
+ * Get DataTables request parameters
+ * 
+ * @return array{draw: int, start: int, length: int, search: string, orderColumn: int, orderDir: string}
+ */
+function getDatatTablesParams(): array
+{
+    return [
+        'draw' => (int)($_GET['draw'] ?? 1),
+        'start' => (int)($_GET['start'] ?? 0),
+        'length' => (int)($_GET['length'] ?? 10),
+        'search' => $_GET['search']['value'] ?? '',
+        'orderColumn' => (int)($_GET['order'][0]['column'] ?? 0),
+        'orderDir' => strtoupper($_GET['order'][0]['dir'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC'
+    ];
+}
+
+/**
+ * Build search WHERE clause for DataTables
+ * 
+ * @param string $searchValue Global search value
+ * @param array<string> $searchableColumns Column names to search
+ * @param array<string> &$params Reference to params array
+ * @param string &$types Reference to types string
+ * @return string WHERE clause (without 'WHERE' keyword)
+ */
+function buildSearchWhere(string $searchValue, array $searchableColumns, array &$params, string &$types): string
+{
+    if (empty($searchValue)) {
+        return '';
+    }
+    
+    $searchConditions = [];
+    foreach ($searchableColumns as $column) {
+        $searchConditions[] = "{$column} LIKE ?";
+    }
+    
+    $searchParam = "%{$searchValue}%";
+    for ($i = 0; $i < count($searchConditions); $i++) {
+        $params[] = $searchParam;
+        $types .= 's';
+    }
+    
+    return '(' . implode(' OR ', $searchConditions) . ')';
+}
+
+/**
+ * Output DataTables JSON response
+ * 
+ * @param int $draw Draw counter from request
+ * @param int $totalRecords Total records before filtering
+ * @param int $filteredRecords Total records after filtering
+ * @param array<mixed> $data Result data
+ * @return never
+ */
+function outputDatatablesJson(int $draw, int $totalRecords, int $filteredRecords, array $data): never
+{
+    header('Content-Type: application/json');
+    echo json_encode([
+        'draw' => $draw,
+        'recordsTotal' => $totalRecords,
+        'recordsFiltered' => $filteredRecords,
+        'data' => $data
+    ]);
+    exit;
+}

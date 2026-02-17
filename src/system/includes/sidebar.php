@@ -64,6 +64,24 @@
                     </a>
                 </li>
                 
+                <!-- Program Outcomes -->
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/program_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_program_outcomes' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-bullseye"></i>
+                        <p>Program Outcomes</p>
+                    </a>
+                </li>
+                
+                <li class="nav-header">ENROLLMENT</li>
+                
+                <!-- Students & Enrollment -->
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/enrollment.php" class="nav-link <?= ($currentPage ?? '') === 'admin_enrollment' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-people"></i>
+                        <p>Students & Enrollment</p>
+                    </a>
+                </li>
+                
                 <li class="nav-header">ASSESSMENT</li>
                 
                 <!-- Coming Soon Items -->
