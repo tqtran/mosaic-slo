@@ -37,7 +37,7 @@ list($whereClause, $whereParams, $whereTypes) = buildSearchWhere($params, $colum
 
 // Get total records (without filtering)
 $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}programs");
-$totalRow = $totalResult->fetch_assoc();
+$totalRow = $totalResult->fetch();
 $recordsTotal = $totalRow['total'];
 
 // Get filtered records count
@@ -47,7 +47,7 @@ if (!empty($whereParams)) {
 } else {
     $filteredResult = $db->query($countQuery);
 }
-$filteredRow = $filteredResult->fetch_assoc();
+$filteredRow = $filteredResult->fetch();
 $recordsFiltered = $filteredRow['total'];
 
 // Get data
@@ -66,7 +66,7 @@ $queryParams[] = $params['start'];
 $queryTypes = $whereTypes . 'ii';
 
 $result = $db->query($dataQuery, $queryParams, $queryTypes);
-$programs = $result->fetch_all(MYSQLI_ASSOC);
+$programs = $result->fetchAll();
 
 // Format data for DataTables
 $data = [];

@@ -90,7 +90,7 @@ $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereCond
 
 // Get total records (without filtering)
 $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}enrollment");
-$totalRow = $totalResult->fetch_assoc();
+$totalRow = $totalResult->fetch();
 $recordsTotal = $totalRow['total'];
 
 // Get filtered records count
@@ -105,7 +105,7 @@ if (!empty($params)) {
 } else {
     $filteredResult = $db->query($countQuery);
 }
-$filteredRow = $filteredResult->fetch_assoc();
+$filteredRow = $filteredResult->fetch();
 $recordsFiltered = $filteredRow['total'];
 
 // Get data
@@ -129,7 +129,7 @@ $params[] = $start;
 $types .= 'ii';
 
 $result = $db->query($dataQuery, $params, $types);
-$enrollments = $result->fetch_all(MYSQLI_ASSOC);
+$enrollments = $result->fetchAll();
 
 // Format data for DataTables
 $data = [];

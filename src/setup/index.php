@@ -34,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
     // Validate and sanitize input
     $site_name = trim($_POST['site_name'] ?? 'MOSAIC');
     $base_url = trim($_POST['base_url'] ?? BASE_URL);
+    $db_driver = trim($_POST['db_driver'] ?? 'mysql');
     $db_host = trim($_POST['db_host'] ?? '');
     $db_port = filter_var($_POST['db_port'] ?? 3306, FILTER_VALIDATE_INT);
     $db_name = trim($_POST['db_name'] ?? '');
@@ -54,6 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
     // Validation
     if (empty($db_host) || empty($db_name) || empty($db_user)) {
         $error = 'Database host, name, and username are required.';
+    } elseif (!in_array($db_driver, ['mysql', 'mssql'])) {
+        $error = 'Invalid database driver. Must be mysql or mssql.';
     } elseif (!empty($db_prefix) && !preg_match('/^[a-zA-Z0-9_]+$/', $db_prefix)) {
         $error = 'Table prefix can only contain letters, numbers, and underscores.';
     } elseif (empty($base_url) || !str_starts_with($base_url, '/')) {
@@ -62,8 +65,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
         $error = 'Invalid port number. Must be between 1 and 65535.';
     } else {
         // Attempt connection with proper exception handling
+        // Note: Setup wizard still uses mysqli for initial connection test
+        // The main app uses PDO (supports both MySQL and MSSQL)
         try {
-            $mysqli = new mysqli($db_host, $db_user, $db_pass, '', $db_port);
+            if ($db_driver === 'mssql') {
+                // For MSSQL, we'll skip mysqli connection test and go straight to PDO in schema execution
+                $mysqli = null;
+            } else {
+                $mysqli = new mysqli($db_host, $db_user, $db_pass, '', $db_port);
+            }
         } catch (\mysqli_sql_exception $e) {
             $error = 'Connection failed: ' . $e->getMessage();
             $mysqli = null;
@@ -89,7 +99,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                 
                 // Database selected successfully - proceed with schema installation
                 // Execute schema
-                $schemaFile = __DIR__ . '/../system/database/schema.sql';
+                // Use appropriate schema file based on driver
+                $schemaFile = ($db_driver === 'mssql') 
+                    ? __DIR__ . '/../system/database/schema_mssql.sql'
+                    : __DIR__ . '/../system/database/schema.sql';
                 
                 if (!file_exists($schemaFile)) {
                     $error = 'Schema file not found at: ' . $schemaFile;
@@ -151,6 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                     $configContent = "# MOSAIC Configuration\n";
                                     $configContent .= "# Generated: " . date('Y-m-d H:i:s') . "\n\n";
                                     $configContent .= "database:\n";
+                                    $configContent .= "  driver: " . $db_driver . "\n";
                                     $configContent .= "  host: " . $db_host . "\n";
                                     $configContent .= "  port: " . $db_port . "\n";
                                     $configContent .= "  name: " . $db_name . "\n";
@@ -387,7 +401,7 @@ $theme->showHeader($context);
                             mysqli extension enabled
                         </li>
                         <li class="pass">
-                            MySQL 8.0+ <span class="text-muted">(will be verified on connection)</span>
+                            MySQL 8.0+ or MS SQL Server 2016+ <span class="text-muted">(will be verified on connection)</span>
                         </li>
                     </ul>
                 </div>
@@ -429,9 +443,18 @@ $theme->showHeader($context);
                     <!-- Database Configuration -->
                     <h6 class="form-section-title"><i class="fas fa-database mr-2"></i>Database Connection</h6>
                     <p class="text-muted mb-3" style="font-size: 14px;">
-                        We need to connect to your MySQL database. If you're not sure about these settings, contact your hosting provider or system administrator.
+                        We support MySQL (for development or smaller deployments) and MS SQL Server (for enterprise production). If you're not sure about these settings, contact your hosting provider or system administrator.
                         <br><strong>Shared Hosting Note:</strong> If using cPanel, Plesk, or similar, create your database first through their interface and use those credentials here.
                     </p>
+                    
+                    <div class="form-group">
+                        <label for="db_driver">Database Type</label>
+                        <select class="form-control" id="db_driver" name="db_driver" onchange="updatePortDefault()" required>
+                            <option value="mysql" <?php echo ($_POST['db_driver'] ?? 'mysql') === 'mysql' ? 'selected' : ''; ?>>MySQL / MariaDB</option>
+                            <option value="mssql" <?php echo ($_POST['db_driver'] ?? '') === 'mssql' ? 'selected' : ''; ?>>Microsoft SQL Server</option>
+                        </select>
+                        <small class="form-text text-muted">Choose MySQL for easy entry and development, or MS SQL Server for production enterprise environments. <strong>This choice is permanent</strong> - the database type cannot be changed after installation.</small>
+                    </div>
                     
                     <div class="form-group">
                         <label for="db_host">Server Address</label>
@@ -446,7 +469,7 @@ $theme->showHeader($context);
                         <input type="number" class="form-control" id="db_port" name="db_port" 
                                value="<?php echo htmlspecialchars($_POST['db_port'] ?? '3306'); ?>" 
                                min="1" max="65535" required>
-                        <small class="form-text text-muted">Default is 3306</small>
+                        <small class="form-text text-muted">MySQL default: 3306, MSSQL default: 1433</small>
                     </div>
                     
                     <div class="form-group">
@@ -576,6 +599,16 @@ $theme->showHeader($context);
                         } else {
                             smtpFields.style.display = 'none';
                             commonFields.style.display = 'none';
+                        }
+                    }
+                    
+                    function updatePortDefault() {
+                        var driver = document.getElementById('db_driver').value;
+                        var portField = document.getElementById('db_port');
+                        
+                        // Only update if port is still at default value
+                        if (portField.value === '3306' || portField.value === '1433') {
+                            portField.value = (driver === 'mssql') ? '1433' : '3306';
                         }
                     }
                     </script>

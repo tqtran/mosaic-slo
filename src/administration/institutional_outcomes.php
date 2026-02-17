@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         [$code, $institutionFk],
                         'si'
                     );
-                    $row = $result->fetch_assoc();
+                    $row = $result->fetch();
                     if ($row['count'] > 0) {
                         $errors[] = 'Outcome code already exists for this institution';
                     }
@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         [$code, $institutionFk, $id],
                         'sii'
                     );
-                    $row = $result->fetch_assoc();
+                    $row = $result->fetch();
                     if ($row['count'] > 0) {
                         $errors[] = 'Outcome code already exists for this institution';
                     }
@@ -147,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         [$id],
                         'i'
                     );
-                    $checkRow = $checkResult->fetch_assoc();
+                    $checkRow = $checkResult->fetch();
                     
                     if ($checkRow['count'] > 0) {
                         $errorMessage = 'Cannot delete outcome: it is mapped to program outcomes. Please remove mappings first.';
@@ -169,7 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch institutions for dropdown
 $instResult = $db->query("SELECT * FROM {$dbPrefix}institution WHERE is_active = 1 ORDER BY institution_name ASC");
-$institutions = $instResult->fetch_all(MYSQLI_ASSOC);
+$institutions = $instResult->fetchAll();
 
 // Calculate statistics
 $statsResult = $db->query("
@@ -179,7 +179,7 @@ $statsResult = $db->query("
         SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
     FROM {$dbPrefix}institutional_outcomes
 ");
-$stats = $statsResult->fetch_assoc();
+$stats = $statsResult->fetch();
 
 // Load theme system
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';

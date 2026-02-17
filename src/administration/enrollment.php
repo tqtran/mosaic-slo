@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         's'
                     );
                     
-                    if ($studentResult->num_rows === 0) {
+                    if ($studentResult->rowCount() === 0) {
                         // Auto-create student with minimal data
                         $db->query(
                             "INSERT INTO {$dbPrefix}students (c_number, created_at, updated_at) 
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         );
                         $studentFk = $db->lastInsertId();
                     } else {
-                        $student = $studentResult->fetch_assoc();
+                        $student = $studentResult->fetch();
                         $studentFk = $student['students_pk'];
                     }
                     
@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'ssi'
                     );
                     
-                    if ($checkResult->num_rows > 0) {
+                    if ($checkResult->rowCount() > 0) {
                         $errors[] = 'Enrollment already exists for this student in this term/CRN';
                     } else {
                         // Insert enrollment
@@ -189,7 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 );
                                 
                                 $studentFk = null;
-                                if ($studentResult->num_rows === 0) {
+                                if ($studentResult->rowCount() === 0) {
                                     // Create student with name data from Banner
                                     $db->query(
                                         "INSERT INTO {$dbPrefix}students (c_number, first_name, last_name, created_at, updated_at) 
@@ -200,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $studentFk = $db->lastInsertId();
                                 } else {
                                     // Update student name if provided and currently null
-                                    $student = $studentResult->fetch_assoc();
+                                    $student = $studentResult->fetch();
                                     $studentFk = $student['students_pk'];
                                     if (!empty($firstName) || !empty($lastName)) {
                                         $db->query(
@@ -223,9 +223,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     'ssi'
                                 );
                                 
-                                if ($enrollResult->num_rows > 0) {
+                                if ($enrollResult->rowCount() > 0) {
                                     // Update existing
-                                    $enroll = $enrollResult->fetch_assoc();
+                                    $enroll = $enrollResult->fetch();
                                     $updateSql = "UPDATE {$dbPrefix}enrollment 
                                                   SET enrollment_status = ?, enrollment_date = ?, updated_at = ";
                                     $updateSql .= $lastUpdated ? "?" : "NOW()";
@@ -285,7 +285,7 @@ $statsResult = $db->query("
         SUM(CASE WHEN enrollment_status = 'dropped' THEN 1 ELSE 0 END) as dropped
     FROM {$dbPrefix}enrollment
 ");
-$stats = $statsResult->fetch_assoc();
+$stats = $statsResult->fetch();
 $totalEnrollments = $stats['total'];
 $enrolledCount = $stats['enrolled'];
 $completedCount = $stats['completed'];

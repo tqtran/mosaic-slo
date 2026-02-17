@@ -4,8 +4,17 @@
 
 # Database Configuration
 database:
+  # @label: Database Driver
+  # @description: Database system to use
+  # @required: true
+  # @type: select
+  # @options: mysql,mssql
+  # @default: mysql
+  # @help: Choose 'mysql' for MySQL/MariaDB or 'mssql' for Microsoft SQL Server. WARNING: This setting is locked after installation and cannot be changed.
+  driver: mysql
+  
   # @label: Database Host
-  # @description: MySQL server hostname or IP address
+  # @description: Database server hostname or IP address
   # @required: true
   # @type: string
   # @default: localhost
@@ -13,7 +22,7 @@ database:
   host: localhost
   
   # @label: Database Port
-  # @description: MySQL server port number
+  # @description: Database server port number (MySQL: 3306, MSSQL: 1433)
   # @required: true
   # @type: integer
   # @default: 3306
@@ -25,7 +34,7 @@ database:
   # @required: true
   # @type: string
   # @validation: ^[a-zA-Z0-9_]+$
-  # @help: Must be alphanumeric with underscores only
+  # @help: Must be alphanumeric with underscores only. WARNING: This setting is locked after installation and cannot be changed.
   name: mosaic_db
   
   # @label: Table Prefix
@@ -34,7 +43,7 @@ database:
   # @type: string
   # @default: tbl_
   # @validation: ^[a-zA-Z0-9_]*$
-  # @help: Leave empty for no prefix. Must end with underscore if used.
+  # @help: Leave empty for no prefix. Must end with underscore if used. WARNING: This setting is locked after installation and cannot be changed.
   prefix: tbl_
   
   # @label: Database Username

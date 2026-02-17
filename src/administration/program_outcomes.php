@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         [$code, $programFk],
                         'si'
                     );
-                    $row = $result->fetch_assoc();
+                    $row = $result->fetch();
                     if ($row['count'] > 0) {
                         $errors[] = 'Outcome code already exists for this program';
                     }
@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         [$code, $programFk, $id],
                         'sii'
                     );
-                    $row = $result->fetch_assoc();
+                    $row = $result->fetch();
                     if ($row['count'] > 0) {
                         $errors[] = 'Outcome code already exists for this program';
                     }
@@ -158,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         [$id],
                         'i'
                     );
-                    $checkRow = $checkResult->fetch_assoc();
+                    $checkRow = $checkResult->fetch();
                     
                     if ($checkRow['count'] > 0) {
                         $errorMessage = 'Cannot delete outcome: it is mapped to student learning outcomes. Please remove mappings first.';
@@ -180,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch programs for dropdown
 $progResult = $db->query("SELECT * FROM {$dbPrefix}programs WHERE is_active = 1 ORDER BY program_name ASC");
-$programs = $progResult->fetch_all(MYSQLI_ASSOC);
+$programs = $progResult->fetchAll();
 
 // Fetch institutional outcomes for dropdown
 $instOutcomeResult = $db->query("
@@ -190,7 +190,7 @@ $instOutcomeResult = $db->query("
     WHERE io.is_active = 1 
     ORDER BY i.institution_name, io.sequence_num, io.code
 ");
-$institutionalOutcomes = $instOutcomeResult->fetch_all(MYSQLI_ASSOC);
+$institutionalOutcomes = $instOutcomeResult->fetchAll();
 
 // Calculate statistics
 $statsResult = $db->query("
@@ -201,7 +201,7 @@ $statsResult = $db->query("
         SUM(CASE WHEN institutional_outcomes_fk IS NOT NULL THEN 1 ELSE 0 END) as mapped
     FROM {$dbPrefix}program_outcomes
 ");
-$stats = $statsResult->fetch_assoc();
+$stats = $statsResult->fetch();
 
 // Load theme system
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';

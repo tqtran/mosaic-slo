@@ -60,24 +60,20 @@ $whereClause = !empty($searchWhere) ? "WHERE {$searchWhere}" : '';
 
 // Get total records
 $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}program_outcomes");
-$totalRow = $totalResult->fetch_assoc();
+$totalRow = $totalResult->fetch();
 $totalRecords = (int)$totalRow['total'];
 
 // Get filtered count
 if (!empty($whereClause)) {
-    $stmt = $db->prepare("
+    $query = "
         SELECT COUNT(*) as total 
         FROM {$dbPrefix}program_outcomes po
         JOIN {$dbPrefix}programs p ON po.program_fk = p.programs_pk
         LEFT JOIN {$dbPrefix}institutional_outcomes io ON po.institutional_outcomes_fk = io.institutional_outcomes_pk
         {$whereClause}
-    ");
-    if (!empty($whereTypes)) {
-        $stmt->bind_param($whereTypes, ...$whereParams);
-    }
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $filteredRow = $result->fetch_assoc();
+    ";
+    $filteredResult = $db->query($query, $whereParams, $whereTypes);
+    $filteredRow = $filteredResult->fetch();
     $filteredRecords = (int)$filteredRow['total'];
 } else {
     $filteredRecords = $totalRecords;
@@ -106,11 +102,8 @@ $query = "
 $allParams = array_merge($whereParams, [$length, $start]);
 $allTypes = $whereTypes . 'ii';
 
-$stmt = $db->prepare($query);
-$stmt->bind_param($allTypes, ...$allParams);
-$stmt->execute();
-$result = $stmt->get_result();
-$data = $result->fetch_all(MYSQLI_ASSOC);
+$result = $db->query($query, $allParams, $allTypes);
+$data = $result->fetchAll();
 
 // Output JSON
 outputDatatablesJson($draw, $totalRecords, $filteredRecords, $data);

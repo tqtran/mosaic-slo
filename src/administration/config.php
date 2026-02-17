@@ -113,11 +113,50 @@ function renderField(string $key, array $meta, $value): string {
     $required = ($meta['required'] ?? 'false') === 'true';
     $help = $meta['help'] ?? '';
     
+    // Fields that cannot be changed after installation (would break existing data)
+    $lockedFields = [
+        'database.driver' => 'Database driver cannot be changed after installation. Changing this requires data migration.',
+        'database.name' => 'Database name cannot be changed after installation. Changing this would lose access to your existing data.',
+        'database.prefix' => 'Table prefix cannot be changed after installation. Changing this would lose access to your existing tables.'
+    ];
+    
     $html = '<div class="mb-3">';
     $html .= '<label for="' . htmlspecialchars($id) . '" class="form-label">';
     $html .= htmlspecialchars($label);
     if ($required) $html .= ' <span class="text-danger">*</span>';
     $html .= '</label>';
+    
+    // Check if this field is locked
+    if (isset($lockedFields[$key])) {
+        // Render as disabled field with hidden input to preserve value
+        if ($type === 'select') {
+            $html .= '<select class="form-select" disabled>';
+            $options = explode(',', $meta['options'] ?? '');
+            foreach ($options as $opt) {
+                if (str_contains($opt, '|')) {
+                    [$val, $lbl] = explode('|', $opt, 2);
+                } else {
+                    $val = $lbl = $opt;
+                }
+                $selected = ($value == $val) ? 'selected' : '';
+                $html .= '<option value="' . htmlspecialchars($val) . '" ' . $selected . '>';
+                $html .= htmlspecialchars($lbl) . '</option>';
+            }
+            $html .= '</select>';
+        } else {
+            $html .= '<input type="text" class="form-control" value="' . htmlspecialchars((string)$value) . '" disabled>';
+        }
+        
+        // Hidden input to preserve value in POST
+        $html .= '<input type="hidden" name="' . htmlspecialchars($name) . '" value="' . htmlspecialchars((string)$value) . '">';
+        
+        // Warning message
+        $html .= '<small class="form-text text-warning">';
+        $html .= '<i class="fas fa-lock mr-1"></i>' . htmlspecialchars($lockedFields[$key]);
+        $html .= '</small>';
+        $html .= '</div>';
+        return $html;
+    }
     
     switch ($type) {
         case 'password':
@@ -194,8 +233,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     try {
+        // Fields that cannot be changed after installation
+        $lockedFields = ['database.driver', 'database.name', 'database.prefix'];
+        
         // Dynamically update all fields from template
         foreach ($fields as $key => $meta) {
+            // Skip locked fields - they cannot be changed post-installation
+            if (in_array($key, $lockedFields)) {
+                continue;
+            }
+            
             $postKey = str_replace('.', '_', $key);
             $type = $meta['type'] ?? 'string';
             

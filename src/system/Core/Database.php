@@ -3,14 +3,16 @@ declare(strict_types=1);
 
 namespace Mosaic\Core;
 
-use mysqli;
-use mysqli_sql_exception;
+use PDO;
+use PDOException;
+use PDOStatement;
 use RuntimeException;
 
 /**
  * Database Connection Manager
  * 
- * Provides mysqli connection management with singleton pattern.
+ * Provides PDO connection management with singleton pattern.
+ * Supports both MySQL and MSSQL databases.
  * All queries must use prepared statements for security.
  * 
  * @package Mosaic\Core
@@ -18,8 +20,9 @@ use RuntimeException;
 class Database
 {
     private static ?Database $instance = null;
-    private ?mysqli $connection = null;
+    private ?PDO $connection = null;
     private array $config;
+    private string $driver;
     
     /**
      * Private constructor
@@ -58,24 +61,47 @@ class Database
      */
     private function connect(): void
     {
-        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+        $this->driver = $this->config['driver'] ?? 'mysql';
         
         try {
-            $this->connection = new mysqli(
-                $this->config['host'],
+            if ($this->driver === 'mssql' || $this->driver === 'sqlsrv') {
+                // Microsoft SQL Server connection
+                $dsn = sprintf(
+                    'sqlsrv:Server=%s,%d;Database=%s',
+                    $this->config['host'],
+                    $this->config['port'] ?? 1433,
+                    $this->config['name']
+                );
+            } else {
+                // MySQL connection (default)
+                $dsn = sprintf(
+                    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+                    $this->config['host'],
+                    $this->config['port'] ?? 3306,
+                    $this->config['name'],
+                    $this->config['charset'] ?? 'utf8mb4'
+                );
+            }
+            
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false,
+            ];
+            
+            $this->connection = new PDO(
+                $dsn,
                 $this->config['username'],
                 $this->config['password'],
-                $this->config['name'],
-                $this->config['port'] ?? 3306
+                $options
             );
             
-            // Set UTF8MB4 charset
-            $this->connection->set_charset('utf8mb4');
+            // Set timezone to UTC for MySQL
+            if ($this->driver === 'mysql') {
+                $this->connection->exec("SET time_zone = '+00:00'");
+            }
             
-            // Set timezone to UTC
-            $this->connection->query("SET time_zone = '+00:00'");
-            
-        } catch (mysqli_sql_exception $e) {
+        } catch (PDOException $e) {
             throw new RuntimeException(
                 'Database connection failed: ' . $e->getMessage(),
                 (int)$e->getCode(),
@@ -85,12 +111,12 @@ class Database
     }
     
     /**
-     * Get mysqli connection
+     * Get PDO connection
      * 
-     * @return mysqli
+     * @return PDO
      * @throws RuntimeException If connection not established
      */
-    public function getConnection(): mysqli
+    public function getConnection(): PDO
     {
         if ($this->connection === null) {
             throw new RuntimeException('Database connection not established');
@@ -100,62 +126,51 @@ class Database
     }
     
     /**
+     * Get database driver name
+     * 
+     * @return string 'mysql' or 'mssql'
+     */
+    public function getDriver(): string
+    {
+        return $this->driver;
+    }
+    
+    /**
      * Execute prepared statement with parameters
      * 
-     * @param string $sql SQL query with placeholders
+     * Backwards compatible with mysqli interface:
+     * - $types parameter is ignored (kept for compatibility)
+     * - Returns PDOStatement instead of mysqli_result
+     * 
+     * @param string $sql SQL query with ? placeholders
      * @param array $params Parameters to bind
-     * @param string $types Parameter types (i=integer, d=double, s=string, b=blob)
-     * @return mysqli_result|bool Query result
+     * @param string $types Ignored (kept for backwards compatibility)
+     * @return PDOStatement|bool Query result
      * @throws RuntimeException If query fails
      */
     public function query(string $sql, array $params = [], string $types = ''): mixed
     {
         $conn = $this->getConnection();
         
-        // If no parameters, execute directly
-        if (empty($params)) {
-            $result = $conn->query($sql);
-            if ($result === false) {
-                throw new RuntimeException('Query failed: ' . $conn->error);
+        try {
+            // If no parameters, execute directly
+            if (empty($params)) {
+                return $conn->query($sql);
             }
-            return $result;
+            
+            // Prepare and execute with parameters
+            $stmt = $conn->prepare($sql);
+            $stmt->execute($params);
+            
+            return $stmt;
+            
+        } catch (PDOException $e) {
+            throw new RuntimeException(
+                'Query failed: ' . $e->getMessage(),
+                (int)$e->getCode(),
+                $e
+            );
         }
-        
-        // Prepare statement
-        $stmt = $conn->prepare($sql);
-        if ($stmt === false) {
-            throw new RuntimeException('Prepare failed: ' . $conn->error);
-        }
-        
-        // Auto-detect types if not provided
-        if (empty($types)) {
-            $types = '';
-            foreach ($params as $param) {
-                if (is_int($param)) {
-                    $types .= 'i';
-                } elseif (is_float($param)) {
-                    $types .= 'd';
-                } else {
-                    $types .= 's';
-                }
-            }
-        }
-        
-        // Bind parameters
-        $stmt->bind_param($types, ...$params);
-        
-        // Execute
-        if (!$stmt->execute()) {
-            $error = $stmt->error;
-            $stmt->close();
-            throw new RuntimeException('Execute failed: ' . $error);
-        }
-        
-        // Get result
-        $result = $stmt->get_result();
-        $stmt->close();
-        
-        return $result;
     }
     
     /**
@@ -165,17 +180,26 @@ class Database
      */
     public function getInsertId(): int
     {
-        return $this->getConnection()->insert_id;
+        return (int)$this->getConnection()->lastInsertId();
     }
     
     /**
-     * Get number of affected rows
+     * Get number of affected rows from last statement
+     * 
+     * Note: With PDO, you need to call this on the PDOStatement:
+     * $stmt = $db->query(...);
+     * $affected = $stmt->rowCount();
+     * 
+     * This method is kept for compatibility but may not return expected results.
      * 
      * @return int
+     * @deprecated Use PDOStatement::rowCount() instead
      */
     public function getAffectedRows(): int
     {
-        return $this->getConnection()->affected_rows;
+        // PDO doesn't have a connection-level affected rows
+        // This is here for backwards compatibility but always returns 0
+        return 0;
     }
     
     /**
@@ -185,7 +209,7 @@ class Database
      */
     public function beginTransaction(): bool
     {
-        return $this->getConnection()->begin_transaction();
+        return $this->getConnection()->beginTransaction();
     }
     
     /**
@@ -205,7 +229,7 @@ class Database
      */
     public function rollback(): bool
     {
-        return $this->getConnection()->rollback();
+        return $this->getConnection()->rollBack();
     }
     
     /**
@@ -216,7 +240,9 @@ class Database
      */
     public function escape(string $value): string
     {
-        return $this->getConnection()->real_escape_string($value);
+        // PDO quote returns value with quotes, so we strip them
+        $quoted = $this->getConnection()->quote($value);
+        return substr($quoted, 1, -1);
     }
     
     /**
@@ -224,10 +250,7 @@ class Database
      */
     public function close(): void
     {
-        if ($this->connection !== null) {
-            $this->connection->close();
-            $this->connection = null;
-        }
+        $this->connection = null;
     }
     
     /**

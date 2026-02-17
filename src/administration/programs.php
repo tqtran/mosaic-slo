@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         [$code],
                         's'
                     );
-                    $row = $result->fetch_assoc();
+                    $row = $result->fetch();
                     if ($row['count'] > 0) {
                         $errors[] = 'Program code already exists';
                     }
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         [$code, $id],
                         'si'
                     );
-                    $row = $result->fetch_assoc();
+                    $row = $result->fetch();
                     if ($row['count'] > 0) {
                         $errors[] = 'Program code already exists';
                     }
@@ -137,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         [$id],
                         'i'
                     );
-                    $checkRow = $checkResult->fetch_assoc();
+                    $checkRow = $checkResult->fetch();
                     
                     if ($checkRow['count'] > 0) {
                         $errorMessage = 'Cannot delete program: it has associated program outcomes. Please remove outcomes first.';
@@ -177,9 +177,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         's'
                                     );
                                     
-                                    if ($result->num_rows > 0) {
+                                    if ($result->rowCount() > 0) {
                                         // Update existing
-                                        $existing = $result->fetch_assoc();
+                                        $existing = $result->fetch();
                                         $db->query(
                                             "UPDATE {$dbPrefix}programs 
                                              SET program_name = ?, degree_type = ?, is_active = ?, updated_at = NOW()
@@ -234,7 +234,7 @@ $statsResult = $db->query("
         SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
     FROM {$dbPrefix}programs
 ");
-$stats = $statsResult->fetch_assoc();
+$stats = $statsResult->fetch();
 $totalPrograms = $stats['total'];
 $activePrograms = $stats['active'];
 $inactivePrograms = $stats['inactive'];
