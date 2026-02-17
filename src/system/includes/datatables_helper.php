@@ -14,7 +14,7 @@ declare(strict_types=1);
  * 
  * @return array{draw: int, start: int, length: int, search: string, orderColumn: int, orderDir: string}
  */
-function getDatatTablesParams(): array
+function getDataTablesParams(): array
 {
     return [
         'draw' => (int)($_GET['draw'] ?? 1),

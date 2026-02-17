@@ -15,7 +15,14 @@ require_once __DIR__ . '/../system/includes/init.php';
 // Get DataTables parameters
 $params = getDataTablesParams();
 
-// Column definitions (must match table columns)
+// Define searchable columns
+$searchableColumns = [
+    'program_code',
+    'program_name',
+    'degree_type'
+];
+
+// Column definitions for ordering (must match DataTables column order)
 $columns = [
     'programs_pk',
     'program_code',
@@ -27,13 +34,18 @@ $columns = [
 ];
 
 // Get order column name
-$orderColumn = $columns[$params['orderColumnIndex']] ?? 'program_name';
+$orderColumn = $columns[$params['orderColumn']] ?? 'program_name';
 if ($orderColumn === 'actions') {
     $orderColumn = 'program_name';
 }
 
 // Build WHERE clause
-list($whereClause, $whereParams, $whereTypes) = buildSearchWhere($params, $columns, 'programs');
+$whereParams = [];
+$whereTypes = '';
+$whereClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
+if (!empty($whereClause)) {
+    $whereClause = "WHERE {$whereClause}";
+}
 
 // Get total records (without filtering)
 $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}programs");

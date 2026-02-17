@@ -23,7 +23,7 @@ require_once __DIR__ . '/../system/includes/init.php';
 require_once __DIR__ . '/../system/includes/datatables_helper.php';
 
 // Get DataTables parameters
-$params = getDatatTablesParams();
+$params = getDataTablesParams();
 $draw = $params['draw'];
 $start = $params['start'];
 $length = $params['length'];
