@@ -79,12 +79,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     try {
         if ($action === 'save_assessments') {
-            $courseSectionId = (int)($_POST['course_section_id'] ?? 0);
+            $crn = $_POST['crn'] ?? '';
+            $termCode = $_POST['term_code'] ?? '';
             $sloId = (int)($_POST['slo_id'] ?? 0);
             $outcomes = $_POST['outcome'] ?? [];
             $scores = $_POST['score'] ?? [];
             
-            if ($courseSectionId <= 0 || $sloId <= 0) {
+            if (empty($crn) || empty($termCode) || $sloId <= 0) {
                 throw new \Exception('Invalid course section or SLO selected');
             }
             
@@ -124,9 +125,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'ii'
                 );
                 
-                if ($existing->num_rows > 0) {
+                if ($existing->rowCount() > 0) {
                     // Update existing assessment
-                    $row = $existing->fetch_assoc();
+                    $row = $existing->fetch();
                     $db->query(
                         "UPDATE {$dbPrefix}assessments 
                          SET achievement_level = ?, score_value = ?, assessed_date = CURDATE(), 
@@ -151,7 +152,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             $logger->info('LTI Assessment Saved', [
-                'course_section_id' => $courseSectionId,
+                'crn' => $crn,
+                'term_code' => $termCode,
                 'slo_id' => $sloId,
                 'saved' => $saved,
                 'skipped' => $skipped
@@ -185,15 +187,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Query available course sections
+// Query available course sections (distinct crn/term_code from enrollment)
 // Filter by LTI course context if available
 $courseSectionsQuery = "
-    SELECT cs.course_sections_pk, cs.section_code, c.course_code, c.course_name,
-           t.term_name, t.term_year
-    FROM {$dbPrefix}course_sections cs
-    INNER JOIN {$dbPrefix}courses c ON cs.course_fk = c.courses_pk
-    INNER JOIN {$dbPrefix}terms t ON cs.term_fk = t.terms_pk
-    WHERE cs.is_active = TRUE
+    SELECT DISTINCT e.crn, e.term_code, t.term_name, t.term_year, t.slo_set_fk
+    FROM {$dbPrefix}enrollment e
+    LEFT JOIN {$dbPrefix}terms t ON e.term_code = t.term_code
+    WHERE 1=1
 ";
 
 $params = [];
@@ -206,33 +206,52 @@ if ($ltiAcademicYear) {
     $types .= 's';
 }
 
-$courseSectionsQuery .= " ORDER BY t.term_year DESC, t.term_name DESC, c.course_code ASC";
+// Filter by CRN from LTI launch if available  
+if ($ltiCrn) {
+    $courseSectionsQuery .= " AND e.crn = ?";
+    $params[] = $ltiCrn;
+    $types .= 's';
+}
+
+$courseSectionsQuery .= " ORDER BY t.term_year DESC, t.term_name DESC, e.crn ASC";
 
 if (!empty($params)) {
     $courseSectionsResult = $db->query($courseSectionsQuery, $params, $types);
 } else {
     $courseSectionsResult = $db->query($courseSectionsQuery);
 }
-$courseSections = $courseSectionsResult->fetch_all(MYSQLI_ASSOC);
+$courseSections = $courseSectionsResult->fetchAll();
 
 // Get selected course section (first one by default or from GET parameter)
-$selectedCourseSectionId = isset($_GET['course_section_id']) 
-    ? (int)$_GET['course_section_id'] 
-    : ($courseSections[0]['course_sections_pk'] ?? 0);
+$selectedCrn = isset($_GET['crn']) && !empty($_GET['crn'])
+    ? $_GET['crn']
+    : ($courseSections[0]['crn'] ?? '');
+    
+$selectedTermCode = isset($_GET['term_code']) && !empty($_GET['term_code'])
+    ? $_GET['term_code']
+    : ($courseSections[0]['term_code'] ?? '');
 
-// Get SLOs for selected course section
+// Get slo_set_fk for the selected term
+$sloSetFk = null;
+foreach ($courseSections as $cs) {
+    if ($cs['crn'] === $selectedCrn && $cs['term_code'] === $selectedTermCode) {
+        $sloSetFk = $cs['slo_set_fk'];
+        break;
+    }
+}
+
+// Get SLOs for selected slo_set
 $slos = [];
-if ($selectedCourseSectionId > 0) {
+if ($sloSetFk) {
     $slosResult = $db->query(
-        "SELECT slo.student_learning_outcomes_pk, slo.code, slo.description
-         FROM {$dbPrefix}student_learning_outcomes slo
-         INNER JOIN {$dbPrefix}course_sections cs ON slo.course_fk = cs.course_fk
-         WHERE cs.course_sections_pk = ? AND slo.is_active = TRUE
-         ORDER BY slo.sequence_num ASC",
-        [$selectedCourseSectionId],
+        "SELECT student_learning_outcomes_pk, slo_code, description
+         FROM {$dbPrefix}student_learning_outcomes
+         WHERE slo_set_fk = ? AND is_active = TRUE
+         ORDER BY sequence_num ASC",
+        [$sloSetFk],
         'i'
     );
-    $slos = $slosResult->fetch_all(MYSQLI_ASSOC);
+    $slos = $slosResult->fetchAll();
 }
 
 $selectedSloId = isset($_GET['slo_id']) && !empty($slos)
@@ -241,40 +260,28 @@ $selectedSloId = isset($_GET['slo_id']) && !empty($slos)
 
 // Get enrolled students with existing assessments
 $students = [];
-if ($selectedCourseSectionId > 0 && $selectedSloId > 0) {
-    // Build query with optional CRN filter from LTI launch
+if ($selectedCrn && $selectedTermCode && $selectedSloId > 0) {
+    // Build query to get students enrolled in this crn/term_code
     $studentsQuery = "
-        SELECT e.enrollment_pk, cs.crn, s.student_id, s.first_name, s.last_name,
+        SELECT e.enrollment_pk, e.crn, e.term_code, s.c_number, s.first_name, s.last_name,
                a.achievement_level, a.score_value
         FROM {$dbPrefix}enrollment e
-        INNER JOIN {$dbPrefix}course_sections cs ON e.course_section_fk = cs.course_sections_pk
         INNER JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
         LEFT JOIN {$dbPrefix}assessments a ON e.enrollment_pk = a.enrollment_fk 
                                  AND a.student_learning_outcome_fk = ?
-        WHERE e.course_section_fk = ? AND e.enrollment_status = 'enrolled'
+        WHERE e.crn = ? AND e.term_code = ? AND e.enrollment_status = '1'
+        ORDER BY s.last_name ASC, s.first_name ASC
     ";
     
-    $studentParams = [$selectedSloId, $selectedCourseSectionId];
-    $studentTypes = 'ii';
-    
-    // Filter by CRN from LTI launch if available
-    if ($ltiCrn) {
-        $studentsQuery .= " AND cs.crn = ?";
-        $studentParams[] = $ltiCrn;
-        $studentTypes .= 's';
-    }
-    
-    $studentsQuery .= " ORDER BY s.last_name ASC, s.first_name ASC";
-    
-    $studentsResult = $db->query($studentsQuery, $studentParams, $studentTypes);
-    $students = $studentsResult->fetch_all(MYSQLI_ASSOC);
+    $studentsResult = $db->query($studentsQuery, [$selectedSloId, $selectedCrn, $selectedTermCode], 'iss');
+    $students = $studentsResult->fetchAll();
 }
 
 // Get selected course section details
 $courseSection = null;
-if ($selectedCourseSectionId > 0) {
+if ($selectedCrn && $selectedTermCode) {
     foreach ($courseSections as $cs) {
-        if ($cs['course_sections_pk'] == $selectedCourseSectionId) {
+        if ($cs['crn'] === $selectedCrn && $cs['term_code'] === $selectedTermCode) {
             $courseSection = $cs;
             break;
         }
@@ -435,24 +442,27 @@ $theme->showHeader($context);
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="course_section_id" class="form-label">Course Section</label>
-                                <select name="course_section_id" id="course_section_id" class="form-select" onchange="document.getElementById('selectionForm').submit()">
+                                <label for="crn" class="form-label">Course Section (CRN)</label>
+                                <select name="crn" id="crn" class="form-select" onchange="this.form.submit()">
                                     <?php foreach ($courseSections as $cs): ?>
-                                        <option value="<?= $cs['course_sections_pk'] ?>" <?= $cs['course_sections_pk'] == $selectedCourseSectionId ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($cs['course_code']) ?> - <?= htmlspecialchars($cs['section_code']) ?> 
-                                            (<?= htmlspecialchars($cs['term_name']) ?> <?= htmlspecialchars($cs['term_year']) ?>)
+                                        <option value="<?= htmlspecialchars($cs['crn']) ?>" 
+                                                data-term-code="<?= htmlspecialchars($cs['term_code']) ?>"
+                                                <?= $cs['crn'] === $selectedCrn && $cs['term_code'] === $selectedTermCode ? 'selected' : '' ?>>
+                                            CRN <?= htmlspecialchars($cs['crn']) ?> 
+                                            (<?= htmlspecialchars($cs['term_name'] ?? $cs['term_code']) ?> <?= htmlspecialchars($cs['term_year'] ?? '') ?>)
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <input type="hidden" name="term_code" value="<?= htmlspecialchars($selectedTermCode) ?>">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="slo_id" class="form-label">Student Learning Outcome</label>
-                                <select name="slo_id" id="slo_id" class="form-select" onchange="document.getElementById('selectionForm').submit()">
+                                <select name="slo_id" id="slo_id" class="form-select" onchange="this.form.submit()">
                                     <?php foreach ($slos as $slo): ?>
                                         <option value="<?= $slo['student_learning_outcomes_pk'] ?>" <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($slo['code']) ?> - <?= htmlspecialchars(substr($slo['description'], 0, 60)) ?><?= strlen($slo['description']) > 60 ? '...' : '' ?>
+                                            <?= htmlspecialchars($slo['slo_code']) ?> - <?= htmlspecialchars(substr($slo['description'], 0, 60)) ?><?= strlen($slo['description']) > 60 ? '...' : '' ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -479,24 +489,27 @@ $theme->showHeader($context);
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="course_section_id" class="form-label">Course Section</label>
-                                <select name="course_section_id" id="course_section_id" class="form-select" onchange="document.getElementById('selectionForm').submit()">
+                                <label for="crn2" class="form-label">Course Section (CRN)</label>
+                                <select name="crn" id="crn2" class="form-select" onchange="this.form.submit()">
                                     <?php foreach ($courseSections as $cs): ?>
-                                        <option value="<?= $cs['course_sections_pk'] ?>" <?= $cs['course_sections_pk'] == $selectedCourseSectionId ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($cs['course_code']) ?> - <?= htmlspecialchars($cs['section_code']) ?> 
-                                            (<?= htmlspecialchars($cs['term_name']) ?> <?= htmlspecialchars($cs['term_year']) ?>)
+                                        <option value="<?= htmlspecialchars($cs['crn']) ?>"
+                                                data-term-code="<?= htmlspecialchars($cs['term_code']) ?>"
+                                                <?= $cs['crn'] === $selectedCrn && $cs['term_code'] === $selectedTermCode ? 'selected' : '' ?>>
+                                            CRN <?= htmlspecialchars($cs['crn']) ?>
+                                            (<?= htmlspecialchars($cs['term_name'] ?? $cs['term_code']) ?> <?= htmlspecialchars($cs['term_year'] ?? '') ?>)
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <input type="hidden" name="term_code" value="<?= htmlspecialchars($selectedTermCode) ?>">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="slo_id" class="form-label">Student Learning Outcome</label>
-                                <select name="slo_id" id="slo_id" class="form-select" onchange="document.getElementById('selectionForm').submit()">
+                                <label for="slo_id2" class="form-label">Student Learning Outcome</label>
+                                <select name="slo_id" id="slo_id2" class="form-select" onchange="this.form.submit()">
                                     <?php foreach ($slos as $slo): ?>
                                         <option value="<?= $slo['student_learning_outcomes_pk'] ?>" <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($slo['code']) ?>
+                                            <?= htmlspecialchars($slo['slo_code']) ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -516,7 +529,8 @@ $theme->showHeader($context);
         <form method="POST" action="">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
             <input type="hidden" name="action" value="save_assessments">
-            <input type="hidden" name="course_section_id" value="<?= $selectedCourseSectionId ?>">
+            <input type="hidden" name="crn" value="<?= htmlspecialchars($selectedCrn) ?>">
+            <input type="hidden" name="term_code" value="<?= htmlspecialchars($selectedTermCode) ?>">
             <input type="hidden" name="slo_id" value="<?= $selectedSloId ?>">
 
             <div class="card">
@@ -569,7 +583,7 @@ $theme->showHeader($context);
                                 ?>
                                     <tr class="student-row">
                                         <td><?= $index++ ?></td>
-                                        <td><code><?= htmlspecialchars($student['student_id']) ?></code></td>
+                                        <td><code><?= htmlspecialchars($student['c_number']) ?></code></td>
                                         <td>
                                             <strong><?= htmlspecialchars($student['first_name']) ?> <?= htmlspecialchars($student['last_name']) ?></strong>
                                         </td>

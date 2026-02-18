@@ -9,6 +9,11 @@
 
 declare(strict_types=1);
 
+// Load Database class
+require_once __DIR__ . '/../Core/Database.php';
+use Mosaic\Core\Database;
+use PDO;
+
 // Setup log file in project root logs directory
 $logFile = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'admin_user_' . date('Y-m-d_His') . '.log';
 $logDir = dirname($logFile);
@@ -25,17 +30,13 @@ function log_message(string $message, string $level = 'INFO'): void {
 }
 
 // Security logging to database
-function log_security_event(mysqli $db, string $eventType, string $description, ?int $userFk = null, ?string $username = null): void {
+function log_security_event(Database $db, string $eventType, string $description, ?int $userFk = null, ?string $username = null): void {
     global $dbPrefix;
-    $stmt = $db->prepare(
+    $stmt = $db->query(
         "INSERT INTO {$dbPrefix}security_log (event_type, event_description, user_fk, username, ip_address, severity) 
-         VALUES (?, ?, ?, ?, ?, 'info')"
+         VALUES (?, ?, ?, ?, ?, 'info')",
+        [$eventType, $description, $userFk, $username, $_SERVER['REMOTE_ADDR'] ?? 'CLI']
     );
-    
-    $ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'CLI';
-    $stmt->bind_param("ssiss", $eventType, $description, $userFk, $username, $ipAddress);
-    $stmt->execute();
-    $stmt->close();
 }
 
 // Color output for CLI
@@ -114,6 +115,7 @@ log_message("Reading configuration from: $configFile");
 // Parse YAML config (simple parser for our use case)
 $config = [];
 $yaml = file_get_contents($configFile);
+if (preg_match('/driver:\s*(.+)/', $yaml, $matches)) $config['driver'] = trim($matches[1]);
 if (preg_match('/host:\s*(.+)/', $yaml, $matches)) $config['host'] = trim($matches[1]);
 if (preg_match('/port:\s*(\d+)/', $yaml, $matches)) $config['port'] = (int)$matches[1];
 if (preg_match('/database:\s*(.+)/', $yaml, $matches)) $config['database'] = trim($matches[1]);
@@ -121,19 +123,21 @@ if (preg_match('/username:\s*(.+)/', $yaml, $matches)) $config['username'] = tri
 if (preg_match('/password:\s*(.+)/', $yaml, $matches)) $config['password'] = trim($matches[1]);
 if (preg_match('/prefix:\s*(.+)/', $yaml, $matches)) $config['prefix'] = trim($matches[1]); else $config['prefix'] = '';
 
-// Connect to database
+// Connect to database using Database class
 try {
     log_message("Connecting to database: {$config['database']} at {$config['host']}");
-    $mysqli = new mysqli(
-        $config['host'],
-        $config['username'],
-        $config['password'],
-        $config['database']
-    );
     
-    if ($mysqli->connect_error) {
-        throw new Exception("Connection failed: " . $mysqli->connect_error);
-    }
+    // Initialize Database singleton with config array
+    $db = Database::getInstance([
+        'driver' => $config['driver'] ?? 'mysql',
+        'host' => $config['host'],
+        'port' => $config['port'] ?? ($config['driver'] === 'sqlsrv' ? 1433 : 3306),
+        'name' => $config['database'],
+        'username' => $config['username'],
+        'password' => $config['password'],
+        'prefix' => $config['prefix'],
+        'charset' => 'utf8mb4'
+    ]);
     
     log_message("Database connection successful");
 } catch (Exception $e) {
@@ -206,61 +210,44 @@ $passwordHash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
 
 // Insert user
 log_message("Inserting user record for: $userId");
-$stmt = $mysqli->prepare(
-    "INSERT INTO {$dbPrefix}users (user_id, first_name, last_name, email, password_hash, is_active) 
-     VALUES (?, ?, ?, ?, ?, 1)"
-);
-
-if (!$stmt) {
-    color_output("[X] Failed to prepare statement: " . $mysqli->error, 'red');
+try {
+    $stmt = $db->query(
+        "INSERT INTO {$dbPrefix}users (user_id, first_name, last_name, email, password_hash, is_active) 
+         VALUES (?, ?, ?, ?, ?, 1)",
+        [$userId, $firstName, $lastName, $email, $passwordHash]
+    );
+    
+    $userPk = $db->getInsertId();
+} catch (Exception $e) {
+    log_message("Failed to create user: " . $e->getMessage(), 'ERROR');
+    color_output("[X] Failed to create user: " . $e->getMessage(), 'red');
     exit(1);
 }
-
-$stmt->bind_param("sssss", $userId, $firstName, $lastName, $email, $passwordHash);
-
-if (!$stmt->execute()) {
-    log_message("Failed to create user: " . $stmt->error, 'ERROR');
-    color_output("[X] Failed to create user: " . $stmt->error, 'red');
-    exit(1);
-}
-
-$userPk = $stmt->insert_id;
-$stmt->close();
 
 log_message("User created successfully with PK: $userPk");
 color_output("[OK] User created with ID: $userPk", 'green');
 
 // Log security event
-log_security_event($mysqli, 'admin_user_created', "Admin user created: $userId ($firstName $lastName)", $userPk, $userId);
+log_security_event($db, 'admin_user_created', "Admin user created: $userId ($firstName $lastName)", $userPk, $userId);
 
 // Assign admin role
 log_message("Assigning admin role to user PK: $userPk");
-$stmt = $mysqli->prepare(
-    "INSERT INTO {$dbPrefix}user_roles (user_fk, role_fk, context_type, context_id) 
-     VALUES (?, (SELECT roles_pk FROM {$dbPrefix}roles WHERE role_name = 'admin'), NULL, NULL)"
-);
-
-if (!$stmt) {
-    color_output("✗ Failed to prepare role statement: " . $mysqli->error, 'red');
+try {
+    $stmt = $db->query(
+        "INSERT INTO {$dbPrefix}user_roles (user_fk, role_fk, context_type, context_id) 
+         VALUES (?, (SELECT roles_pk FROM {$dbPrefix}roles WHERE role_name = 'admin'), NULL, NULL)",
+        [$userPk]
+    );
+    
+    log_message("Admin role assigned successfully");
+    log_security_event($db, 'admin_role_assigned', "Admin role assigned to user: $userId", $userPk, $userId);
+    
+    color_output("OK Admin role assigned", 'green');
+} catch (Exception $e) {
+    log_message("Failed to assign admin role: " . $e->getMessage(), 'ERROR');
+    color_output("X Failed to assign admin role: " . $e->getMessage(), 'red');
     exit(1);
 }
-
-$stmt->bind_param("i", $userPk);
-
-if (!$stmt->execute()) {
-    log_message("Failed to assign admin role: " . $stmt->error, 'ERROR');
-    color_output("✗ Failed to assign admin role: " . $stmt->error, 'red');
-    exit(1);
-}
-
-$stmt->close();
-
-log_message("Admin role assigned successfully");
-log_security_event($mysqli, 'admin_role_assigned', "Admin role assigned to user: $userId", $userPk, $userId);
-
-$mysqli->close();
-
-color_output("✓ Admin role assigned", 'green');
 echo PHP_EOL;
 
 // Success summary

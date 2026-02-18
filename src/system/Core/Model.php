@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Mosaic\Core;
 
-use mysqli_result;
+use PDOStatement;
 use RuntimeException;
 
 /**
@@ -51,8 +51,8 @@ abstract class Model
         $sql = "SELECT * FROM `{$this->table}` WHERE `{$this->primaryKey}` = ? LIMIT 1";
         $result = $this->db->query($sql, [$id], 'i');
         
-        if ($result instanceof mysqli_result) {
-            $row = $result->fetch_assoc();
+        if ($result instanceof PDOStatement) {
+            $row = $result->fetch();
             return $row ?: null;
         }
         
@@ -96,8 +96,8 @@ abstract class Model
         
         $result = $this->db->query($sql, $params, $types);
         
-        if ($result instanceof mysqli_result) {
-            return $result->fetch_all(MYSQLI_ASSOC);
+        if ($result instanceof PDOStatement) {
+            return $result->fetchAll();
         }
         
         return [];
@@ -268,8 +268,8 @@ abstract class Model
         
         $result = $this->db->query($sql, $params, $types);
         
-        if ($result instanceof mysqli_result) {
-            $row = $result->fetch_assoc();
+        if ($result instanceof PDOStatement) {
+            $row = $result->fetch();
             return (int)($row['count'] ?? 0);
         }
         
@@ -287,8 +287,8 @@ abstract class Model
         $sql = "SELECT 1 FROM `{$this->table}` WHERE `{$this->primaryKey}` = ? LIMIT 1";
         $result = $this->db->query($sql, [$id], 'i');
         
-        if ($result instanceof mysqli_result) {
-            return $result->num_rows > 0;
+        if ($result instanceof PDOStatement) {
+            return $result->rowCount() > 0;
         }
         
         return false;
@@ -306,8 +306,8 @@ abstract class Model
     {
         $result = $this->db->query($sql, $params, $types);
         
-        if ($result instanceof mysqli_result) {
-            return $result->fetch_all(MYSQLI_ASSOC);
+        if ($result instanceof PDOStatement) {
+            return $result->fetchAll();
         }
         
         return $result;
@@ -327,9 +327,9 @@ abstract class Model
             $sql = "SHOW COLUMNS FROM `{$this->table}`";
             $result = $this->db->query($sql);
             
-            if ($result instanceof mysqli_result) {
+            if ($result instanceof PDOStatement) {
                 $columns[$this->table] = [];
-                while ($row = $result->fetch_assoc()) {
+                while ($row = $result->fetch()) {
                     $columns[$this->table][] = $row['Field'];
                 }
             }

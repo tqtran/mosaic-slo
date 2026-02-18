@@ -10,14 +10,14 @@ declare(strict_types=1);
 
 namespace Mosaic\Core;
 
-use mysqli;
+use PDO;
 use Exception;
 
 class Logger
 {
     private static ?Logger $instance = null;
     private array $config;
-    private ?mysqli $db = null;
+    private ?PDO $db = null;
     private string $logDirectory;
     private string $dbPrefix;
     
@@ -41,7 +41,7 @@ class Logger
     /**
      * Private constructor for singleton pattern
      */
-    private function __construct(array $config, ?mysqli $db = null)
+    private function __construct(array $config, ?PDO $db = null)
     {
         $this->config = $config;
         $this->db = $db;
@@ -57,7 +57,7 @@ class Logger
     /**
      * Get Logger instance (singleton)
      */
-    public static function getInstance(array $config = [], ?mysqli $db = null): Logger
+    public static function getInstance(array $config = [], ?PDO $db = null): Logger
     {
         if (self::$instance === null) {
             self::$instance = new Logger($config, $db);
@@ -68,7 +68,7 @@ class Logger
     /**
      * Set database connection for database logging
      */
-    public function setDatabase(mysqli $db): void
+    public function setDatabase(PDO $db): void
     {
         $this->db = $db;
     }
@@ -280,8 +280,7 @@ class Logger
             $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
             $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
             
-            $stmt->bind_param(
-                "ssssssissssss",
+            $stmt->execute([
                 $errorType,
                 $message,
                 $errorCode,
@@ -295,10 +294,7 @@ class Logger
                 $ipAddress,
                 $userAgent,
                 $severity
-            );
-            
-            $stmt->execute();
-            $stmt->close();
+            ]);
         } catch (Exception $e) {
             // Fallback to file logging
             $this->logToFile('error', self::CRITICAL, "Failed to log error to database: " . $e->getMessage());
@@ -332,8 +328,7 @@ class Logger
             $isThreatInt = $isThreat ? 1 : 0;
             $metadataJson = $metadata ? json_encode($metadata) : null;
             
-            $stmt->bind_param(
-                "ssisssssss",
+            $stmt->execute([
                 $eventType,
                 $description,
                 $userFk,
@@ -344,10 +339,7 @@ class Logger
                 $severity,
                 $isThreatInt,
                 $metadataJson
-            );
-            
-            $stmt->execute();
-            $stmt->close();
+            ]);
         } catch (Exception $e) {
             // Fallback to file logging
             $this->logToFile('security', self::CRITICAL, "Failed to log security event to database: " . $e->getMessage());
@@ -378,8 +370,7 @@ class Logger
             $ipAddress = $_SERVER['REMOTE_ADDR'] ?? null;
             $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
             
-            $stmt->bind_param(
-                "sissssss",
+            $stmt->execute([
                 $tableName,
                 $recordPk,
                 $action,
@@ -388,10 +379,7 @@ class Logger
                 $oldDataJson,
                 $ipAddress,
                 $userAgent
-            );
-            
-            $stmt->execute();
-            $stmt->close();
+            ]);
         } catch (Exception $e) {
             // Fallback to file logging
             $this->logToFile('audit', self::CRITICAL, "Failed to log audit to database: " . $e->getMessage());
@@ -427,21 +415,15 @@ class Logger
             
             // Clean audit logs
             $stmt = $this->db->prepare("DELETE FROM {$this->dbPrefix}audit_log WHERE created_at < ?");
-            $stmt->bind_param("s", $cutoffDate);
-            $stmt->execute();
-            $stmt->close();
+            $stmt->execute([$cutoffDate]);
             
             // Clean error logs (only resolved errors)
             $stmt = $this->db->prepare("DELETE FROM {$this->dbPrefix}error_log WHERE created_at < ? AND is_resolved = 1");
-            $stmt->bind_param("s", $cutoffDate);
-            $stmt->execute();
-            $stmt->close();
+            $stmt->execute([$cutoffDate]);
             
             // Clean security logs (only non-threats)
             $stmt = $this->db->prepare("DELETE FROM {$this->dbPrefix}security_log WHERE created_at < ? AND is_threat = 0");
-            $stmt->bind_param("s", $cutoffDate);
-            $stmt->execute();
-            $stmt->close();
+            $stmt->execute([$cutoffDate]);
         } catch (Exception $e) {
             $this->logToFile('app', self::WARNING, "Failed to cleanup database logs: " . $e->getMessage());
         }

@@ -346,55 +346,43 @@ $theme->showHeader($context);
         
         <!-- Statistics Row -->
         <div class="row">
-            <div class="col-lg-3 col-6">
-                <div class="small-box text-bg-info">
-                    <div class="inner">
-                        <h3><?= $totalEnrollments ?></h3>
-                        <p>Total Enrollments</p>
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-info"><i class="fas fa-users"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Total Enrollments</span>
+                        <span class="info-box-number"><?= $totalEnrollments ?></span>
                     </div>
-                    <i class="small-box-icon fa-solid fa-users"></i>
-                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                        More info <i class="bi bi-link-45deg"></i>
-                    </a>
                 </div>
             </div>
             
-            <div class="col-lg-3 col-6">
-                <div class="small-box text-bg-success">
-                    <div class="inner">
-                        <h3><?= $enrolledCount ?></h3>
-                        <p>Currently Enrolled</p>
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-success"><i class="fas fa-user-check"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Currently Enrolled</span>
+                        <span class="info-box-number"><?= $enrolledCount ?></span>
                     </div>
-                    <i class="small-box-icon fa-solid fa-user-check"></i>
-                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                        More info <i class="bi bi-link-45deg"></i>
-                    </a>
                 </div>
             </div>
             
-            <div class="col-lg-3 col-6">
-                <div class="small-box text-bg-primary">
-                    <div class="inner">
-                        <h3><?= $completedCount ?></h3>
-                        <p>Completed</p>
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-primary"><i class="fas fa-graduation-cap"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Completed</span>
+                        <span class="info-box-number"><?= $completedCount ?></span>
                     </div>
-                    <i class="small-box-icon fa-solid fa-graduation-cap"></i>
-                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                        More info <i class="bi bi-link-45deg"></i>
-                    </a>
                 </div>
             </div>
             
-            <div class="col-lg-3 col-6">
-                <div class="small-box text-bg-warning">
-                    <div class="inner">
-                        <h3><?= $droppedCount ?></h3>
-                        <p>Dropped</p>
+            <div class="col-12 col-sm-6 col-md-3">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-warning"><i class="fas fa-user-xmark"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Dropped</span>
+                        <span class="info-box-number"><?= $droppedCount ?></span>
                     </div>
-                    <i class="small-box-icon fa-solid fa-user-xmark"></i>
-                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                        More info <i class="bi bi-link-45deg"></i>
-                    </a>
                 </div>
             </div>
         </div>

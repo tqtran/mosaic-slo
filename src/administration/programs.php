@@ -294,42 +294,33 @@ $theme->showHeader($context);
         
         <!-- Statistics Row -->
         <div class="row">
-            <div class="col-lg-4 col-6">
-                <div class="small-box text-bg-info">
-                    <div class="inner">
-                        <h3><?= $totalPrograms ?></h3>
-                        <p>Total Programs</p>
+            <div class="col-12 col-sm-6 col-md-4">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-info"><i class="fas fa-graduation-cap"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Total Programs</span>
+                        <span class="info-box-number"><?= $totalPrograms ?></span>
                     </div>
-                    <i class="small-box-icon fa-solid fa-graduation-cap"></i>
-                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                        More info <i class="bi bi-link-45deg"></i>
-                    </a>
                 </div>
             </div>
             
-            <div class="col-lg-4 col-6">
-                <div class="small-box text-bg-success">
-                    <div class="inner">
-                        <h3><?= $activePrograms ?></h3>
-                        <p>Active Programs</p>
+            <div class="col-12 col-sm-6 col-md-4">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Active Programs</span>
+                        <span class="info-box-number"><?= $activePrograms ?></span>
                     </div>
-                    <i class="small-box-icon fa-solid fa-circle-check"></i>
-                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                        More info <i class="bi bi-link-45deg"></i>
-                    </a>
                 </div>
             </div>
             
-            <div class="col-lg-4 col-6">
-                <div class="small-box text-bg-warning">
-                    <div class="inner">
-                        <h3><?= $inactivePrograms ?></h3>
-                        <p>Inactive Programs</p>
+            <div class="col-12 col-sm-6 col-md-4">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-warning"><i class="fas fa-ban"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Inactive Programs</span>
+                        <span class="info-box-number"><?= $inactivePrograms ?></span>
                     </div>
-                    <i class="small-box-icon fa-solid fa-ban"></i>
-                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                        More info <i class="bi bi-link-45deg"></i>
-                    </a>
                 </div>
             </div>
         </div>

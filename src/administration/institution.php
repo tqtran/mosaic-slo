@@ -354,42 +354,33 @@ $theme->showHeader($context);
         
         <!-- Statistics Row -->
         <div class="row">
-            <div class="col-lg-4 col-6">
-                <div class="small-box text-bg-info">
-                    <div class="inner">
-                        <h3><?= $totalInstitutions ?></h3>
-                        <p>Total Institutions</p>
+            <div class="col-12 col-sm-6 col-md-4">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-info"><i class="fas fa-university"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Total Institutions</span>
+                        <span class="info-box-number"><?= $totalInstitutions ?></span>
                     </div>
-                    <i class="small-box-icon fa-solid fa-university"></i>
-                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                        More info <i class="bi bi-link-45deg"></i>
-                    </a>
                 </div>
             </div>
             
-            <div class="col-lg-4 col-6">
-                <div class="small-box text-bg-success">
-                    <div class="inner">
-                        <h3><?= $activeInstitutions ?></h3>
-                        <p>Active Institutions</p>
+            <div class="col-12 col-sm-6 col-md-4">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Active Institutions</span>
+                        <span class="info-box-number"><?= $activeInstitutions ?></span>
                     </div>
-                    <i class="small-box-icon fa-solid fa-circle-check"></i>
-                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                        More info <i class="bi bi-link-45deg"></i>
-                    </a>
                 </div>
             </div>
             
-            <div class="col-lg-4 col-6">
-                <div class="small-box text-bg-warning">
-                    <div class="inner">
-                        <h3><?= $inactiveInstitutions ?></h3>
-                        <p>Inactive Institutions</p>
+            <div class="col-12 col-sm-6 col-md-4">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-warning"><i class="fas fa-ban"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Inactive Institutions</span>
+                        <span class="info-box-number"><?= $inactiveInstitutions ?></span>
                     </div>
-                    <i class="small-box-icon fa-solid fa-ban"></i>
-                    <a href="#" class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover">
-                        More info <i class="bi bi-link-45deg"></i>
-                    </a>
                 </div>
             </div>
         </div>

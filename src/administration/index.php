@@ -30,34 +30,26 @@ try {
     // Count institutions
     $stmt = $conn->prepare("SELECT COUNT(*) as count FROM {$dbPrefix}institution WHERE is_active = 1");
     $stmt->execute();
-    $stmt->bind_result($count);
-    $stmt->fetch();
-    $metrics['institutions'] = $count ?? 0;
-    $stmt->close();
+    $row = $stmt->fetch();
+    $metrics['institutions'] = $row['count'] ?? 0;
     
     // Count programs
     $stmt = $conn->prepare("SELECT COUNT(*) as count FROM {$dbPrefix}programs WHERE is_active = 1");
     $stmt->execute();
-    $stmt->bind_result($count);
-    $stmt->fetch();
-    $metrics['programs'] = $count ?? 0;
-    $stmt->close();
+    $row = $stmt->fetch();
+    $metrics['programs'] = $row['count'] ?? 0;
     
     // Count SLOs
     $stmt = $conn->prepare("SELECT COUNT(*) as count FROM {$dbPrefix}student_learning_outcomes WHERE is_active = 1");
     $stmt->execute();
-    $stmt->bind_result($count);
-    $stmt->fetch();
-    $metrics['outcomes'] = $count ?? 0;
-    $stmt->close();
+    $row = $stmt->fetch();
+    $metrics['outcomes'] = $row['count'] ?? 0;
     
     // Count assessments
     $stmt = $conn->prepare("SELECT COUNT(*) as count FROM {$dbPrefix}assessments");
     $stmt->execute();
-    $stmt->bind_result($count);
-    $stmt->fetch();
-    $metrics['assessments'] = $count ?? 0;
-    $stmt->close();
+    $row = $stmt->fetch();
+    $metrics['assessments'] = $row['count'] ?? 0;
     
 } catch (Exception $e) {
     // Tables might not exist yet - that's okay for new installations
@@ -86,66 +78,46 @@ $theme->showHeader($context);
 <!-- Metrics Row -->
 <div class="row">
     <!-- Institutions -->
-    <div class="col-lg-3 col-6">
-        <div class="small-box bg-info">
-            <div class="inner">
-                <h3><?= $metrics['institutions'] ?></h3>
-                <p>Institutions</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon bg-info"><i class="fas fa-university"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Institutions</span>
+                <span class="info-box-number"><?= $metrics['institutions'] ?></span>
             </div>
-            <div class="icon">
-                <i class="fas fa-university"></i>
-            </div>
-            <a href="<?= BASE_URL ?>administration/institution.php" class="small-box-footer">
-                Manage <i class="fas fa-arrow-circle-right"></i>
-            </a>
         </div>
     </div>
     
     <!-- Programs -->
-    <div class="col-lg-3 col-6">
-        <div class="small-box bg-success">
-            <div class="inner">
-                <h3><?= $metrics['programs'] ?></h3>
-                <p>Programs</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon bg-success"><i class="fas fa-graduation-cap"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Programs</span>
+                <span class="info-box-number"><?= $metrics['programs'] ?></span>
             </div>
-            <div class="icon">
-                <i class="fas fa-graduation-cap"></i>
-            </div>
-            <a href="<?= BASE_URL ?>administration/outcomes.php" class="small-box-footer">
-                View Outcomes <i class="fas fa-arrow-circle-right"></i>
-            </a>
         </div>
     </div>
     
     <!-- Outcomes -->
-    <div class="col-lg-3 col-6">
-        <div class="small-box bg-warning">
-            <div class="inner">
-                <h3><?= $metrics['outcomes'] ?></h3>
-                <p>Learning Outcomes</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon bg-warning"><i class="fas fa-bullseye"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Learning Outcomes</span>
+                <span class="info-box-number"><?= $metrics['outcomes'] ?></span>
             </div>
-            <div class="icon">
-                <i class="fas fa-bullseye"></i>
-            </div>
-            <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="small-box-footer">
-                Manage <i class="fas fa-arrow-circle-right"></i>
-            </a>
         </div>
     </div>
     
     <!-- Assessments -->
-    <div class="col-lg-3 col-6">
-        <div class="small-box bg-warning">
-            <div class="inner">
-                <h3><?= $metrics['assessments'] ?></h3>
-                <p>Assessments</p>
+    <div class="col-12 col-sm-6 col-md-3">
+        <div class="info-box shadow-sm">
+            <span class="info-box-icon bg-danger"><i class="fas fa-clipboard-check"></i></span>
+            <div class="info-box-content">
+                <span class="info-box-text">Assessments</span>
+                <span class="info-box-number"><?= $metrics['assessments'] ?></span>
             </div>
-            <div class="icon">
-                <i class="fas fa-clipboard-check"></i>
-            </div>
-            <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="small-box-footer">
-                View Reports <i class="fas fa-arrow-circle-right"></i>
-            </a>
         </div>
     </div>
 </div>
@@ -199,7 +171,7 @@ $theme->showHeader($context);
             <div class="card-body">
                 <dl class="row">
                     <dt class="col-sm-4">Application Version:</dt>
-                    <dd class="col-sm-8">1.0.0-dev</dd>
+                    <dd class="col-sm-8"><?= htmlspecialchars($appVersion) ?></dd>
                     
                     <dt class="col-sm-4">PHP Version:</dt>
                     <dd class="col-sm-8"><?= PHP_VERSION ?></dd>
@@ -208,7 +180,28 @@ $theme->showHeader($context);
                     <dd class="col-sm-8">
                         <?php
                         try {
-                            echo 'Connected <span class="badge badge-success">OK</span>';
+                            $dbVersion = 'Unknown';
+                            $driver = $db->getDriver();
+                            
+                            if ($driver === 'mssql' || $driver === 'sqlsrv') {
+                                $stmt = $db->query("SELECT @@VERSION as version");
+                                $row = $stmt->fetch();
+                                if ($row) {
+                                    // MSSQL version string is very long, extract just the main version
+                                    preg_match('/Microsoft SQL Server (\d{4}|[\d\.]+)/', $row['version'], $matches);
+                                    $dbVersion = $matches[0] ?? 'MS SQL Server';
+                                }
+                            } else {
+                                $stmt = $db->query("SELECT VERSION() as version");
+                                $row = $stmt->fetch();
+                                if ($row) {
+                                    // MySQL version, extract just version number
+                                    preg_match('/^([\d\.]+)/', $row['version'], $matches);
+                                    $dbVersion = 'MySQL ' . ($matches[1] ?? $row['version']);
+                                }
+                            }
+                            
+                            echo htmlspecialchars($dbVersion) . ' <span class="badge badge-success">Connected</span>';
                         } catch (Exception $e) {
                             echo 'Error <span class="badge badge-danger">FAIL</span>';
                         }

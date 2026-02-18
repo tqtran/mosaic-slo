@@ -64,43 +64,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
     } elseif ($db_port === false || $db_port < 1 || $db_port > 65535) {
         $error = 'Invalid port number. Must be between 1 and 65535.';
     } else {
-        // Attempt connection with proper exception handling
-        // Note: Setup wizard still uses mysqli for initial connection test
-        // The main app uses PDO (supports both MySQL and MSSQL)
+        // Attempt connection with PDO (supports both MySQL and MSSQL)
         try {
-            if ($db_driver === 'mssql') {
-                // For MSSQL, we'll skip mysqli connection test and go straight to PDO in schema execution
-                $mysqli = null;
+            // Build DSN based on driver
+            if ($db_driver === 'mssql' || $db_driver === 'sqlsrv') {
+                $dsn = sprintf('sqlsrv:Server=%s,%d', $db_host, $db_port);
             } else {
-                $mysqli = new mysqli($db_host, $db_user, $db_pass, '', $db_port);
+                $dsn = sprintf('mysql:host=%s;port=%d;charset=utf8mb4', $db_host, $db_port);
             }
-        } catch (\mysqli_sql_exception $e) {
+            
+            $pdo = new PDO($dsn, $db_user, $db_pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]);
+            
+        } catch (PDOException $e) {
             $error = 'Connection failed: ' . $e->getMessage();
-            $mysqli = null;
+            $pdo = null;
         }
         
-        if ($mysqli !== null) {
+        if ($pdo !== null) {
             // Connection successful - try to create database (may fail on shared hosting)
-            $db_name_escaped = $mysqli->real_escape_string($db_name);
-            
-            // Attempt to create database (will be skipped if no CREATE privileges)
             $createSuccess = false;
             try {
-                $createSuccess = $mysqli->query("CREATE DATABASE IF NOT EXISTS `$db_name_escaped` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            } catch (\mysqli_sql_exception $e) {
+                if ($db_driver === 'mssql' || $db_driver === 'sqlsrv') {
+                    // MSSQL database creation
+                    $pdo->exec("CREATE DATABASE [$db_name]");
+                    $createSuccess = true;
+                } else {
+                    // MySQL database creation
+                    $pdo->exec("CREATE DATABASE IF NOT EXISTS `$db_name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                    $createSuccess = true;
+                }
+            } catch (PDOException $e) {
                 // User doesn't have CREATE DATABASE privilege - that's okay on shared hosting
-                // We'll try to select existing database below
+                // We'll try to connect to existing database below
                 $createSuccess = false;
             }
             
-            // Try to select the database (works whether we created it or it already exists)
+            // Reconnect with database selected
             try {
-                $mysqli->select_db($db_name_escaped);
+                if ($db_driver === 'mssql' || $db_driver === 'sqlsrv') {
+                    $dsn = sprintf('sqlsrv:Server=%s,%d;Database=%s', $db_host, $db_port, $db_name);
+                } else {
+                    $dsn = sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4', $db_host, $db_port, $db_name);
+                }
                 
-                // Database selected successfully - proceed with schema installation
-                // Execute schema
+                $pdo = new PDO($dsn, $db_user, $db_pass, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                ]);
+                
+                // Database connected successfully - proceed with schema installation
                 // Use appropriate schema file based on driver
-                $schemaFile = ($db_driver === 'mssql') 
+                $schemaFile = ($db_driver === 'mssql' || $db_driver === 'sqlsrv') 
                     ? __DIR__ . '/../system/database/schema_mssql.sql'
                     : __DIR__ . '/../system/database/schema.sql';
                 
@@ -111,21 +126,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                     
                     // Drop existing tables if they exist (for clean reinstall)
                     $tables = [
-                        'lti_nonces', 'security_log', 'error_log',
-                        'audit_log', 'user_roles', 'roles', 'assessments',
-                        'enrollment', 'students', 'terms',
+                        'lti_nonces', 'security_log', 'error_log', 'audit_log',
+                        'assessments', 'enrollment', 'students', 'terms',
                         'student_learning_outcomes', 'slo_sets',
                         'program_outcomes', 'programs',
-                        'institutional_outcomes', 'institution', 'users'
+                        'institutional_outcomes', 'institution',
+                        'user_roles', 'roles', 'users'
                     ];
                         
                     try {
-                        $mysqli->query('SET FOREIGN_KEY_CHECKS = 0');
+                        if ($db_driver === 'mysql') {
+                            $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
+                        }
                         foreach ($tables as $table) {
                             $tableName = $db_prefix . $table;
-                            @$mysqli->query("DROP TABLE IF EXISTS `$tableName`");
+                            if ($db_driver === 'mssql' || $db_driver === 'sqlsrv') {
+                                @$pdo->exec("DROP TABLE IF EXISTS [$tableName]");
+                            } else {
+                                @$pdo->exec("DROP TABLE IF EXISTS `$tableName`");
+                            }
                         }
-                    } catch (\mysqli_sql_exception $e) {
+                        if ($db_driver === 'mysql') {
+                            $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+                        }
+                    } catch (PDOException $e) {
                         // Ignore errors from dropping non-existent tables
                     }
                         
@@ -141,20 +165,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                         }
                     }
                     
-                    // Execute multi-query with exception handling
+                    // Execute schema - split into individual statements for sequential execution
                     try {
-                            if ($mysqli->multi_query($schema)) {
-                                // Clear all results
-                                do {
-                                    if ($result = $mysqli->store_result()) {
-                                        $result->free();
-                                    }
-                                } while ($mysqli->next_result());
-                                
-                                // Check for errors
-                                if ($mysqli->errno) {
-                                    $error = 'Schema execution failed: ' . $mysqli->error;
-                                } else {
+                            // Split schema by semicolons (simple approach for our controlled schema files)
+                            $statements = array_filter(
+                                array_map('trim', explode(';', $schema)),
+                                fn($stmt) => !empty($stmt) && !preg_match('/^\s*(--|#)/', $stmt)
+                            );
+                            
+                            foreach ($statements as $statement) {
+                                if (!empty(trim($statement))) {
+                                    $pdo->exec($statement);
+                                }
+                            }
+                            
+                            // Schema executed successfully
                                     // Save configuration
                                     $configDir = __DIR__ . '/../config';
                                     if (!is_dir($configDir)) {
@@ -206,15 +231,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                     } else {
                                         $error = 'Failed to write configuration file. Check directory permissions.';
                                     }
-                                }
-                            } else {
-                                $error = 'Failed to execute schema: ' . $mysqli->error;
-                            }
-                        } catch (\mysqli_sql_exception $e) {
-                            $error = 'Database error: ' . $e->getMessage();
+                                
+                        } catch (PDOException $e) {
+                            $error = 'Schema execution failed: ' . $e->getMessage();
                         }
                 } // End else (schema file exists / complete installation)
-            } catch (\mysqli_sql_exception $e) {
+            } catch (PDOException $e) {
                 // Database doesn't exist and we couldn't create or access it
                 $error = 'Cannot access database "' . htmlspecialchars($db_name) . '". ';
                 $error .= 'Error: ' . htmlspecialchars($e->getMessage()) . '. ';
@@ -223,9 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                 }
             }
             
-            if ($mysqli !== null) {
-                $mysqli->close();
-            }
+            // PDO connection will be closed automatically when $pdo goes out of scope
         }
     }
 }
@@ -327,6 +347,11 @@ ob_start();
         color: #28a745;
     }
     
+    .requirements li.warning:before {
+        content: "\f06a";
+        color: #ffc107;
+    }
+    
     .requirements li.fail:before {
         content: "\f00d";
         color: #dc3545;
@@ -387,8 +412,11 @@ $theme->showHeader($context);
                 // Perform real preflight checks
                 $php_version = PHP_VERSION;
                 $php_ok = version_compare($php_version, '8.1.0', '>=');
-                $mysqli_ok = extension_loaded('mysqli');
-                $all_checks_pass = $php_ok && $mysqli_ok;
+                $pdo_ok = extension_loaded('pdo');
+                $pdo_mysql_ok = extension_loaded('pdo_mysql');
+                $pdo_sqlsrv_ok = extension_loaded('pdo_sqlsrv');
+                $db_driver_ok = $pdo_mysql_ok || $pdo_sqlsrv_ok;
+                $all_checks_pass = $php_ok && $pdo_ok && $db_driver_ok;
                 ?>
                 
                 <div class="requirements">
@@ -397,11 +425,17 @@ $theme->showHeader($context);
                         <li class="<?php echo $php_ok ? 'pass' : 'fail'; ?>">
                             PHP 8.1 or higher <span class="text-muted">(found <?php echo $php_version; ?>)</span>
                         </li>
-                        <li class="<?php echo $mysqli_ok ? 'pass' : 'fail'; ?>">
-                            mysqli extension enabled
+                        <li class="<?php echo $pdo_ok ? 'pass' : 'fail'; ?>">
+                            PDO extension enabled
                         </li>
-                        <li class="pass">
-                            MySQL 8.0+ or MS SQL Server 2016+ <span class="text-muted">(will be verified on connection)</span>
+                        <li class="<?php echo $pdo_mysql_ok ? 'pass' : 'warning'; ?>">
+                            PDO MySQL driver (pdo_mysql) <?php echo $pdo_mysql_ok ? '<span class="text-success">Available</span>' : '<span class="text-muted">Not installed</span>'; ?>
+                        </li>
+                        <li class="<?php echo $pdo_sqlsrv_ok ? 'pass' : 'warning'; ?>">
+                            PDO MS SQL Server driver (pdo_sqlsrv) <?php echo $pdo_sqlsrv_ok ? '<span class="text-success">Available</span>' : '<span class="text-muted">Not installed</span>'; ?>
+                        </li>
+                        <li class="<?php echo $db_driver_ok ? 'pass' : 'fail'; ?>">
+                            At least one database driver required
                         </li>
                     </ul>
                 </div>
@@ -450,10 +484,14 @@ $theme->showHeader($context);
                     <div class="form-group">
                         <label for="db_driver">Database Type</label>
                         <select class="form-control" id="db_driver" name="db_driver" onchange="updatePortDefault()" required>
-                            <option value="mysql" <?php echo ($_POST['db_driver'] ?? 'mysql') === 'mysql' ? 'selected' : ''; ?>>MySQL / MariaDB</option>
-                            <option value="mssql" <?php echo ($_POST['db_driver'] ?? '') === 'mssql' ? 'selected' : ''; ?>>Microsoft SQL Server</option>
+                            <option value="mysql" <?php echo ($_POST['db_driver'] ?? 'mysql') === 'mysql' ? 'selected' : ''; ?>>MySQL / MariaDB<?php echo !$pdo_mysql_ok ? ' (PDO driver missing: pdo_mysql)' : ''; ?></option>
+                            <option value="mssql" <?php echo ($_POST['db_driver'] ?? '') === 'mssql' ? 'selected' : ''; ?>>Microsoft SQL Server<?php echo !$pdo_sqlsrv_ok ? ' (PDO driver missing: pdo_sqlsrv)' : ''; ?></option>
                         </select>
-                        <small class="form-text text-muted">Choose MySQL for easy entry and development, or MS SQL Server for production enterprise environments. <strong>This choice is permanent</strong> - the database type cannot be changed after installation.</small>
+                        <small class="form-text text-muted">Choose MySQL for easy entry and development, or MS SQL Server for production enterprise environments. <strong>This choice is permanent</strong> - the database type cannot be changed after installation.
+                        <?php if (!$pdo_mysql_ok || !$pdo_sqlsrv_ok): ?>
+                            <br><span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Missing PDO drivers (<?php echo !$pdo_mysql_ok ? 'pdo_mysql' : ''; ?><?php echo !$pdo_mysql_ok && !$pdo_sqlsrv_ok ? ', ' : ''; ?><?php echo !$pdo_sqlsrv_ok ? 'pdo_sqlsrv' : ''; ?>) must be installed on your server before you can use that database type.</span>
+                        <?php endif; ?>
+                        </small>
                     </div>
                     
                     <div class="form-group">

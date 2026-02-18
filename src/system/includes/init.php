@@ -17,9 +17,11 @@ declare(strict_types=1);
  *   $siteName    - Site name from config
  *   $dbPrefix    - Database table prefix
  *   $debugMode   - Debug mode boolean
- *   BASE_URL     - Constant for templates (deprecated, use $baseUrl)
- *   BASE_PATH    - Constant for templates (deprecated, use $basePath)
- *   SITE_NAME    - Constant for templates (deprecated, use $siteName)
+ *   $appVersion  - Application version from VERSION file
+ *   BASE_URL     - Constant alternative to $baseUrl
+ *   BASE_PATH    - Constant alternative to $basePath
+ *   SITE_NAME    - Constant alternative to $siteName
+ *   APP_VERSION  - Constant alternative to $appVersion
  * 
  * Usage:
  *   require_once __DIR__ . '/../system/includes/init.php';
@@ -55,11 +57,13 @@ $basePath = \Mosaic\Core\Path::getBasePath();
 $siteName = $config->get('app.name', 'MOSAIC');
 $dbPrefix = $config->get('database.prefix', '');
 $debugMode = $config->get('app.debug_mode', false) === true || $config->get('app.debug_mode', 'false') === 'true';
+$appVersion = trim(file_get_contents(__DIR__ . '/../../VERSION'));
 
-// Define constants for templates (for backward compatibility)
+// Define constants for template convenience
 if (!defined('BASE_URL')) define('BASE_URL', $baseUrl);
 if (!defined('BASE_PATH')) define('BASE_PATH', $basePath);
 if (!defined('SITE_NAME')) define('SITE_NAME', $siteName);
+if (!defined('APP_VERSION')) define('APP_VERSION', $appVersion);
 
 // Initialize database connection
 $db = \Mosaic\Core\Database::getInstance($configData['database']);

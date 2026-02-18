@@ -138,14 +138,10 @@ class Database
     /**
      * Execute prepared statement with parameters
      * 
-     * Backwards compatible with mysqli interface:
-     * - $types parameter is ignored (kept for compatibility)
-     * - Returns PDOStatement instead of mysqli_result
-     * 
      * @param string $sql SQL query with ? placeholders
-     * @param array $params Parameters to bind
-     * @param string $types Ignored (kept for backwards compatibility)
-     * @return PDOStatement|bool Query result
+     * @param array $params Parameters to bind (positional, matching ? in query)
+     * @param string $types Optional type hints parameter (ignored, kept for legacy compatibility)
+     * @return PDOStatement|bool Query result statement or boolean for non-SELECT queries
      * @throws RuntimeException If query fails
      */
     public function query(string $sql, array $params = [], string $types = ''): mixed

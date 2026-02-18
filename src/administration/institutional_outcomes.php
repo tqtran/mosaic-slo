@@ -235,31 +235,31 @@ $theme->showHeader($context);
         
         <!-- Statistics Row -->
         <div class="row">
-            <div class="col-lg-4 col-6">
-                <div class="small-box text-bg-info">
-                    <div class="inner">
-                        <h3><?= $stats['total'] ?></h3>
-                        <p>Total Outcomes</p>
+            <div class="col-12 col-sm-6 col-md-4">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-info"><i class="fas fa-list"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Total Outcomes</span>
+                        <span class="info-box-number"><?= $stats['total'] ?></span>
                     </div>
-                    <div class="small-box-icon"><i class="fas fa-list"></i></div>
                 </div>
             </div>
-            <div class="col-lg-4 col-6">
-                <div class="small-box text-bg-success">
-                    <div class="inner">
-                        <h3><?= $stats['active'] ?></h3>
-                        <p>Active Outcomes</p>
+            <div class="col-12 col-sm-6 col-md-4">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-success"><i class="fas fa-check-circle"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Active Outcomes</span>
+                        <span class="info-box-number"><?= $stats['active'] ?></span>
                     </div>
-                    <div class="small-box-icon"><i class="fas fa-check-circle"></i></div>
                 </div>
             </div>
-            <div class="col-lg-4 col-6">
-                <div class="small-box text-bg-warning">
-                    <div class="inner">
-                        <h3><?= $stats['inactive'] ?></h3>
-                        <p>Inactive Outcomes</p>
+            <div class="col-12 col-sm-6 col-md-4">
+                <div class="info-box shadow-sm">
+                    <span class="info-box-icon bg-warning"><i class="fas fa-times-circle"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">Inactive Outcomes</span>
+                        <span class="info-box-number"><?= $stats['inactive'] ?></span>
                     </div>
-                    <div class="small-box-icon"><i class="fas fa-times-circle"></i></div>
                 </div>
             </div>
         </div>

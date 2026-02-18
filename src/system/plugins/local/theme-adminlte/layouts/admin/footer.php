@@ -4,7 +4,7 @@
 </main>
 
 <footer class="app-footer">
-    <div class="float-end d-none d-sm-inline">Version 1.0.0</div>
+    <div class="float-end d-none d-sm-inline">Version <?= htmlspecialchars($appVersion) ?></div>
     <strong>&copy; 2024-2026 MOSAIC</strong> - Student Learning Outcomes Assessment
 </footer>
 
