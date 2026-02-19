@@ -175,6 +175,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                             
                             foreach ($statements as $statement) {
                                 if (!empty(trim($statement))) {
+                                    // Detect and log table creation
+                                    if (preg_match('/CREATE TABLE\s+(`?\w+`?)/i', $statement, $matches)) {
+                                        $tableName = str_replace('`', '', $matches[1]);
+                                        error_log("Creating table: $tableName");
+                                        echo "<!-- Creating table: $tableName -->\n";
+                                        flush();
+                                    }
                                     $pdo->exec($statement);
                                 }
                             }

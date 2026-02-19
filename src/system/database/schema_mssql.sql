@@ -308,7 +308,6 @@ CREATE TABLE error_log (
     stack_trace NVARCHAR(MAX),
     file_path NVARCHAR(255),
     line_number INT,
-    user_fk INT,
     request_uri NVARCHAR(MAX),
     request_method NVARCHAR(10),
     request_data NVARCHAR(MAX), -- JSON stored as NVARCHAR
@@ -332,7 +331,6 @@ CREATE TABLE security_log (
     security_log_pk INT IDENTITY(1,1) PRIMARY KEY,
     event_type NVARCHAR(100) NOT NULL,
     event_description NVARCHAR(MAX) NOT NULL,
-    user_fk INT,
     username NVARCHAR(100),
     ip_address NVARCHAR(45),
     user_agent NVARCHAR(MAX),
