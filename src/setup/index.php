@@ -127,7 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                     // Drop existing tables if they exist (for clean reinstall)
                     $tables = [
                         'lti_nonces', 'security_log', 'error_log', 'audit_log',
-                        'assessments', 'enrollment', 'students', 'terms',
+                        'assessments', 'enrollment', 'terms',
                         'student_learning_outcomes', 'slo_sets',
                         'program_outcomes', 'programs',
                         'institutional_outcomes', 'institution',
@@ -179,8 +179,247 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                 }
                             }
                             
-                            // Schema executed successfully
-                                    // Save configuration
+                            // Schema executed successfully - now import seed data if available
+                            $seedFile = __DIR__ . '/seed_data.csv';
+                            $seedStats = ['programs' => 0, 'slo_sets' => 0, 'terms' => 0, 'slos' => 0, 'enrollment' => 0, 'assessments' => 0];
+                            
+                            if (file_exists($seedFile)) {
+                                try {
+                                    $handle = fopen($seedFile, 'r');
+                                    if ($handle !== false) {
+                                        // Read header row
+                                        $headers = fgetcsv($handle);
+                                        
+                                        // Collections for unique values (to avoid duplicates)
+                                        $programs = [];
+                                        $slo_sets = [];
+                                        $terms_data = [];
+                                        $slos = [];
+                                        $enrollments = [];
+                                        $assessments = [];
+                                        
+                                        // Parse CSV and collect unique entities
+                                        while (($row = fgetcsv($handle)) !== false) {
+                                            if (count($row) < 16) continue; // Skip invalid rows
+                                            
+                                            $data = array_combine($headers, $row);
+                                            
+                                            // Extract program (unique by Program column)
+                                            if (!empty($data['Program'])) {
+                                                $programCode = strtoupper(str_replace(' ', '_', $data['Program']));
+                                                if (!isset($programs[$programCode])) {
+                                                    $programs[$programCode] = [
+                                                        'code' => $programCode,
+                                                        'name' => $data['Program'],
+                                                        'degree_type' => 'AS' // Default
+                                                    ];
+                                                }
+                                            }
+                                            
+                                            // Student data will be denormalized into enrollment table
+                                            
+                                            // Extract SLO Set (academic year)
+                                            if (!empty($data['Academic Year'])) {
+                                                $setCode = str_replace('-', '_', $data['Academic Year']);
+                                                if (!isset($slo_sets[$setCode])) {
+                                                    $years = explode('-', $data['Academic Year']);
+                                                    $startYear = '20' . $years[0];
+                                                    $endYear = '20' . $years[1];
+                                                    $slo_sets[$setCode] = [
+                                                        'set_code' => $setCode,
+                                                        'set_name' => 'Academic Year ' . $data['Academic Year'],
+                                                        'set_type' => 'year',
+                                                        'start_date' => $startYear . '-08-01',
+                                                        'end_date' => $endYear . '-07-31'
+                                                    ];
+                                                }
+                                            }
+                                            
+                                            // Extract term
+                                            if (!empty($data['Term']) && !empty($data['Academic Year'])) {
+                                                $setCode = str_replace('-', '_', $data['Academic Year']);
+                                                $termCode = str_replace(' ', '_', strtoupper($data['Term']));
+                                                $termKey = $setCode . '_' . $termCode;
+                                                
+                                                if (!isset($terms_data[$termKey])) {
+                                                    $year = '20' . explode('-', $data['Academic Year'])[0];
+                                                    if (stripos($data['Term'], 'Spring') !== false) {
+                                                        $year = '20' . explode('-', $data['Academic Year'])[1];
+                                                        $start = $year . '-01-15';
+                                                        $end = $year . '-05-31';
+                                                    } else {
+                                                        $start = $year . '-08-15';
+                                                        $end = $year . '-12-31';
+                                                    }
+                                                    
+                                                    $terms_data[$termKey] = [
+                                                        'slo_set_code' => $setCode,
+                                                        'term_code' => $termCode,
+                                                        'term_name' => $data['Term'],
+                                                        'term_year' => (int)$year,
+                                                        'start_date' => $start,
+                                                        'end_date' => $end
+                                                    ];
+                                                }
+                                            }
+                                            
+                                            // Extract SLO (course + CSLO within academic year set)
+                                            if (!empty($data['CSLO']) && !empty($data['SLO Language']) && !empty($data['Course'])) {
+                                                $setCode = str_replace('-', '_', $data['Academic Year']);
+                                                $courseCode = str_replace(' ', '_', $data['Course']);
+                                                $csloCode = str_replace(' ', '_', strtoupper($data['CSLO']));
+                                                $sloCode = $courseCode . '_' . $csloCode;  // e.g., JAPN_C185_CSLO_1
+                                                $sloKey = $setCode . '_' . $sloCode;
+                                                
+                                                if (!isset($slos[$sloKey])) {
+                                                    $slos[$sloKey] = [
+                                                        'slo_set_code' => $setCode,
+                                                        'slo_code' => $sloCode,
+                                                        'description' => substr($data['SLO Language'], 0, 500),
+                                                        'assessment_method' => $data['Assessment'] ?? 'Assignment',
+                                                        'sequence_num' => count($slos) + 1
+                                                    ];
+                                                }
+                                            }
+                                            
+                                            // Extract enrollment with all denormalized context data
+                                            if (!empty($data['CRN']) && !empty($data['StudentID']) && !empty($data['Term'])) {
+                                                $termCode = str_replace(' ', '_', strtoupper($data['Term']));
+                                                $enrollKey = $termCode . '_' . $data['CRN'] . '_' . $data['StudentID'];
+                                                
+                                                if (!isset($enrollments[$enrollKey])) {
+                                                    $enrollments[$enrollKey] = [
+                                                        'term_code' => $termCode,
+                                                        'crn' => $data['CRN'],
+                                                        'student_id' => $data['StudentID'],
+                                                        'first_name' => 'Student',
+                                                        'last_name' => substr($data['StudentID'], 1), // C00123456 -> 00123456
+                                                        'academic_year' => $data['Academic Year'] ?? null,
+                                                        'semester' => $data['Semester'] ?? null,
+                                                        'course_code' => $data['Course'] ?? null,
+                                                        'course_title' => $data['Title'] ?? null,
+                                                        'course_modality' => $data['Modality'] ?? null,
+                                                        'program_name' => $data['Program'] ?? null,
+                                                        'subject_code' => $data['Sub Code'] ?? null,
+                                                        'subject_name' => $data['Subject'] ?? null,
+                                                        'enrollment_status' => ($data['Course Status'] === 'Active') ? 'enrolled' : 'dropped',
+                                                        'enrollment_date' => $terms_data[$setCode . '_' . $termCode]['start_date'] ?? date('Y-m-d')
+                                                    ];
+                                                }
+                                            }
+                                            
+                                            // Store assessment for later (after enrollment is inserted)
+                                            if (!empty($data['CSLO']) && !empty($data['Met/Not Met']) && !empty($data['Course'])) {
+                                                $termCode = str_replace(' ', '_', strtoupper($data['Term']));
+                                                $courseCode = str_replace(' ', '_', $data['Course']);
+                                                $csloCode = str_replace(' ', '_', strtoupper($data['CSLO']));
+                                                $sloCode = $courseCode . '_' . $csloCode;
+                                                
+                                                $assessments[] = [
+                                                    'term_code' => $termCode,
+                                                    'crn' => $data['CRN'],
+                                                    'student_id' => $data['StudentID'],
+                                                    'slo_code' => $sloCode,
+                                                    'score' => ($data['Met/Not Met'] === 'Met') ? 1 : 0,
+                                                    'assessment_type' => $data['Assessment'] ?? 'Assignment',
+                                                    'assessment_date' => date('Y-m-d')
+                                                ];
+                                            }
+                                        }
+                                        
+                                        fclose($handle);
+                                        
+                                        // Insert data in foreign key dependency order
+                                        $pdo->beginTransaction();
+                                        
+                                        // 1. Programs
+                                        $stmt = $pdo->prepare("INSERT INTO {$db_prefix}programs (program_code, program_name, degree_type, is_active) VALUES (?, ?, ?, 1)");
+                                        foreach ($programs as $program) {
+                                            $stmt->execute([$program['code'], $program['name'], $program['degree_type']]);
+                                            $seedStats['programs']++;
+                                        }
+                                        
+                                        // 2. SLO Sets
+                                        $stmt = $pdo->prepare("INSERT INTO {$db_prefix}slo_sets (set_code, set_name, set_type, start_date, end_date, is_active) VALUES (?, ?, ?, ?, ?, 1)");
+                                        foreach ($slo_sets as $set) {
+                                            $stmt->execute([$set['set_code'], $set['set_name'], $set['set_type'], $set['start_date'], $set['end_date']]);
+                                            $seedStats['slo_sets']++;
+                                        }
+                                        
+                                        // 4. Terms
+                                        $stmt = $pdo->prepare("INSERT INTO {$db_prefix}terms (slo_set_code, term_code, term_name, term_year, start_date, end_date, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)");
+                                        foreach ($terms_data as $term) {
+                                            $stmt->execute([$term['slo_set_code'], $term['term_code'], $term['term_name'], $term['term_year'], $term['start_date'], $term['end_date']]);
+                                            $seedStats['terms']++;
+                                        }
+                                        
+                                        // 5. Student Learning Outcomes
+                                        $stmt = $pdo->prepare("INSERT INTO {$db_prefix}student_learning_outcomes (slo_set_code, slo_code, description, assessment_method, sequence_num, is_active) VALUES (?, ?, ?, ?, ?, 1)");
+                                        foreach ($slos as $slo) {
+                                            $stmt->execute([$slo['slo_set_code'], $slo['slo_code'], $slo['description'], $slo['assessment_method'], $slo['sequence_num']]);
+                                            $seedStats['slos']++;
+                                        }
+                                        
+                                        // 6. Enrollment
+                                        $stmt = $pdo->prepare("INSERT INTO {$db_prefix}enrollment 
+                                            (term_code, crn, student_id, student_first_name, student_last_name, 
+                                             academic_year, semester, course_code, course_title, course_modality, 
+                                             program_name, subject_code, subject_name, enrollment_status, enrollment_date) 
+                                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                                        foreach ($enrollments as $enrollment) {
+                                            $stmt->execute([
+                                                $enrollment['term_code'], 
+                                                $enrollment['crn'], 
+                                                $enrollment['student_id'], 
+                                                $enrollment['first_name'], 
+                                                $enrollment['last_name'],
+                                                $enrollment['academic_year'],
+                                                $enrollment['semester'],
+                                                $enrollment['course_code'],
+                                                $enrollment['course_title'],
+                                                $enrollment['course_modality'],
+                                                $enrollment['program_name'],
+                                                $enrollment['subject_code'],
+                                                $enrollment['subject_name'],
+                                                $enrollment['enrollment_status'], 
+                                                $enrollment['enrollment_date']
+                                            ]);
+                                            $seedStats['enrollment']++;
+                                        }
+                                        
+                                        // 7. Assessments
+                                        $stmt = $pdo->prepare("INSERT INTO {$db_prefix}assessments (enrollment_fk, student_learning_outcome_fk, score_value, achievement_level, assessed_date, notes)
+                                                               SELECT e.enrollment_pk, s.student_learning_outcomes_pk, ?, ?, ?, ?
+                                                               FROM {$db_prefix}enrollment e
+                                                               JOIN {$db_prefix}student_learning_outcomes s ON s.slo_code = ?
+                                                               WHERE e.term_code = ? AND e.crn = ? AND e.student_id = ?");
+                                        foreach ($assessments as $assessment) {
+                                            $achievementLevel = $assessment['score'] == 1 ? 'met' : 'not_met';
+                                            $stmt->execute([
+                                                $assessment['score'],
+                                                $achievementLevel,
+                                                $assessment['assessment_date'],
+                                                $assessment['assessment_type'] ?? null,
+                                                $assessment['slo_code'],
+                                                $assessment['term_code'],
+                                                $assessment['crn'],
+                                                $assessment['student_id']
+                                            ]);
+                                            $seedStats['assessments']++;
+                                        }
+                                        
+                                        $pdo->commit();
+                                    }
+                                } catch (Exception $e) {
+                                    if (isset($pdo) && $pdo->inTransaction()) {
+                                        $pdo->rollBack();
+                                    }
+                                    // Don't fail setup if seed data import fails - log it but continue
+                                    error_log('Seed data import failed: ' . $e->getMessage());
+                                }
+                            }
+                            
+                            // Save configuration
                                     $configDir = __DIR__ . '/../config';
                                     if (!is_dir($configDir)) {
                                         mkdir($configDir, 0755, true);
@@ -484,12 +723,22 @@ $theme->showHeader($context);
                     <div class="form-group">
                         <label for="db_driver">Database Type</label>
                         <select class="form-control" id="db_driver" name="db_driver" onchange="updatePortDefault()" required>
-                            <option value="mysql" <?php echo ($_POST['db_driver'] ?? 'mysql') === 'mysql' ? 'selected' : ''; ?>>MySQL / MariaDB<?php echo !$pdo_mysql_ok ? ' (PDO driver missing: pdo_mysql)' : ''; ?></option>
-                            <option value="mssql" <?php echo ($_POST['db_driver'] ?? '') === 'mssql' ? 'selected' : ''; ?>>Microsoft SQL Server<?php echo !$pdo_sqlsrv_ok ? ' (PDO driver missing: pdo_sqlsrv)' : ''; ?></option>
+                            <option value="mysql" <?php echo ($_POST['db_driver'] ?? 'mysql') === 'mysql' ? 'selected' : ''; ?> <?php echo !$pdo_mysql_ok ? 'disabled' : ''; ?>>MySQL / MariaDB<?php echo !$pdo_mysql_ok ? ' (PDO driver missing: pdo_mysql)' : ''; ?></option>
+                            <option value="mssql" <?php echo ($_POST['db_driver'] ?? '') === 'mssql' ? 'selected' : ''; ?> <?php echo !$pdo_sqlsrv_ok ? 'disabled' : ''; ?>>Microsoft SQL Server<?php echo !$pdo_sqlsrv_ok ? ' (PDO driver missing: pdo_sqlsrv)' : ''; ?></option>
                         </select>
                         <small class="form-text text-muted">Choose MySQL for easy entry and development, or MS SQL Server for production enterprise environments. <strong>This choice is permanent</strong> - the database type cannot be changed after installation.
                         <?php if (!$pdo_mysql_ok || !$pdo_sqlsrv_ok): ?>
-                            <br><span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Missing PDO drivers (<?php echo !$pdo_mysql_ok ? 'pdo_mysql' : ''; ?><?php echo !$pdo_mysql_ok && !$pdo_sqlsrv_ok ? ', ' : ''; ?><?php echo !$pdo_sqlsrv_ok ? 'pdo_sqlsrv' : ''; ?>) must be installed on your server before you can use that database type.</span>
+                            <br><span class="text-danger"><i class="fas fa-exclamation-triangle"></i> 
+                            <?php if (!$pdo_mysql_ok): ?>
+                                pdo_mysql PDO driver must be installed on your server before you can use MySQL.
+                            <?php endif; ?>
+                            <?php if (!$pdo_mysql_ok && !$pdo_sqlsrv_ok): ?>
+                                <br>
+                            <?php endif; ?>
+                            <?php if (!$pdo_sqlsrv_ok): ?>
+                                pdo_sqlsrv PDO driver must be installed on your server before you can use MSSQL.
+                            <?php endif; ?>
+                            </span>
                         <?php endif; ?>
                         </small>
                     </div>

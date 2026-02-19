@@ -135,17 +135,34 @@ $theme->showHeader($context);
                 <div class="row">
                     <div class="col-md-3">
                         <a href="<?= BASE_URL ?>administration/institution.php" class="btn btn-app">
-                            <i class="fas fa-university"></i> Institution Settings
+                            <i class="fas fa-university"></i> Institutions
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="btn btn-app">
-                            <i class="fas fa-bullseye"></i> Manage Outcomes
+                        <a href="<?= BASE_URL ?>administration/programs.php" class="btn btn-app">
+                            <i class="fas fa-graduation-cap"></i> Programs
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="<?= BASE_URL ?>administration/enrollment.php" class="btn btn-app">
+                            <i class="fas fa-users"></i> Enrollment
                         </a>
                     </div>
                     <div class="col-md-3">
                         <a href="<?= BASE_URL ?>administration/config.php" class="btn btn-app">
-                            <i class="fas fa-cog"></i> System Configuration
+                            <i class="fas fa-cog"></i> Configuration
+                        </a>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-3">
+                        <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="btn btn-app">
+                            <i class="fas fa-bullseye"></i> Institutional Outcomes
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="<?= BASE_URL ?>administration/program_outcomes.php" class="btn btn-app">
+                            <i class="fas fa-tasks"></i> Program Outcomes
                         </a>
                     </div>
                     <div class="col-md-3">
@@ -226,8 +243,9 @@ $theme->showHeader($context);
                 <ol>
                     <li><a href="<?= BASE_URL ?>administration/institution.php">Configure institution details</a></li>
                     <li><a href="<?= BASE_URL ?>administration/institutional_outcomes.php">Set up institutional outcomes</a></li>
-                    <li>Create programs and program outcomes</li>
-                    <li>Define course SLOs</li>
+                    <li><a href="<?= BASE_URL ?>administration/programs.php">Create academic programs</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/program_outcomes.php">Define program outcomes and map to institutional</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/enrollment.php">Manage student enrollments</a></li>
                     <li>Configure LTI integration with your LMS</li>
                 </ol>
             </div>

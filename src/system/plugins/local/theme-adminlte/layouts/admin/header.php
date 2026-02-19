@@ -79,17 +79,12 @@
                         <p>Dashboard</p>
                     </a>
                 </li>
-                <li class="nav-header">ADMINISTRATION</li>
+                
+                <li class="nav-header">ACADEMIC MANAGEMENT</li>
                 <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/institution.php" class="nav-link <?= ($currentPage ?? '') === 'admin_institution' ? 'active' : '' ?>">
                         <i class="nav-icon bi bi-building"></i>
-                        <p>Institution</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_institutional_outcomes' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-diagram-3"></i>
-                        <p>Institutional Outcomes</p>
+                        <p>Institutions</p>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -98,6 +93,27 @@
                         <p>Programs</p>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/enrollment.php" class="nav-link <?= ($currentPage ?? '') === 'admin_enrollment' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-people"></i>
+                        <p>Student Enrollment</p>
+                    </a>
+                </li>
+                
+                <li class="nav-header">LEARNING OUTCOMES</li>
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_institutional_outcomes' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-diagram-3"></i>
+                        <p>Institutional Outcomes</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/program_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_program_outcomes' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-bullseye"></i>
+                        <p>Program Outcomes</p>
+                    </a>
+                </li>
+                
                 <li class="nav-header">SYSTEM</li>
                 <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/config.php" class="nav-link <?= ($currentPage ?? '') === 'admin_config' ? 'active' : '' ?>">

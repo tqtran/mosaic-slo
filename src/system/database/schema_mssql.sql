@@ -19,7 +19,6 @@ IF OBJECT_ID('dbo.user_roles', 'U') IS NOT NULL DROP TABLE dbo.user_roles;
 IF OBJECT_ID('dbo.roles', 'U') IS NOT NULL DROP TABLE dbo.roles;
 IF OBJECT_ID('dbo.assessments', 'U') IS NOT NULL DROP TABLE dbo.assessments;
 IF OBJECT_ID('dbo.enrollment', 'U') IS NOT NULL DROP TABLE dbo.enrollment;
-IF OBJECT_ID('dbo.students', 'U') IS NOT NULL DROP TABLE dbo.students;
 IF OBJECT_ID('dbo.terms', 'U') IS NOT NULL DROP TABLE dbo.terms;
 IF OBJECT_ID('dbo.student_learning_outcomes', 'U') IS NOT NULL DROP TABLE dbo.student_learning_outcomes;
 IF OBJECT_ID('dbo.slo_sets', 'U') IS NOT NULL DROP TABLE dbo.slo_sets;
@@ -66,9 +65,7 @@ CREATE TABLE user_roles (
     role_fk INT NOT NULL,
     context_type NVARCHAR(50),
     context_id INT,
-    created_at DATETIME DEFAULT GETDATE(),
-    FOREIGN KEY (user_fk) REFERENCES users(users_pk) ON DELETE CASCADE,
-    FOREIGN KEY (role_fk) REFERENCES roles(roles_pk) ON DELETE CASCADE
+    created_at DATETIME DEFAULT GETDATE()
 );
 CREATE INDEX idx_user_fk ON user_roles(user_fk);
 CREATE INDEX idx_role_fk ON user_roles(role_fk);
@@ -100,7 +97,7 @@ GO
 
 CREATE TABLE institutional_outcomes (
     institutional_outcomes_pk INT IDENTITY(1,1) PRIMARY KEY,
-    institution_fk INT NOT NULL,
+    institution_fk INT,
     code NVARCHAR(50) NOT NULL UNIQUE,
     description NVARCHAR(MAX) NOT NULL,
     sequence_num INT DEFAULT 0,
@@ -108,10 +105,7 @@ CREATE TABLE institutional_outcomes (
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE(),
     created_by_fk INT,
-    updated_by_fk INT,
-    FOREIGN KEY (institution_fk) REFERENCES institution(institution_pk) ON DELETE CASCADE,
-    FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL
+    updated_by_fk INT
 );
 CREATE INDEX idx_code ON institutional_outcomes(code);
 CREATE INDEX idx_institution_fk ON institutional_outcomes(institution_fk);
@@ -132,9 +126,7 @@ CREATE TABLE programs (
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE(),
     created_by_fk INT,
-    updated_by_fk INT,
-    FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL
+    updated_by_fk INT
 );
 CREATE INDEX idx_program_code ON programs(program_code);
 CREATE INDEX idx_is_active ON programs(is_active);
@@ -142,7 +134,7 @@ GO
 
 CREATE TABLE program_outcomes (
     program_outcomes_pk INT IDENTITY(1,1) PRIMARY KEY,
-    program_fk INT NOT NULL,
+    program_fk INT,
     institutional_outcomes_fk INT,
     code NVARCHAR(50) NOT NULL UNIQUE,
     description NVARCHAR(MAX) NOT NULL,
@@ -151,11 +143,7 @@ CREATE TABLE program_outcomes (
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE(),
     created_by_fk INT,
-    updated_by_fk INT,
-    FOREIGN KEY (program_fk) REFERENCES programs(programs_pk) ON DELETE CASCADE,
-    FOREIGN KEY (institutional_outcomes_fk) REFERENCES institutional_outcomes(institutional_outcomes_pk) ON DELETE SET NULL,
-    FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL
+    updated_by_fk INT
 );
 CREATE INDEX idx_code_po ON program_outcomes(code);
 CREATE INDEX idx_program_fk ON program_outcomes(program_fk);
@@ -179,9 +167,7 @@ CREATE TABLE slo_sets (
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE(),
     created_by_fk INT,
-    updated_by_fk INT,
-    FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL
+    updated_by_fk INT
 );
 CREATE INDEX idx_set_code ON slo_sets(set_code);
 CREATE INDEX idx_set_type ON slo_sets(set_type);
@@ -192,7 +178,7 @@ GO
 
 CREATE TABLE student_learning_outcomes (
     student_learning_outcomes_pk INT IDENTITY(1,1) PRIMARY KEY,
-    slo_set_fk INT NOT NULL,
+    slo_set_code NVARCHAR(50),
     program_outcomes_fk INT,
     slo_code NVARCHAR(50) NOT NULL,
     description NVARCHAR(MAX) NOT NULL,
@@ -203,13 +189,9 @@ CREATE TABLE student_learning_outcomes (
     updated_at DATETIME DEFAULT GETDATE(),
     created_by_fk INT,
     updated_by_fk INT,
-    FOREIGN KEY (slo_set_fk) REFERENCES slo_sets(slo_sets_pk) ON DELETE CASCADE,
-    FOREIGN KEY (program_outcomes_fk) REFERENCES program_outcomes(program_outcomes_pk) ON DELETE SET NULL,
-    FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    CONSTRAINT unique_slo_in_set UNIQUE (slo_set_fk, slo_code)
+    CONSTRAINT unique_slo_in_set UNIQUE (slo_set_code, slo_code)
 );
-CREATE INDEX idx_slo_set_fk ON student_learning_outcomes(slo_set_fk);
+CREATE INDEX idx_slo_set_code ON student_learning_outcomes(slo_set_code);
 CREATE INDEX idx_program_outcomes_fk ON student_learning_outcomes(program_outcomes_fk);
 CREATE INDEX idx_sequence_num_slo ON student_learning_outcomes(sequence_num);
 CREATE INDEX idx_is_active_slo ON student_learning_outcomes(is_active);
@@ -221,7 +203,7 @@ GO
 
 CREATE TABLE terms (
     terms_pk INT IDENTITY(1,1) PRIMARY KEY,
-    slo_set_fk INT NOT NULL,
+    slo_set_code NVARCHAR(50),
     term_code NVARCHAR(50) NOT NULL UNIQUE,
     term_name NVARCHAR(100) NOT NULL,
     term_year INT NOT NULL,
@@ -229,51 +211,44 @@ CREATE TABLE terms (
     end_date DATE NOT NULL,
     is_active BIT DEFAULT 1,
     created_at DATETIME DEFAULT GETDATE(),
-    updated_at DATETIME DEFAULT GETDATE(),
-    FOREIGN KEY (slo_set_fk) REFERENCES slo_sets(slo_sets_pk) ON DELETE CASCADE
+    updated_at DATETIME DEFAULT GETDATE()
 );
 CREATE INDEX idx_term_code ON terms(term_code);
-CREATE INDEX idx_slo_set_fk_terms ON terms(slo_set_fk);
+CREATE INDEX idx_slo_set_code_terms ON terms(slo_set_code);
 CREATE INDEX idx_term_year ON terms(term_year);
 CREATE INDEX idx_is_active_terms ON terms(is_active);
 GO
 
 -- ============================================================================
--- 7. STUDENTS & ENROLLMENT
+-- 7. ENROLLMENT (Student data denormalized)
 -- ============================================================================
-
-CREATE TABLE students (
-    students_pk INT IDENTITY(1,1) PRIMARY KEY,
-    c_number NVARCHAR(50) NOT NULL UNIQUE,
-    first_name NVARCHAR(100),
-    last_name NVARCHAR(100),
-    student_id NVARCHAR(50),
-    email NVARCHAR(255),
-    is_active BIT DEFAULT 1,
-    created_at DATETIME DEFAULT GETDATE(),
-    updated_at DATETIME DEFAULT GETDATE()
-);
-CREATE INDEX idx_c_number ON students(c_number);
-CREATE INDEX idx_student_id ON students(student_id);
-CREATE INDEX idx_email_students ON students(email);
-CREATE INDEX idx_is_active_students ON students(is_active);
-GO
 
 CREATE TABLE enrollment (
     enrollment_pk INT IDENTITY(1,1) PRIMARY KEY,
     term_code NVARCHAR(20) NOT NULL,
     crn NVARCHAR(20) NOT NULL,
-    student_fk INT NOT NULL,
+    student_id NVARCHAR(20) NOT NULL,
+    student_first_name NVARCHAR(100),
+    student_last_name NVARCHAR(100),
+    academic_year NVARCHAR(20),
+    semester NVARCHAR(50),
+    course_code NVARCHAR(50),
+    course_title NVARCHAR(255),
+    course_modality NVARCHAR(50),
+    program_name NVARCHAR(255),
+    subject_code NVARCHAR(20),
+    subject_name NVARCHAR(100),
     enrollment_status NVARCHAR(10) NOT NULL DEFAULT '1',
     enrollment_date DATE NOT NULL,
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE(),
-    FOREIGN KEY (student_fk) REFERENCES students(students_pk) ON DELETE CASCADE,
-    CONSTRAINT unique_enrollment UNIQUE (term_code, crn, student_fk)
+    CONSTRAINT unique_enrollment UNIQUE (term_code, crn, student_id)
 );
 CREATE INDEX idx_term_code_enr ON enrollment(term_code);
 CREATE INDEX idx_crn ON enrollment(crn);
-CREATE INDEX idx_student_fk_enr ON enrollment(student_fk);
+CREATE INDEX idx_student_id_enr ON enrollment(student_id);
+CREATE INDEX idx_course_code_enr ON enrollment(course_code);
+CREATE INDEX idx_program_name_enr ON enrollment(program_name);
 CREATE INDEX idx_enrollment_status ON enrollment(enrollment_status);
 GO
 
@@ -292,10 +267,7 @@ CREATE TABLE assessments (
     is_finalized BIT DEFAULT 0,
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE(),
-    assessed_by_fk INT,
-    FOREIGN KEY (enrollment_fk) REFERENCES enrollment(enrollment_pk) ON DELETE CASCADE,
-    FOREIGN KEY (student_learning_outcome_fk) REFERENCES student_learning_outcomes(student_learning_outcomes_pk) ON DELETE CASCADE,
-    FOREIGN KEY (assessed_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL
+    assessed_by_fk INT
 );
 CREATE INDEX idx_enrollment_fk ON assessments(enrollment_fk);
 CREATE INDEX idx_student_learning_outcome_fk ON assessments(student_learning_outcome_fk);
@@ -319,7 +291,7 @@ CREATE TABLE audit_log (
     ip_address NVARCHAR(45),
     user_agent NVARCHAR(MAX),
     created_at DATETIME DEFAULT GETDATE(),
-    FOREIGN KEY (changed_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL
+    changed_by_fk INT
 );
 CREATE INDEX idx_table_name ON audit_log(table_name);
 CREATE INDEX idx_record_pk ON audit_log(record_pk);
@@ -347,8 +319,7 @@ CREATE TABLE error_log (
     resolved_at DATETIME NULL,
     resolved_by_fk INT,
     created_at DATETIME DEFAULT GETDATE(),
-    FOREIGN KEY (user_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (resolved_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL
+    user_fk INT
 );
 CREATE INDEX idx_error_type ON error_log(error_type);
 CREATE INDEX idx_severity ON error_log(severity);
@@ -370,7 +341,7 @@ CREATE TABLE security_log (
     is_threat BIT DEFAULT 0,
     metadata NVARCHAR(MAX), -- JSON stored as NVARCHAR
     created_at DATETIME DEFAULT GETDATE(),
-    FOREIGN KEY (user_fk) REFERENCES users(users_pk) ON DELETE SET NULL
+    user_fk INT
 );
 CREATE INDEX idx_event_type ON security_log(event_type);
 CREATE INDEX idx_user_fk_security ON security_log(user_fk);

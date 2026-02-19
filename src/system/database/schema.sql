@@ -13,7 +13,6 @@ DROP TABLE IF EXISTS user_roles;
 DROP TABLE IF EXISTS roles;
 DROP TABLE IF EXISTS assessments;
 DROP TABLE IF EXISTS enrollment;
-DROP TABLE IF EXISTS students;
 DROP TABLE IF EXISTS terms;
 DROP TABLE IF EXISTS student_learning_outcomes;
 DROP TABLE IF EXISTS slo_sets;
@@ -23,7 +22,8 @@ DROP TABLE IF EXISTS institutional_outcomes;
 DROP TABLE IF EXISTS institution;
 DROP TABLE IF EXISTS users;
 
-SET FOREIGN_KEY_CHECKS = 1;
+-- Keep FK checks disabled during table creation
+-- SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================================================
 -- 1. USER MANAGEMENT (Created First - Referenced by Audit Fields)
@@ -55,13 +55,11 @@ CREATE TABLE roles (
 
 CREATE TABLE user_roles (
     user_roles_pk INT AUTO_INCREMENT PRIMARY KEY,
-    user_fk INT NOT NULL,
-    role_fk INT NOT NULL,
+    user_fk INT NOT NULL COMMENT 'Reference to users.users_pk',
+    role_fk INT NOT NULL COMMENT 'Reference to roles.roles_pk',
     context_type VARCHAR(50),
     context_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_fk) REFERENCES users(users_pk) ON DELETE CASCADE,
-    FOREIGN KEY (role_fk) REFERENCES roles(roles_pk) ON DELETE CASCADE,
     INDEX idx_user_fk (user_fk),
     INDEX idx_role_fk (role_fk),
     INDEX idx_context (context_type, context_id)
@@ -91,18 +89,15 @@ CREATE TABLE institution (
 
 CREATE TABLE institutional_outcomes (
     institutional_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
-    institution_fk INT NOT NULL,
+    institution_fk INT COMMENT 'Reference to institution.institution_pk',
     code VARCHAR(50) NOT NULL UNIQUE,
     description TEXT NOT NULL,
     sequence_num INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_by_fk INT,
-    updated_by_fk INT,
-    FOREIGN KEY (institution_fk) REFERENCES institution(institution_pk) ON DELETE CASCADE,
-    FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
+    created_by_fk INT COMMENT 'Reference to users.users_pk',
+    updated_by_fk INT COMMENT 'Reference to users.users_pk',
     INDEX idx_code (code),
     INDEX idx_institution_fk (institution_fk),
     INDEX idx_sequence_num (sequence_num),
@@ -121,30 +116,24 @@ CREATE TABLE programs (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_by_fk INT,
-    updated_by_fk INT,
-    FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
+    created_by_fk INT COMMENT 'Reference to users.users_pk',
+    updated_by_fk INT COMMENT 'Reference to users.users_pk',
     INDEX idx_program_code (program_code),
     INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE program_outcomes (
     program_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
-    program_fk INT NOT NULL,
-    institutional_outcomes_fk INT,
+    program_fk INT COMMENT 'Reference to programs.programs_pk',
+    institutional_outcomes_fk INT COMMENT 'Reference to institutional_outcomes.institutional_outcomes_pk',
     code VARCHAR(50) NOT NULL UNIQUE,
     description TEXT NOT NULL,
     sequence_num INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_by_fk INT,
-    updated_by_fk INT,
-    FOREIGN KEY (program_fk) REFERENCES programs(programs_pk) ON DELETE CASCADE,
-    FOREIGN KEY (institutional_outcomes_fk) REFERENCES institutional_outcomes(institutional_outcomes_pk) ON DELETE SET NULL,
-    FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
+    created_by_fk INT COMMENT 'Reference to users.users_pk',
+    updated_by_fk INT COMMENT 'Reference to users.users_pk',
     INDEX idx_code (code),
     INDEX idx_program_fk (program_fk),
     INDEX idx_institutional_outcomes_fk (institutional_outcomes_fk),
@@ -166,10 +155,8 @@ CREATE TABLE slo_sets (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_by_fk INT,
-    updated_by_fk INT,
-    FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
+    created_by_fk INT COMMENT 'Reference to users.users_pk',
+    updated_by_fk INT COMMENT 'Reference to users.users_pk',
     INDEX idx_set_code (set_code),
     INDEX idx_set_type (set_type),
     INDEX idx_is_active (is_active),
@@ -179,8 +166,8 @@ CREATE TABLE slo_sets (
 
 CREATE TABLE student_learning_outcomes (
     student_learning_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
-    slo_set_fk INT NOT NULL,
-    program_outcomes_fk INT,
+    slo_set_code VARCHAR(50) COMMENT 'Reference to slo_sets.set_code',
+    program_outcomes_fk INT COMMENT 'Reference to program_outcomes.program_outcomes_pk',
     slo_code VARCHAR(50) NOT NULL,
     description TEXT NOT NULL,
     assessment_method VARCHAR(255),
@@ -188,14 +175,10 @@ CREATE TABLE student_learning_outcomes (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_by_fk INT,
-    updated_by_fk INT,
-    FOREIGN KEY (slo_set_fk) REFERENCES slo_sets(slo_sets_pk) ON DELETE CASCADE,
-    FOREIGN KEY (program_outcomes_fk) REFERENCES program_outcomes(program_outcomes_pk) ON DELETE SET NULL,
-    FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    UNIQUE KEY unique_slo_in_set (slo_set_fk, slo_code),
-    INDEX idx_slo_set_fk (slo_set_fk),
+    created_by_fk INT COMMENT 'Reference to users.users_pk',
+    updated_by_fk INT COMMENT 'Reference to users.users_pk',
+    UNIQUE KEY unique_slo_in_set (slo_set_code, slo_code),
+    INDEX idx_slo_set_code (slo_set_code),
     INDEX idx_program_outcomes_fk (program_outcomes_fk),
     INDEX idx_sequence_num (sequence_num),
     INDEX idx_is_active (is_active)
@@ -207,7 +190,7 @@ CREATE TABLE student_learning_outcomes (
 
 CREATE TABLE terms (
     terms_pk INT AUTO_INCREMENT PRIMARY KEY,
-    slo_set_fk INT NOT NULL,
+    slo_set_code VARCHAR(50) COMMENT 'Reference to slo_sets.set_code',
     term_code VARCHAR(50) NOT NULL UNIQUE COMMENT 'Banner term code (e.g., 202630)',
     term_name VARCHAR(100) NOT NULL,
     term_year INT NOT NULL,
@@ -216,47 +199,41 @@ CREATE TABLE terms (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (slo_set_fk) REFERENCES slo_sets(slo_sets_pk) ON DELETE CASCADE,
     INDEX idx_term_code (term_code),
-    INDEX idx_slo_set_fk (slo_set_fk),
+    INDEX idx_slo_set_code_terms (slo_set_code),
     INDEX idx_term_year (term_year),
     INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- 7. STUDENTS & ENROLLMENT
+-- 7. ENROLLMENT (Student data denormalized)
 -- ============================================================================
-
-CREATE TABLE students (
-    students_pk INT AUTO_INCREMENT PRIMARY KEY,
-    c_number VARCHAR(50) NOT NULL UNIQUE COMMENT 'Student C-Number from Banner SIS (cnum)',
-    first_name VARCHAR(100) COMMENT 'First name (FN)',
-    last_name VARCHAR(100) COMMENT 'Last name (LN)',
-    student_id VARCHAR(50) COMMENT 'Alternative student ID if needed',
-    email VARCHAR(255),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_c_number (c_number),
-    INDEX idx_student_id (student_id),
-    INDEX idx_email (email),
-    INDEX idx_is_active (is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE enrollment (
     enrollment_pk INT AUTO_INCREMENT PRIMARY KEY,
     term_code VARCHAR(20) NOT NULL COMMENT 'Term code from Banner (term)',
     crn VARCHAR(20) NOT NULL COMMENT 'Course Reference Number from Banner (crn)',
-    student_fk INT NOT NULL,
+    student_id VARCHAR(20) NOT NULL COMMENT 'Student ID from Banner (cnum)',
+    student_first_name VARCHAR(100) COMMENT 'Denormalized student first name for UI display',
+    student_last_name VARCHAR(100) COMMENT 'Denormalized student last name for UI display',
+    academic_year VARCHAR(20) COMMENT 'Academic year (e.g., 2021-22)',
+    semester VARCHAR(50) COMMENT 'Semester name (e.g., Fall, Spring)',
+    course_code VARCHAR(50) COMMENT 'Course code (e.g., JAPN C185)',
+    course_title VARCHAR(255) COMMENT 'Course title',
+    course_modality VARCHAR(50) COMMENT 'Course delivery mode (Online, In-person, Hybrid)',
+    program_name VARCHAR(255) COMMENT 'Academic program name',
+    subject_code VARCHAR(20) COMMENT 'Subject/department code',
+    subject_name VARCHAR(100) COMMENT 'Subject/department name',
     enrollment_status VARCHAR(10) NOT NULL DEFAULT '1' COMMENT 'Status from Banner (status): 1=enrolled, 2=completed, 7=dropped',
     enrollment_date DATE NOT NULL COMMENT 'Registration date from Banner (regdate)',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update from Banner (updated)',
-    FOREIGN KEY (student_fk) REFERENCES students(students_pk) ON DELETE CASCADE,
-    UNIQUE KEY unique_enrollment (term_code, crn, student_fk),
+    UNIQUE KEY unique_enrollment (term_code, crn, student_id),
     INDEX idx_term_code (term_code),
     INDEX idx_crn (crn),
-    INDEX idx_student_fk (student_fk),
+    INDEX idx_student_id (student_id),
+    INDEX idx_course_code (course_code),
+    INDEX idx_program_name (program_name),
     INDEX idx_enrollment_status (enrollment_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -266,8 +243,8 @@ CREATE TABLE enrollment (
 
 CREATE TABLE assessments (
     assessments_pk INT AUTO_INCREMENT PRIMARY KEY,
-    enrollment_fk INT NOT NULL,
-    student_learning_outcome_fk INT NOT NULL,
+    enrollment_fk INT NOT NULL COMMENT 'Reference to enrollment.enrollment_pk',
+    student_learning_outcome_fk INT NOT NULL COMMENT 'Reference to student_learning_outcomes.student_learning_outcomes_pk',
     score_value DECIMAL(5,2),
     achievement_level ENUM('met', 'partially_met', 'not_met', 'pending') DEFAULT 'pending',
     notes TEXT,
@@ -275,10 +252,7 @@ CREATE TABLE assessments (
     is_finalized BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    assessed_by_fk INT,
-    FOREIGN KEY (enrollment_fk) REFERENCES enrollment(enrollment_pk) ON DELETE CASCADE,
-    FOREIGN KEY (student_learning_outcome_fk) REFERENCES student_learning_outcomes(student_learning_outcomes_pk) ON DELETE CASCADE,
-    FOREIGN KEY (assessed_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
+    assessed_by_fk INT COMMENT 'Reference to users.users_pk',
     INDEX idx_enrollment_fk (enrollment_fk),
     INDEX idx_student_learning_outcome_fk (student_learning_outcome_fk),
     INDEX idx_achievement_level (achievement_level),
@@ -295,13 +269,12 @@ CREATE TABLE audit_log (
     table_name VARCHAR(100) NOT NULL,
     record_pk INT NOT NULL,
     action ENUM('INSERT', 'UPDATE', 'DELETE') NOT NULL,
-    changed_by_fk INT,
+    changed_by_fk INT COMMENT 'Reference to users.users_pk',
     changed_data JSON,
     old_data JSON,
     ip_address VARCHAR(45),
     user_agent TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (changed_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
     INDEX idx_table_name (table_name),
     INDEX idx_record_pk (record_pk),
     INDEX idx_action (action),
@@ -326,10 +299,9 @@ CREATE TABLE error_log (
     severity ENUM('debug', 'info', 'warning', 'error', 'critical') DEFAULT 'error',
     is_resolved BOOLEAN DEFAULT FALSE,
     resolved_at TIMESTAMP NULL,
-    resolved_by_fk INT,
+    resolved_by_fk INT COMMENT 'Reference to users.users_pk',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    FOREIGN KEY (resolved_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
+    user_fk INT COMMENT 'Reference to users.users_pk',
     INDEX idx_error_type (error_type),
     INDEX idx_severity (severity),
     INDEX idx_is_resolved (is_resolved),
@@ -350,7 +322,7 @@ CREATE TABLE security_log (
     is_threat BOOLEAN DEFAULT FALSE,
     metadata JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
+    user_fk INT COMMENT 'Reference to users.users_pk',
     INDEX idx_event_type (event_type),
     INDEX idx_user_fk (user_fk),
     INDEX idx_username (username),

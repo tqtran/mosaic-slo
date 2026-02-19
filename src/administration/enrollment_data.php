@@ -97,7 +97,6 @@ $recordsTotal = $totalRow['total'];
 $countQuery = "
     SELECT COUNT(*) as total 
     FROM {$dbPrefix}enrollment e
-    JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
     {$whereClause}
 ";
 if (!empty($params)) {
@@ -111,13 +110,25 @@ $recordsFiltered = $filteredRow['total'];
 // Get data
 $dataQuery = "
     SELECT 
-        e.*,
-        s.c_number,
-        s.first_name,
-        s.last_name,
-        s.email
+        e.enrollment_pk,
+        e.term_code,
+        e.crn,
+        e.student_id,
+        e.student_first_name,
+        e.student_last_name,
+        e.academic_year,
+        e.semester,
+        e.course_code,
+        e.course_title,
+        e.course_modality,
+        e.program_name,
+        e.subject_code,
+        e.subject_name,
+        e.enrollment_status,
+        e.enrollment_date,
+        e.created_at,
+        e.updated_at
     FROM {$dbPrefix}enrollment e
-    JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
     {$whereClause}
     ORDER BY {$orderColumn} {$orderDir}
     LIMIT ? OFFSET ?
@@ -159,13 +170,13 @@ foreach ($enrollments as $row) {
         htmlspecialchars($row['enrollment_pk']),
         '<span class="badge bg-info">' . htmlspecialchars($row['term_code']) . '</span>',
         '<span class="badge bg-primary">' . htmlspecialchars($row['crn']) . '</span>',
-        htmlspecialchars($row['c_number']),
+        htmlspecialchars($row['student_id']),
         '<span class="badge bg-' . $statusClass . '">' . htmlspecialchars($row['enrollment_status']) . '</span>',
         htmlspecialchars($row['enrollment_date'] ?? ''),
         htmlspecialchars($row['updated_at'] ?? ''),
         '<button class="btn btn-sm btn-info" title="View" onclick=\'viewEnrollment(' . $rowJson . ')\'><i class="fas fa-eye"></i></button> ' .
         '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editEnrollment(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
-        '<button class="btn btn-sm btn-danger" title="Delete" onclick="deleteEnrollment(' . $row['enrollment_pk'] . ', \'' . htmlspecialchars($row['c_number'], ENT_QUOTES) . '\', \'' . htmlspecialchars($row['crn'], ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
+        '<button class="btn btn-sm btn-danger" title="Delete" onclick="deleteEnrollment(' . $row['enrollment_pk'] . ', \'' . htmlspecialchars($row['student_id'], ENT_QUOTES) . '\', \'' . htmlspecialchars($row['crn'], ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
     ];
 }
 
