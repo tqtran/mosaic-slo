@@ -199,6 +199,197 @@ DELETE FROM error_log WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY) AND is
 DELETE FROM security_log WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY) AND is_threat = 0;
 ```
 
+## Data Import Process
+
+After schema creation, populate tables from CSV staging data using the multi-step import process.
+
+### Prerequisites
+
+1. **Schema created** via setup wizard (applies tbl_ prefix automatically)
+2. **Staging tables loaded:**
+   - `slo_cslo` (~7k rows) - Course catalog with SLO descriptions
+   - `slo_import` (~182k rows) - Student assessment transactions
+3. **MySQL timeout configured:**
+   - MySQL Workbench: Edit → Preferences → SQL Execution → DBMS connection read timeout = **600 seconds**
+   - Server timeouts already configured (see below)
+
+### Import Workflow
+
+The import is split into 4 scripts for manageability and performance:
+
+#### Step 1: Dimension Tables (2-5 seconds)
+
+**File:** `src/setup/01_import_dimensions.sql`
+
+Populates lookup/reference tables:
+- Programs (from both slo_cslo and slo_import)
+- Subjects (SUBJ codes + names)
+- Courses (course catalog)
+- SLO Sets (academic years)
+- Terms
+- Student Learning Outcomes
+- Course-SLO mappings (which courses assess which SLOs)
+- Students (~50k unique student IDs)
+
+**Expected:** ~300-500 dimension records + ~50k students
+
+**Execution:**
+```sql
+-- In MySQL Workbench or CLI
+USE mosaic_slo;
+SOURCE src/setup/01_import_dimensions.sql;
+```
+
+#### Step 2: Course Sections (10-20 seconds)
+
+**File:** `src/setup/02_import_course_sections.sql`
+
+Creates course section records (CRN offerings per term):
+- Links courses to terms
+- Captures modality (In-Person, Online, Hybrid)
+- Ready for instructor assignment
+
+**Expected:** ~1000-3000 course sections
+
+**Execution:**
+```sql
+SOURCE src/setup/02_import_course_sections.sql;
+```
+
+#### Step 3: Enrollment (1-2 minutes)
+
+**File:** `src/setup/03_import_enrollment.sql`
+
+Links students to course sections:
+- Uses DISTINCT to collapse 182k assessments → ~50k unique enrollments
+- One enrollment record per student per course section
+- Fully normalized (students_fk, course_section_fk)
+
+**Expected:** ~50k enrollments
+
+**Execution:**
+```sql
+SOURCE src/setup/03_import_enrollment.sql;
+```
+
+**Note:** This step requires DISTINCT operation on large dataset. Ensure MySQL timeout is set to 600 seconds.
+
+#### Step 4: Assessments (5-10 minutes)
+
+**File:** `src/setup/04_import_assessments.sql`
+
+Imports all assessment records:
+- All 182k assessment transactions from slo_import
+- Resolves enrollment_fk via student + CRN + term
+- Resolves student_learning_outcome_fk via CSLO code
+- Converts Met/Not Met to score values
+
+**Expected:** ~182k assessments
+
+**Execution:**
+```sql
+SOURCE src/setup/04_import_assessments.sql;
+```
+
+**Note:** Largest import with complex FK resolution. May take 5-10 minutes depending on hardware.
+
+### Master Import Script
+
+**File:** `src/setup/00_import_master.sql`
+
+Documentation-only script showing the complete workflow. Contains:
+- Step-by-step execution guide
+- Expected counts and durations
+- Post-import verification queries
+- Referential integrity checks
+- Assessment quality metrics
+
+**To use:** Open in MySQL Workbench and execute each section manually, verifying counts between steps.
+
+### MySQL Server Configuration
+
+The following timeouts are pre-configured in your MySQL server (no changes needed):
+
+```sql
+-- Check current timeout settings (should already be configured)
+SHOW VARIABLES LIKE '%timeout%';
+
+-- wait_timeout = 28800 (8 hours)
+-- interactive_timeout = 28800 (8 hours)
+-- net_read_timeout = 30
+-- net_write_timeout = 60
+```
+
+**Client timeout** (MySQL Workbench) must be set manually:
+- Edit → Preferences → SQL Execution
+- DBMS connection read timeout interval = **600 seconds**
+
+### Verification Queries
+
+After import, verify data integrity:
+
+```sql
+-- Check all table counts
+SELECT 
+    (SELECT COUNT(*) FROM tbl_programs) AS programs,
+    (SELECT COUNT(*) FROM tbl_subjects) AS subjects,
+    (SELECT COUNT(*) FROM tbl_courses) AS courses,
+    (SELECT COUNT(*) FROM tbl_slo_sets) AS slo_sets,
+    (SELECT COUNT(*) FROM tbl_terms) AS terms,
+    (SELECT COUNT(*) FROM tbl_student_learning_outcomes) AS slos,
+    (SELECT COUNT(*) FROM tbl_course_slos) AS course_slo_mappings,
+    (SELECT COUNT(*) FROM tbl_students) AS students,
+    (SELECT COUNT(*) FROM tbl_course_sections) AS course_sections,
+    (SELECT COUNT(*) FROM tbl_enrollment) AS enrollments,
+    (SELECT COUNT(*) FROM tbl_assessments) AS assessments;
+
+-- Check assessment success rate
+SELECT 
+    COUNT(*) AS total_assessments,
+    SUM(CASE WHEN performance_level = 'Met' THEN 1 ELSE 0 END) AS met_count,
+    ROUND(SUM(CASE WHEN performance_level = 'Met' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS success_rate_pct
+FROM tbl_assessments;
+
+-- Verify no orphaned records (all should return 0)
+SELECT 
+    (SELECT COUNT(*) FROM tbl_courses WHERE subject_fk NOT IN (SELECT subjects_pk FROM tbl_subjects)) 
+        AS orphaned_courses,
+    (SELECT COUNT(*) FROM tbl_course_sections WHERE course_fk NOT IN (SELECT courses_pk FROM tbl_courses)) 
+        AS orphaned_sections,
+    (SELECT COUNT(*) FROM tbl_enrollment WHERE students_fk NOT IN (SELECT students_pk FROM tbl_students)) 
+        AS orphaned_enrollments,
+    (SELECT COUNT(*) FROM tbl_assessments WHERE enrollment_fk NOT IN (SELECT enrollment_pk FROM tbl_enrollment)) 
+        AS orphaned_assessments;
+```
+
+### Import Troubleshooting
+
+**Error:** "Unknown column 'tbl_programs.programs_pk'"
+
+**Solution:** Schema prefix mismatch. Check that `src/setup/index.php` applied the correct prefix during schema creation. If using custom prefix, update import scripts with find/replace: `tbl_` → `your_prefix_`
+
+**Error:** "Duplicate entry for key 'program_code'"
+
+**Solution:** This is expected behavior with INSERT IGNORE. The UNION in Step 1 may produce duplicates, which are safely skipped due to unique constraints.
+
+**Error:** "Foreign key constraint fails"
+
+**Solution:** Schema was redesigned to NOT use foreign key constraints (only unique constraints). If you see FK errors, you may be running an old schema. Re-run setup wizard with latest schema.sql.
+
+**Error:** Import times out during enrollment or assessments
+
+**Solution:** 
+1. Verify MySQL Workbench timeout (Edit → Preferences → SQL Execution) = 600 seconds
+2. Check server load - imports may be slower on busy systems
+3. Run steps individually rather than as batch
+
+**Error:** Row count much lower than expected
+
+**Solution:**
+1. Verify staging tables have data: `SELECT COUNT(*) FROM slo_cslo; SELECT COUNT(*) FROM slo_import;`
+2. Check for NULL values: Import scripts filter out NULL/empty values
+3. Review JOIN conditions: Orphaned records (no matching FK) are excluded
+
 ## Troubleshooting
 
 ### Setup Failed

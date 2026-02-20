@@ -16,11 +16,12 @@ require_once __DIR__ . '/../system/Core/Path.php';
 // Define base URL for easy access in this script
 define('BASE_URL', \Mosaic\Core\Path::getBaseUrl());
 
+// TEMP: Allow re-running setup for debugging
 // Prevent setup from running if already configured
 $configFile = __DIR__ . '/../config/config.yaml';
-if (file_exists($configFile)) {
-    \Mosaic\Core\Path::redirect('administration/');
-}
+// if (file_exists($configFile)) {
+//     \Mosaic\Core\Path::redirect('administration/');
+// }
 
 // Initialize session for form data persistence
 session_start();
@@ -113,6 +114,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
                 ]);
                 
+                // Create setup log file for debugging
+                $logsDir = dirname(__DIR__) . '/logs';
+                if (!is_dir($logsDir)) {
+                    mkdir($logsDir, 0755, true);
+                }
+                $setupLogFile = $logsDir . '/setup_' . date('Y-m-d_H-i-s') . '.log';
+                $setupLog = fopen($setupLogFile, 'w');
+                if ($setupLog) {
+                    fwrite($setupLog, "=== MOSAIC Setup Log - " . date('Y-m-d H:i:s') . " ===\n\n");
+                    fwrite($setupLog, "Database: $db_name\n");
+                    fwrite($setupLog, "Driver: $db_driver\n");
+                    fwrite($setupLog, "Host: $db_host:$db_port\n\n");
+                }
+                
                 // Database connected successfully - proceed with schema installation
                 // Use appropriate schema file based on driver
                 $schemaFile = ($db_driver === 'mssql' || $db_driver === 'sqlsrv') 
@@ -124,78 +139,115 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                 } else {
                     $schema = file_get_contents($schemaFile);
                     
-                    // Drop existing tables if they exist (for clean reinstall)
-                    $tables = [
-                        'lti_nonces', 'security_log', 'error_log', 'audit_log',
-                        'assessments', 'enrollment', 'terms',
-                        'student_learning_outcomes', 'slo_sets',
-                        'program_outcomes', 'programs',
-                        'institutional_outcomes', 'institution',
-                        'user_roles', 'roles', 'users'
-                    ];
-                        
-                    try {
-                        if ($db_driver === 'mysql') {
-                            $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
-                        }
-                        foreach ($tables as $table) {
-                            $tableName = $db_prefix . $table;
-                            if ($db_driver === 'mssql' || $db_driver === 'sqlsrv') {
-                                @$pdo->exec("DROP TABLE IF EXISTS [$tableName]");
-                            } else {
-                                @$pdo->exec("DROP TABLE IF EXISTS `$tableName`");
-                            }
-                        }
-                        if ($db_driver === 'mysql') {
-                            $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
-                        }
-                    } catch (PDOException $e) {
-                        // Ignore errors from dropping non-existent tables
-                    }
-                        
-                    // Apply table prefix if configured
+                    // Replace tbl_ prefix with configured prefix (or remove if no prefix)
                     if (!empty($db_prefix)) {
-                        // Replace table names with prefixed versions
-                        foreach ($tables as $table) {
-                            $schema = preg_replace(
-                                '/\b' . preg_quote($table, '/') . '\b/',
-                                $db_prefix . $table,
-                                $schema
-                            );
-                        }
+                        $schema = str_replace('tbl_', $db_prefix, $schema);
+                    } else {
+                        // No prefix configured - remove tbl_ entirely
+                        $schema = str_replace('tbl_', '', $schema);
                     }
                     
                     // Execute schema - split into individual statements for sequential execution
                     try {
-                            // Split schema by semicolons (simple approach for our controlled schema files)
+                            // Split schema by semicolons and filter out pure comment blocks
                             $statements = array_filter(
                                 array_map('trim', explode(';', $schema)),
-                                fn($stmt) => !empty($stmt) && !preg_match('/^\s*(--|#)/', $stmt)
+                                function($stmt) {
+                                    if (empty($stmt)) return false;
+                                    // Remove comment lines but keep SQL statements that have comments before them
+                                    $lines = explode("\n", $stmt);
+                                    $hasSQL = false;
+                                    foreach ($lines as $line) {
+                                        $trimmed = trim($line);
+                                        if (!empty($trimmed) && !preg_match('/^(--|#)/', $trimmed)) {
+                                            $hasSQL = true;
+                                            break;
+                                        }
+                                    }
+                                    return $hasSQL;
+                                }
                             );
                             
-                            foreach ($statements as $statement) {
+                            $successCount = 0;
+                            $failureCount = 0;
+                            
+                            foreach ($statements as $idx => $statement) {
                                 if (!empty(trim($statement))) {
-                                    // Detect and log table creation
-                                    if (preg_match('/CREATE TABLE\s+(`?\w+`?)/i', $statement, $matches)) {
-                                        $tableName = str_replace('`', '', $matches[1]);
-                                        error_log("Creating table: $tableName");
-                                        echo "<!-- Creating table: $tableName -->\n";
-                                        flush();
+                                    // Strip comment lines for detection (but keep original for execution)
+                                    $lines = explode("\n", $statement);
+                                    $sqlOnly = '';
+                                    foreach ($lines as $line) {
+                                        $trimmed = trim($line);
+                                        if (!empty($trimmed) && !preg_match('/^(--|#)/', $trimmed)) {
+                                            $sqlOnly .= $line . "\n";
+                                        }
                                     }
-                                    $pdo->exec($statement);
+                                    $sqlOnly = trim($sqlOnly);
+                                    
+                                    // Detect statement type and log it
+                                    $statementType = 'Unknown';
+                                    $statementDetail = '';
+                                    
+                                    if (preg_match('/^DROP TABLE/i', $sqlOnly)) {
+                                        $statementType = 'DROP TABLE';
+                                        if (preg_match('/DROP TABLE\s+IF\s+EXISTS\s+(`?\w+`?)/i', $sqlOnly, $matches)) {
+                                            $statementDetail = str_replace('`', '', $matches[1]);
+                                        }
+                                    } elseif (preg_match('/^CREATE TABLE/i', $sqlOnly)) {
+                                        $statementType = 'CREATE TABLE';
+                                        if (preg_match('/CREATE TABLE\s+(`?\w+`?)/i', $sqlOnly, $matches)) {
+                                            $statementDetail = str_replace('`', '', $matches[1]);
+                                        }
+                                    } elseif (preg_match('/^INSERT INTO/i', $sqlOnly)) {
+                                        $statementType = 'INSERT';
+                                        if (preg_match('/INSERT INTO\s+(`?\w+`?)/i', $sqlOnly, $matches)) {
+                                            $statementDetail = str_replace('`', '', $matches[1]);
+                                        }
+                                    } elseif (preg_match('/^SET\s+/i', $sqlOnly)) {
+                                        $statementType = 'SET';
+                                        $statementDetail = trim(substr($sqlOnly, 0, 50));
+                                    }
+                                    
+                                    $msg = "Executing #$idx: $statementType" . ($statementDetail ? " $statementDetail" : "");
+                                    if ($setupLog) fwrite($setupLog, $msg . "\n");
+                                    echo "<!-- $msg -->\n";
+                                    flush();
+                                    
+                                    try {
+                                        $pdo->exec($statement);
+                                        $successCount++;
+                                    } catch (PDOException $e) {
+                                        $failureCount++;
+                                        $preview = substr($statement, 0, 100);
+                                        $errorMsg = "ERROR #$idx: " . $e->getMessage() . " | Preview: $preview";
+                                        if ($setupLog) fwrite($setupLog, $errorMsg . "\n");
+                                        echo "<!-- $errorMsg -->\n";
+                                        flush();
+                                        // Continue with next statement instead of failing entire setup
+                                    }
                                 }
                             }
                             
-                            // Schema executed successfully - now import seed data if available
-                            $seedFile = __DIR__ . '/seed_data.csv';
-                            $seedStats = ['programs' => 0, 'slo_sets' => 0, 'terms' => 0, 'slos' => 0, 'enrollment' => 0, 'assessments' => 0];
+                            $summaryMsg = "Schema execution complete: $successCount succeeded, $failureCount failed";
+                            if ($setupLog) fwrite($setupLog, "\n$summaryMsg\n\n");
                             
-                            if (file_exists($seedFile)) {
+                            // SEED DATA IMPORT DISABLED - User will import manually
+                            if (false && file_exists($seedFile)) {
+                                if ($setupLog) fwrite($setupLog, "\n=== Importing Seed Data ===\n");
                                 try {
                                     $handle = fopen($seedFile, 'r');
                                     if ($handle !== false) {
                                         // Read header row
                                         $headers = fgetcsv($handle);
+                                        
+                                        // Strip UTF-8 BOM from first header if present
+                                        if (!empty($headers[0])) {
+                                            $headers[0] = preg_replace('/^\x{FEFF}/u', '', $headers[0]);
+                                        }
+                                        
+                                        if ($setupLog) {
+                                            fwrite($setupLog, "CSV Headers: " . json_encode($headers, JSON_UNESCAPED_SLASHES) . "\n\n");
+                                        }
                                         
                                         // Collections for unique values (to avoid duplicates)
                                         $programs = [];
@@ -206,10 +258,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                         $assessments = [];
                                         
                                         // Parse CSV and collect unique entities
+                                        $rowNum = 1; // Track row number for debugging
+                                        $skippedRows = [];
+                                        
                                         while (($row = fgetcsv($handle)) !== false) {
-                                            if (count($row) < 16) continue; // Skip invalid rows
+                                            $rowNum++;
+                                            
+                                            // Skip completely empty rows
+                                            if (empty(array_filter($row))) {
+                                                continue;
+                                            }
+                                            
+                                            // Check column count
+                                            $colCount = count($row);
+                                            $headerCount = count($headers);
+                                            if ($colCount !== $headerCount) {
+                                                $msg = "Row $rowNum: column mismatch (has $colCount, expected $headerCount)";
+                                                $rowDump = "  Raw row data: " . json_encode($row, JSON_UNESCAPED_SLASHES);
+                                                $skippedRows[] = $msg;
+                                                if ($setupLog) {
+                                                    fwrite($setupLog, "SKIP: $msg\n");
+                                                    fwrite($setupLog, "$rowDump\n");
+                                                }
+                                                continue;
+                                            }
                                             
                                             $data = array_combine($headers, $row);
+                                            if ($data === false) {
+                                                $msg = "Row $rowNum: array_combine failed";
+                                                $rowDump = "  Headers: " . json_encode($headers, JSON_UNESCAPED_SLASHES) . "\n";
+                                                $rowDump .= "  Row: " . json_encode($row, JSON_UNESCAPED_SLASHES);
+                                                $skippedRows[] = $msg;
+                                                if ($setupLog) {
+                                                    fwrite($setupLog, "SKIP: $msg\n");
+                                                    fwrite($setupLog, "$rowDump\n");
+                                                }
+                                                continue;
+                                            }
+                                            
+                                            // Skip rows with missing critical data
+                                            if (empty($data['Academic Year']) || trim($data['Academic Year']) === '') {
+                                                $msg = "Row $rowNum: empty Academic Year";
+                                                $rowDump = "  Full row data: " . json_encode($data, JSON_UNESCAPED_SLASHES);
+                                                $skippedRows[] = $msg;
+                                                if ($setupLog) {
+                                                    fwrite($setupLog, "SKIP: $msg\n");
+                                                    fwrite($setupLog, "$rowDump\n");
+                                                }
+                                                continue;
+                                            }
                                             
                                             // Extract program (unique by Program column)
                                             if (!empty($data['Program'])) {
@@ -271,7 +368,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                             }
                                             
                                             // Extract SLO (course + CSLO within academic year set)
-                                            if (!empty($data['CSLO']) && !empty($data['SLO Language']) && !empty($data['Course'])) {
+                                            if (!empty($data['CSLO']) && !empty($data['SLO Language']) && !empty($data['Course']) && !empty($data['Academic Year'])) {
                                                 $setCode = str_replace('-', '_', $data['Academic Year']);
                                                 $courseCode = str_replace(' ', '_', $data['Course']);
                                                 $csloCode = str_replace(' ', '_', strtoupper($data['CSLO']));
@@ -290,7 +387,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                             }
                                             
                                             // Extract enrollment with all denormalized context data
-                                            if (!empty($data['CRN']) && !empty($data['StudentID']) && !empty($data['Term'])) {
+                                            if (!empty($data['CRN']) && !empty($data['StudentID']) && !empty($data['Term']) && !empty($data['Academic Year'])) {
+                                                $setCode = str_replace('-', '_', $data['Academic Year']);
                                                 $termCode = str_replace(' ', '_', strtoupper($data['Term']));
                                                 $enrollKey = $termCode . '_' . $data['CRN'] . '_' . $data['StudentID'];
                                                 
@@ -316,7 +414,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                             }
                                             
                                             // Store assessment for later (after enrollment is inserted)
-                                            if (!empty($data['CSLO']) && !empty($data['Met/Not Met']) && !empty($data['Course'])) {
+                                            if (!empty($data['CSLO']) && !empty($data['Met/Not Met']) && !empty($data['Course']) && !empty($data['Term'])) {
                                                 $termCode = str_replace(' ', '_', strtoupper($data['Term']));
                                                 $courseCode = str_replace(' ', '_', $data['Course']);
                                                 $csloCode = str_replace(' ', '_', strtoupper($data['CSLO']));
@@ -416,21 +514,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                         }
                                         
                                         $pdo->commit();
+                                        
+                                        // Log seed import summary
+                                        $importSummary = "\n=== Seed Import Complete ===\n";
+                                        $importSummary .= "Total rows processed: " . ($rowNum - 1) . "\n";
+                                        $importSummary .= "Rows skipped: " . count($skippedRows) . "\n";
+                                        $importSummary .= "Programs: {$seedStats['programs']}\n";
+                                        $importSummary .= "SLO Sets: {$seedStats['slo_sets']}\n";
+                                        $importSummary .= "Terms: {$seedStats['terms']}\n";
+                                        $importSummary .= "SLOs: {$seedStats['slos']}\n";
+                                        $importSummary .= "Enrollments: {$seedStats['enrollment']}\n";
+                                        $importSummary .= "Assessments: {$seedStats['assessments']}\n";
+                                        
+                                        if (count($skippedRows) > 0 && count($skippedRows) <= 20) {
+                                            $importSummary .= "\nSkipped row details:\n";
+                                            foreach ($skippedRows as $skip) {
+                                                $importSummary .= "  - $skip\n";
+                                            }
+                                        } elseif (count($skippedRows) > 20) {
+                                            $importSummary .= "\nFirst 10 skipped rows:\n";
+                                            for ($i = 0; $i < 10 && $i < count($skippedRows); $i++) {
+                                                $importSummary .= "  - {$skippedRows[$i]}\n";
+                                            }
+                                            $importSummary .= "... and " . (count($skippedRows) - 10) . " more\n";
+                                        }
+                                        
+                                        if ($setupLog) fwrite($setupLog, $importSummary);
                                     }
                                 } catch (Exception $e) {
                                     if (isset($pdo) && $pdo->inTransaction()) {
                                         $pdo->rollBack();
                                     }
                                     // Don't fail setup if seed data import fails - log it but continue
-                                    error_log('Seed data import failed: ' . $e->getMessage());
+                                    $errorMsg = 'Seed data import failed: ' . $e->getMessage();
+                                    if ($setupLog) fwrite($setupLog, "\nERROR: $errorMsg\n");
                                 }
                             }
                             
                             // Save configuration
                                     $configDir = __DIR__ . '/../config';
-                                    if (!is_dir($configDir)) {
-                                        mkdir($configDir, 0755, true);
+                                    
+                                    // Rebuild config directory (delete and recreate)
+                                    if (is_dir($configDir)) {
+                                        // Delete existing config directory and contents
+                                        $files = glob($configDir . '/{,.}*', GLOB_BRACE);
+                                        foreach ($files as $file) {
+                                            if (is_file($file)) {
+                                                unlink($file);
+                                            }
+                                        }
+                                        rmdir($configDir);
                                     }
+                                    
+                                    // Create fresh config directory
+                                    mkdir($configDir, 0755, true);
                                     
                                     $configContent = "# MOSAIC Configuration\n";
                                     $configContent .= "# Generated: " . date('Y-m-d H:i:s') . "\n\n";
@@ -472,8 +609,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                         $indexFile = $configDir . '/index.php';
                                         file_put_contents($indexFile, "<?php\nhttp_response_code(403);\nexit('Forbidden');\n");
                                         
+                                        // Close setup log
+                                        if ($setupLog) {
+                                            fwrite($setupLog, "\n=== Setup Complete ===\n");
+                                            fwrite($setupLog, "Setup log saved to: $setupLogFile\n");
+                                            fclose($setupLog);
+                                        }
+                                        
                                         $success = true;
-                                        $step = 'complete';
+                                        // TEMP: Keep step on database form to show debug output
+                                        // $step = 'complete';
+                                        
+                                        // Display log file path
+                                        if (isset($setupLogFile)) {
+                                            echo "<!-- Setup log saved to: $setupLogFile -->\n";
+                                        }
                                     } else {
                                         $error = 'Failed to write configuration file. Check directory permissions.';
                                     }
@@ -697,6 +847,16 @@ $theme->showHeader($context);
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
                         <i class="fas fa-exclamation-circle mr-2"></i>
                         <strong>Error:</strong> <?php echo htmlspecialchars($error); ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if (isset($setupLogFile)): ?>
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        <i class="fas fa-file-alt mr-2"></i>
+                        <strong>Setup Log:</strong> Detailed installation log saved to:<br>
+                        <code style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 3px;"><?php echo htmlspecialchars($setupLogFile); ?></code>
+                        <br><small class="text-muted">View this file to see table creation details and any errors that occurred.</small>
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 <?php endif; ?>
