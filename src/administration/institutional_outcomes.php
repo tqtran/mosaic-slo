@@ -9,10 +9,7 @@ declare(strict_types=1);
  * @package Mosaic
  */
 
-// Common admin session setup (handles security headers, session config, CSRF token)
 require_once __DIR__ . '/../system/includes/admin_session.php';
-
-// Initialize common variables and database
 require_once __DIR__ . '/../system/includes/init.php';
 
 // Handle POST requests
@@ -32,8 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         switch ($action) {
             case 'add':
                 $institutionFk = (int)($_POST['institution_fk'] ?? 0);
-                $code = trim($_POST['code'] ?? '');
-                $description = trim($_POST['description'] ?? '');
+                $outcomeCode = trim($_POST['outcome_code'] ?? '');
+                $outcomeDescription = trim($_POST['outcome_description'] ?? '');
                 $sequenceNum = (int)($_POST['sequence_num'] ?? 0);
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
@@ -42,14 +39,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($institutionFk <= 0) {
                     $errors[] = 'Institution is required';
                 }
-                if (empty($code)) {
+                if (empty($outcomeCode)) {
                     $errors[] = 'Outcome code is required';
-                } elseif (!preg_match('/^[A-Z0-9_.-]+$/i', $code)) {
+                } elseif (!preg_match('/^[A-Z0-9_.-]+$/i', $outcomeCode)) {
                     $errors[] = 'Outcome code can only contain letters, numbers, hyphens, underscores, and periods';
                 } else {
+                    // Check uniqueness
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}institutional_outcomes WHERE code = ? AND institution_fk = ?",
-                        [$code, $institutionFk],
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}institutional_outcomes WHERE outcome_code = ? AND institution_fk = ?",
+                        [$outcomeCode, $institutionFk],
                         'si'
                     );
                     $row = $result->fetch();
@@ -57,15 +55,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $errors[] = 'Outcome code already exists for this institution';
                     }
                 }
-                if (empty($description)) {
+                if (empty($outcomeDescription)) {
                     $errors[] = 'Description is required';
                 }
                 
                 if (empty($errors)) {
                     $db->query(
-                        "INSERT INTO {$dbPrefix}institutional_outcomes (institution_fk, code, description, sequence_num, is_active, created_at, updated_at) 
+                        "INSERT INTO {$dbPrefix}institutional_outcomes (institution_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
                          VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$institutionFk, $code, $description, $sequenceNum, $isActive],
+                        [$institutionFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive],
                         'issii'
                     );
                     $successMessage = 'Institutional outcome added successfully';
@@ -77,8 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'edit':
                 $id = (int)($_POST['outcome_id'] ?? 0);
                 $institutionFk = (int)($_POST['institution_fk'] ?? 0);
-                $code = trim($_POST['code'] ?? '');
-                $description = trim($_POST['description'] ?? '');
+                $outcomeCode = trim($_POST['outcome_code'] ?? '');
+                $outcomeDescription = trim($_POST['outcome_description'] ?? '');
                 $sequenceNum = (int)($_POST['sequence_num'] ?? 0);
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
@@ -90,15 +88,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($institutionFk <= 0) {
                     $errors[] = 'Institution is required';
                 }
-                if (empty($code)) {
+                if (empty($outcomeCode)) {
                     $errors[] = 'Outcome code is required';
-                } elseif (!preg_match('/^[A-Z0-9_.-]+$/i', $code)) {
+                } elseif (!preg_match('/^[A-Z0-9_.-]+$/i', $outcomeCode)) {
                     $errors[] = 'Outcome code can only contain letters, numbers, hyphens, underscores, and periods';
                 } else {
+                    // Check uniqueness (excluding current record)
                     $result = $db->query(
                         "SELECT COUNT(*) as count FROM {$dbPrefix}institutional_outcomes 
-                         WHERE code = ? AND institution_fk = ? AND institutional_outcomes_pk != ?",
-                        [$code, $institutionFk, $id],
+                         WHERE outcome_code = ? AND institution_fk = ? AND institutional_outcomes_pk != ?",
+                        [$outcomeCode, $institutionFk, $id],
                         'sii'
                     );
                     $row = $result->fetch();
@@ -106,16 +105,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $errors[] = 'Outcome code already exists for this institution';
                     }
                 }
-                if (empty($description)) {
+                if (empty($outcomeDescription)) {
                     $errors[] = 'Description is required';
                 }
                 
                 if (empty($errors)) {
                     $db->query(
                         "UPDATE {$dbPrefix}institutional_outcomes 
-                         SET institution_fk = ?, code = ?, description = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
+                         SET institution_fk = ?, outcome_code = ?, outcome_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
                          WHERE institutional_outcomes_pk = ?",
-                        [$institutionFk, $code, $description, $sequenceNum, $isActive, $id],
+                        [$institutionFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive, $id],
                         'issiii'
                     );
                     $successMessage = 'Institutional outcome updated successfully';
@@ -161,15 +160,96 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 break;
+                
+            case 'import':
+                if (isset($_FILES['outcome_upload']) && $_FILES['outcome_upload']['error'] === UPLOAD_ERR_OK) {
+                    $tmpName = $_FILES['outcome_upload']['tmp_name'];
+                    $handle = fopen($tmpName, 'r');
+                    
+                    if ($handle !== false) {
+                        $headers = fgetcsv($handle); // Skip header row
+                        $imported = 0;
+                        $skipped = 0;
+                        
+                        while (($row = fgetcsv($handle)) !== false) {
+                            if (count($row) >= 3) {
+                                $institutionCode = trim($row[0]);
+                                $outcomeCode = trim($row[1]);
+                                $outcomeDescription = trim($row[2]);
+                                $sequenceNum = isset($row[3]) ? (int)trim($row[3]) : 0;
+                                $isActive = isset($row[4]) && strtolower(trim($row[4])) === 'active' ? 1 : 0;
+                                
+                                // Find institution by code
+                                $instResult = $db->query(
+                                    "SELECT institution_pk FROM {$dbPrefix}institution WHERE institution_code = ?",
+                                    [$institutionCode],
+                                    's'
+                                );
+                                
+                                if ($instResult->rowCount() > 0 && !empty($outcomeCode) && !empty($outcomeDescription) && preg_match('/^[A-Z0-9_.-]+$/i', $outcomeCode)) {
+                                    $inst = $instResult->fetch();
+                                    $institutionFk = $inst['institution_pk'];
+                                    
+                                    // Check if exists
+                                    $result = $db->query(
+                                        "SELECT institutional_outcomes_pk FROM {$dbPrefix}institutional_outcomes 
+                                         WHERE outcome_code = ? AND institution_fk = ?",
+                                        [$outcomeCode, $institutionFk],
+                                        'si'
+                                    );
+                                    
+                                    if ($result->rowCount() > 0) {
+                                        // Update existing
+                                        $existing = $result->fetch();
+                                        $db->query(
+                                            "UPDATE {$dbPrefix}institutional_outcomes 
+                                             SET outcome_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
+                                             WHERE institutional_outcomes_pk = ?",
+                                            [$outcomeDescription, $sequenceNum, $isActive, $existing['institutional_outcomes_pk']],
+                                            'siii'
+                                        );
+                                    } else {
+                                        // Insert new
+                                        $db->query(
+                                            "INSERT INTO {$dbPrefix}institutional_outcomes (institution_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
+                                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                                            [$institutionFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive],
+                                            'issii'
+                                        );
+                                    }
+                                    $imported++;
+                                } else {
+                                    $skipped++;
+                                }
+                            }
+                        }
+                        
+                        fclose($handle);
+                        $successMessage = "Import completed: {$imported} records imported/updated, {$skipped} skipped";
+                    } else {
+                        $errorMessage = 'Failed to read CSV file';
+                    }
+                } else {
+                    $errorMessage = 'No file uploaded or upload error occurred';
+                }
+                break;
         }
     } catch (\Exception $e) {
         $errorMessage = 'Operation failed: ' . htmlspecialchars($e->getMessage());
+        if (DEBUG_MODE) {
+            $errorMessage .= '<br><br><strong>Debug Information:</strong><br>';
+            $errorMessage .= '<pre style="text-align: left; font-size: 12px;">';
+            $errorMessage .= 'File: ' . htmlspecialchars($e->getFile()) . '<br>';
+            $errorMessage .= 'Line: ' . htmlspecialchars((string)$e->getLine()) . '<br>';
+            $errorMessage .= 'Trace:<br>' . htmlspecialchars($e->getTraceAsString());
+            $errorMessage .= '</pre>';
+        }
     }
 }
 
 // Fetch institutions for dropdown
-$instResult = $db->query("SELECT * FROM {$dbPrefix}institution WHERE is_active = 1 ORDER BY institution_name ASC");
-$institutions = $instResult->fetchAll();
+$institutionsResult = $db->query("SELECT * FROM {$dbPrefix}institution WHERE is_active = 1 ORDER BY institution_name ASC");
+$institutions = $institutionsResult->fetchAll();
 
 // Calculate statistics
 $statsResult = $db->query("
@@ -180,6 +260,9 @@ $statsResult = $db->query("
     FROM {$dbPrefix}institutional_outcomes
 ");
 $stats = $statsResult->fetch();
+$totalOutcomes = $stats['total'];
+$activeOutcomes = $stats['active'];
+$inactiveOutcomes = $stats['inactive'];
 
 // Load theme system
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
@@ -238,39 +321,44 @@ $theme->showHeader($context);
         <div class="row">
             <div class="col-12 col-sm-6 col-md-4">
                 <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-info"><i class="fas fa-list"></i></span>
+                    <span class="info-box-icon bg-info"><i class="fas fa-flag"></i></span>
                     <div class="info-box-content">
                         <span class="info-box-text">Total Outcomes</span>
-                        <span class="info-box-number"><?= $stats['total'] ?></span>
+                        <span class="info-box-number"><?= $totalOutcomes ?></span>
                     </div>
                 </div>
             </div>
+            
             <div class="col-12 col-sm-6 col-md-4">
                 <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-success"><i class="fas fa-check-circle"></i></span>
+                    <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
                     <div class="info-box-content">
                         <span class="info-box-text">Active Outcomes</span>
-                        <span class="info-box-number"><?= $stats['active'] ?></span>
+                        <span class="info-box-number"><?= $activeOutcomes ?></span>
                     </div>
                 </div>
             </div>
+            
             <div class="col-12 col-sm-6 col-md-4">
                 <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-warning"><i class="fas fa-times-circle"></i></span>
+                    <span class="info-box-icon bg-warning"><i class="fas fa-ban"></i></span>
                     <div class="info-box-content">
                         <span class="info-box-text">Inactive Outcomes</span>
-                        <span class="info-box-number"><?= $stats['inactive'] ?></span>
+                        <span class="info-box-number"><?= $inactiveOutcomes ?></span>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Main Table Card -->
+
+        <!-- Outcomes Table -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">Institutional Outcomes</h3>
+                <h3 class="card-title"><i class="fas fa-table"></i> Institutional Learning Outcomes</h3>
                 <div class="card-tools">
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
+                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                        <i class="fas fa-file-upload"></i> Import CSV
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addOutcomeModal">
                         <i class="fas fa-plus"></i> Add Outcome
                     </button>
                 </div>
@@ -285,91 +373,96 @@ $theme->showHeader($context);
                             <th>Description</th>
                             <th>Sequence</th>
                             <th>Status</th>
+                            <th>Created</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
+                    <tfoot>
+                        <tr>
+                            <th>ID</th>
+                            <th>Institution</th>
+                            <th>Code</th>
+                            <th>Description</th>
+                            <th>Sequence</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </tfoot>
+                    <tbody>
+                        <!-- Data loaded via AJAX -->
+                    </tbody>
                 </table>
             </div>
         </div>
-        
     </div>
 </div>
 
-<!-- Add Modal -->
-<div class="modal fade" id="addModal" tabindex="-1">
+<!-- Add Outcome Modal -->
+<div class="modal fade" id="addOutcomeModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-plus"></i> Add Institutional Outcome</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
             <form method="POST">
-                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                <input type="hidden" name="action" value="add">
-                
-                <div class="modal-header">
-                    <h5 class="modal-title">Add Institutional Outcome</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                    <input type="hidden" name="action" value="add">
                     <div class="mb-3">
-                        <label for="addInstitutionFk" class="form-label">Institution <span class="text-danger">*</span></label>
-                        <select class="form-select" id="addInstitutionFk" name="institution_fk" required>
+                        <label for="institutionFk" class="form-label">Institution</label>
+                        <select class="form-select" id="institutionFk" name="institution_fk" required>
                             <option value="">Select Institution</option>
                             <?php foreach ($institutions as $inst): ?>
                             <option value="<?= $inst['institution_pk'] ?>"><?= htmlspecialchars($inst['institution_name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="addCode" class="form-label">Outcome Code <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="addCode" name="code" required 
-                               pattern="[A-Za-z0-9_.-]+" 
-                               title="Letters, numbers, hyphens, underscores, and periods only"
-                               placeholder="e.g., ILO-1">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="outcomeCode" class="form-label">Outcome Code</label>
+                            <input type="text" class="form-control" id="outcomeCode" name="outcome_code" maxlength="50" required>
+                            <small class="form-text text-muted">e.g., ILO-1, INST-A</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="sequenceNum" class="form-label">Sequence Number</label>
+                            <input type="number" class="form-control" id="sequenceNum" name="sequence_num" min="0" value="0">
+                        </div>
                     </div>
-                    
                     <div class="mb-3">
-                        <label for="addDescription" class="form-label">Description <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="addDescription" name="description" rows="3" required></textarea>
+                        <label for="outcomeDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="outcomeDescription" name="outcome_description" rows="4" required></textarea>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="addSequenceNum" class="form-label">Sequence Number</label>
-                        <input type="number" class="form-control" id="addSequenceNum" name="sequence_num" value="0" min="0">
-                        <small class="form-text text-muted">Controls display order (0 = default)</small>
-                    </div>
-                    
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="addIsActive" name="is_active" checked>
-                        <label class="form-check-label" for="addIsActive">Active</label>
+                        <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
+                        <label class="form-check-label" for="isActive">Active</label>
                     </div>
                 </div>
-                
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Outcome</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Edit Modal -->
-<div class="modal fade" id="editModal" tabindex="-1">
+<!-- Edit Outcome Modal -->
+<div class="modal fade" id="editOutcomeModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form method="POST" id="editForm">
-                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                <input type="hidden" name="action" value="edit">
-                <input type="hidden" name="outcome_id" id="editOutcomeId">
-                
-                <div class="modal-header">
-                    <h5 class="modal-title">Edit Institutional Outcome</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Institutional Outcome</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
                 <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                    <input type="hidden" name="action" value="edit">
+                    <input type="hidden" name="outcome_id" id="editOutcomeId">
                     <div class="mb-3">
-                        <label for="editInstitutionFk" class="form-label">Institution <span class="text-danger">*</span></label>
+                        <label for="editInstitutionFk" class="form-label">Institution</label>
                         <select class="form-select" id="editInstitutionFk" name="institution_fk" required>
                             <option value="">Select Institution</option>
                             <?php foreach ($institutions as $inst): ?>
@@ -377,38 +470,137 @@ $theme->showHeader($context);
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="editCode" class="form-label">Outcome Code <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="editCode" name="code" required 
-                               pattern="[A-Za-z0-9_.-]+" 
-                               title="Letters, numbers, hyphens, underscores, and periods only">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editOutcomeCode" class="form-label">Outcome Code</label>
+                            <input type="text" class="form-control" id="editOutcomeCode" name="outcome_code" maxlength="50" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editSequenceNum" class="form-label">Sequence Number</label>
+                            <input type="number" class="form-control" id="editSequenceNum" name="sequence_num" min="0">
+                        </div>
                     </div>
-                    
                     <div class="mb-3">
-                        <label for="editDescription" class="form-label">Description <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="editDescription" name="description" rows="3" required></textarea>
+                        <label for="editOutcomeDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="editOutcomeDescription" name="outcome_description" rows="4" required></textarea>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="editSequenceNum" class="form-label">Sequence Number</label>
-                        <input type="number" class="form-control" id="editSequenceNum" name="sequence_num" min="0">
-                    </div>
-                    
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="editIsActive" name="is_active">
+                        <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
                         <label class="form-check-label" for="editIsActive">Active</label>
                     </div>
                 </div>
-                
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- View Outcome Modal -->
+<div class="modal fade" id="viewOutcomeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-eye"></i> Outcome Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Institution:</strong>
+                        <p id="viewInstitution"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Outcome Code:</strong>
+                        <p id="viewOutcomeCode"></p>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <strong>Description:</strong>
+                        <p id="viewOutcomeDescription"></p>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <strong>Sequence:</strong>
+                        <p id="viewSequenceNum"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Status:</strong>
+                        <p id="viewOutcomeStatus"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>ID:</strong>
+                        <p id="viewOutcomeId"></p>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Created:</strong>
+                        <p id="viewOutcomeCreated"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Last Updated:</strong>
+                        <p id="viewOutcomeUpdated"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-file-upload"></i> Import Institutional Outcomes</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                    <input type="hidden" name="action" value="import">
+                    <div class="mb-3">
+                        <label for="outcomeUpload" class="form-label">Upload CSV File</label>
+                        <input type="file" class="form-control" id="outcomeUpload" name="outcome_upload" accept=".csv" required>
+                        <small class="form-text text-muted">CSV format: Institution Code, Outcome Code, Description, Sequence, Status (Active/Inactive)</small>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Existing records with matching codes will be updated.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success"><i class="fas fa-upload"></i> Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Toggle Status Form (hidden) -->
+<form id="toggleStatusForm" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+    <input type="hidden" name="action" value="toggle_status">
+    <input type="hidden" name="outcome_id" id="toggleOutcomeId">
+</form>
+
+<!-- Delete Form (hidden) -->
+<form id="deleteForm" method="POST" style="display: none;">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+    <input type="hidden" name="action" value="delete">
+    <input type="hidden" name="outcome_id" id="deleteOutcomeId">
+</form>
+
+<?php $theme->showFooter($context); ?>
 
 <!-- DataTables JS -->
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
@@ -423,8 +615,17 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-    // Initialize DataTable
-    const table = $('#outcomesTable').DataTable({
+    // Setup - add a text input to each footer cell
+    $('#outcomesTable tfoot th').each(function() {
+        var title = $(this).text();
+        if (title !== 'Actions') {
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+        } else {
+            $(this).html(''); // No filter for Actions column
+        }
+    });
+    
+    var table = $('#outcomesTable').DataTable({
         processing: true,
         serverSide: true,
         ajax: '<?= BASE_URL ?>administration/institutional_outcomes_data.php',
@@ -433,66 +634,62 @@ $(document).ready(function() {
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         columns: [
-            { data: 'institutional_outcomes_pk' },
-            { data: 'institution_name' },
-            { data: 'code' },
-            { data: 'description' },
-            { data: 'sequence_num' },
-            { 
-                data: 'is_active',
-                render: function(data) {
-                    return data == 1 
-                        ? '<span class="badge bg-success">Active</span>'
-                        : '<span class="badge bg-secondary">Inactive</span>';
-                }
-            },
-            {
-                data: null,
-                orderable: false,
-                render: function(data) {
-                    return `
-                        <button class="btn btn-sm btn-info edit-btn" data-id="${data.institutional_outcomes_pk}">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger delete-btn" data-id="${data.institutional_outcomes_pk}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    `;
-                }
-            }
+            { data: 0, name: 'institutional_outcomes_pk' },
+            { data: 1, name: 'institution_name' },
+            { data: 2, name: 'outcome_code' },
+            { data: 3, name: 'outcome_description' },
+            { data: 4, name: 'sequence_num' },
+            { data: 5, name: 'is_active' },
+            { data: 6, name: 'created_at' },
+            { data: 7, name: 'actions', orderable: false, searchable: false }
         ],
-        order: [[4, 'asc'], [2, 'asc']]
-    });
-    
-    // Edit button handler
-    $('#outcomesTable').on('click', '.edit-btn', function() {
-        const id = $(this).data('id');
-        const row = table.row($(this).parents('tr')).data();
-        
-        $('#editOutcomeId').val(row.institutional_outcomes_pk);
-        $('#editInstitutionFk').val(row.institution_fk);
-        $('#editCode').val(row.code);
-        $('#editDescription').val(row.description);
-        $('#editSequenceNum').val(row.sequence_num);
-        $('#editIsActive').prop('checked', row.is_active == 1);
-        
-        $('#editModal').modal('show');
-    });
-    
-    // Delete button handler
-    $('#outcomesTable').on('click', '.delete-btn', function() {
-        if (confirm('Are you sure you want to delete this outcome?')) {
-            const id = $(this).data('id');
-            const form = $('<form method="POST"></form>');
-            form.append('<input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">');
-            form.append('<input type="hidden" name="action" value="delete">');
-            form.append('<input type="hidden" name="outcome_id" value="' + id + '">');
-            $('body').append(form);
-            form.submit();
+        initComplete: function() {
+            // Apply the search
+            this.api().columns().every(function() {
+                var column = this;
+                $('input', this.footer()).on('keyup change clear', function() {
+                    if (column.search() !== this.value) {
+                        column.search(this.value).draw();
+                    }
+                });
+            });
         }
     });
 });
-</script>
 
-<?php
-$theme->showFooter($context);
+function viewOutcome(outcome) {
+    $('#viewInstitution').text(outcome.institution_name);
+    $('#viewOutcomeCode').text(outcome.outcome_code);
+    $('#viewOutcomeDescription').text(outcome.outcome_description);
+    $('#viewSequenceNum').text(outcome.sequence_num);
+    $('#viewOutcomeStatus').html(outcome.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>');
+    $('#viewOutcomeId').text(outcome.institutional_outcomes_pk);
+    $('#viewOutcomeCreated').text(outcome.created_at);
+    $('#viewOutcomeUpdated').text(outcome.updated_at);
+    new bootstrap.Modal(document.getElementById('viewOutcomeModal')).show();
+}
+
+function editOutcome(outcome) {
+    $('#editOutcomeId').val(outcome.institutional_outcomes_pk);
+    $('#editInstitutionFk').val(outcome.institution_fk);
+    $('#editOutcomeCode').val(outcome.outcome_code);
+    $('#editOutcomeDescription').val(outcome.outcome_description);
+    $('#editSequenceNum').val(outcome.sequence_num);
+    $('#editIsActive').prop('checked', outcome.is_active == 1);
+    new bootstrap.Modal(document.getElementById('editOutcomeModal')).show();
+}
+
+function toggleStatus(id, code) {
+    if (confirm('Are you sure you want to toggle the status of "' + code + '"?')) {
+        $('#toggleOutcomeId').val(id);
+        $('#toggleStatusForm').submit();
+    }
+}
+
+function deleteOutcome(id, code) {
+    if (confirm('Are you sure you want to DELETE "' + code + '"? This action cannot be undone.')) {
+        $('#deleteOutcomeId').val(id);
+        $('#deleteForm').submit();
+    }
+}
+</script>

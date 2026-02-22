@@ -38,23 +38,25 @@
                     </a>
                 </li>
                 
-                <li class="nav-header">ADMINISTRATION</li>
+                <li class="nav-header">INSTITUTION</li>
                 
-                <!-- Institution Management -->
+                <!-- Institution Setup -->
                 <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/institution.php" class="nav-link <?= ($currentPage ?? '') === 'admin_institution' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-building"></i>
-                        <p>Institution</p>
+                        <i class="nav-icon bi bi-building-gear"></i>
+                        <p>Institution Setup</p>
                     </a>
                 </li>
                 
-                <!-- Outcome Hierarchy Management -->
+                <!-- Institutional Outcomes -->
                 <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_institutional_outcomes' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-diagram-3"></i>
+                        <i class="nav-icon bi bi-flag"></i>
                         <p>Institutional Outcomes</p>
                     </a>
                 </li>
+                
+                <li class="nav-header">PROGRAMS</li>
                 
                 <!-- Program Management -->
                 <li class="nav-item">
@@ -72,33 +74,53 @@
                     </a>
                 </li>
                 
-                <li class="nav-header">ENROLLMENT</li>
+                <li class="nav-header">COURSES & SECTIONS</li>
                 
-                <!-- Students & Enrollment -->
+                <!-- Courses -->
                 <li class="nav-item">
-                    <a href="<?= BASE_URL ?>administration/enrollment.php" class="nav-link <?= ($currentPage ?? '') === 'admin_enrollment' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-people"></i>
-                        <p>Students & Enrollment</p>
-                    </a>
-                </li>
-                
-                <li class="nav-header">ASSESSMENT</li>
-                
-                <!-- Coming Soon Items -->
-                <li class="nav-item">
-                    <a href="#" class="nav-link disabled">
+                    <a href="<?= BASE_URL ?>administration/courses.php" class="nav-link <?= ($currentPage ?? '') === 'admin_courses' ? 'active' : '' ?>">
                         <i class="nav-icon bi bi-book"></i>
-                        <p>Course Sections <span class="badge text-bg-secondary">Soon</span></p>
+                        <p>Courses</p>
                     </a>
                 </li>
                 
+                <!-- Course Sections -->
                 <li class="nav-item">
-                    <a href="#" class="nav-link disabled">
-                        <i class="nav-icon bi bi-clipboard-check"></i>
-                        <p>Assessment Entry <span class="badge text-bg-secondary">Soon</span></p>
+                    <a href="<?= BASE_URL ?>administration/course_sections.php" class="nav-link <?= ($currentPage ?? '') === 'admin_course_sections' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-calendar3"></i>
+                        <p>Course Sections (CRN)</p>
                     </a>
                 </li>
                 
+                <!-- Student Learning Outcomes -->
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/student_learning_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_slos' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-list-check"></i>
+                        <p>Student Learning Outcomes</p>
+                    </a>
+                </li>
+                
+                <li class="nav-header">STUDENTS & ASSESSMENT</li>
+                
+                <!-- Students -->
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/students.php" class="nav-link <?= ($currentPage ?? '') === 'admin_students' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-people"></i>
+                        <p>Students</p>
+                    </a>
+                </li>
+                
+                <!-- Assessments -->
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/assessments.php" class="nav-link <?= ($currentPage ?? '') === 'admin_assessments' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-clipboard-check"></i>
+                        <p>Assessments</p>
+                    </a>
+                </li>
+                
+                <li class="nav-header">REPORTS</li>
+                
+                <!-- Reports (Coming Soon) -->
                 <li class="nav-item">
                     <a href="#" class="nav-link disabled">
                         <i class="nav-icon bi bi-bar-chart"></i>

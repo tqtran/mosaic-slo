@@ -554,20 +554,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                             // Save configuration
                                     $configDir = __DIR__ . '/../config';
                                     
-                                    // Rebuild config directory (delete and recreate)
-                                    if (is_dir($configDir)) {
-                                        // Delete existing config directory and contents
-                                        $files = glob($configDir . '/{,.}*', GLOB_BRACE);
-                                        foreach ($files as $file) {
-                                            if (is_file($file)) {
-                                                unlink($file);
-                                            }
-                                        }
-                                        rmdir($configDir);
+                                    // Create config directory if it doesn't exist
+                                    if (!is_dir($configDir)) {
+                                        mkdir($configDir, 0755, true);
                                     }
                                     
-                                    // Create fresh config directory
-                                    mkdir($configDir, 0755, true);
+                                    // Delete only the config.yaml file if it exists (keep template and README)
+                                    if (file_exists($configFile)) {
+                                        unlink($configFile);
+                                    }
                                     
                                     $configContent = "# MOSAIC Configuration\n";
                                     $configContent .= "# Generated: " . date('Y-m-d H:i:s') . "\n\n";

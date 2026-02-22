@@ -6,22 +6,22 @@
 --
 -- All tables prefixed with tbl_ for easy find/replace during setup
 -- Setup script will replace tbl_ with configured prefix
+--
+-- Simplified schema focused on core platform functionality
 
 -- Drop existing tables if they exist (for clean reinstall)
 DROP TABLE IF EXISTS tbl_lti_nonces;
 DROP TABLE IF EXISTS tbl_user_roles;
 DROP TABLE IF EXISTS tbl_roles;
 DROP TABLE IF EXISTS tbl_assessments;
-DROP TABLE IF EXISTS tbl_enrollment;
 DROP TABLE IF EXISTS tbl_course_sections;
-DROP TABLE IF EXISTS tbl_course_slos;
 DROP TABLE IF EXISTS tbl_student_learning_outcomes;
 DROP TABLE IF EXISTS tbl_courses;
-DROP TABLE IF EXISTS tbl_students;
-DROP TABLE IF EXISTS tbl_terms;
-DROP TABLE IF EXISTS tbl_slo_sets;
+DROP TABLE IF EXISTS tbl_program_outcomes;
 DROP TABLE IF EXISTS tbl_programs;
+DROP TABLE IF EXISTS tbl_institutional_outcomes;
 DROP TABLE IF EXISTS tbl_institution;
+DROP TABLE IF EXISTS tbl_students;
 DROP TABLE IF EXISTS tbl_users;
 DROP TABLE IF EXISTS tbl_audit_log;
 DROP TABLE IF EXISTS tbl_error_log;
@@ -75,8 +75,24 @@ CREATE TABLE tbl_institution (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by_fk INT,
+    updated_by_fk INT,
     UNIQUE KEY uk_institution_code (institution_code),
     UNIQUE KEY uk_lti_consumer_key (lti_consumer_key)
+);
+
+CREATE TABLE tbl_institutional_outcomes (
+    institutional_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
+    institution_fk INT NOT NULL,
+    outcome_code VARCHAR(50) NOT NULL,
+    outcome_description TEXT NOT NULL,
+    sequence_num INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by_fk INT,
+    updated_by_fk INT,
+    UNIQUE KEY uk_inst_outcome_code (institution_fk, outcome_code)
 );
 
 
@@ -97,70 +113,45 @@ CREATE TABLE tbl_programs (
     UNIQUE KEY uk_program_code (program_code)
 );
 
-CREATE TABLE tbl_courses (
-    courses_pk INT AUTO_INCREMENT PRIMARY KEY,
-    program_fk INT,
-    course_code VARCHAR(50) NOT NULL,
-    course_number VARCHAR(20),
-    course_title VARCHAR(255) NOT NULL,
-    subject_code VARCHAR(20),
-    subject_name VARCHAR(255),
-    discipline VARCHAR(255),
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_course_code (course_code)
-);
-
-CREATE TABLE tbl_slo_sets (
-    slo_sets_pk INT AUTO_INCREMENT PRIMARY KEY,
-    set_code VARCHAR(50) NOT NULL,
-    set_name VARCHAR(255) NOT NULL,
-    set_type VARCHAR(20) NOT NULL,
+CREATE TABLE tbl_program_outcomes (
+    program_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
+    program_fk INT NOT NULL,
+    institutional_outcomes_fk INT,
+    outcome_code VARCHAR(50) NOT NULL,
+    outcome_description TEXT NOT NULL,
+    sequence_num INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    UNIQUE KEY uk_set_code (set_code)
+    UNIQUE KEY uk_prog_outcome_code (program_fk, outcome_code)
 );
 
-CREATE TABLE tbl_terms (
-    terms_pk INT AUTO_INCREMENT PRIMARY KEY,
-    slo_set_fk INT,
-    term_code VARCHAR(50) NOT NULL,
-    term_name VARCHAR(100) NOT NULL,
-    term_year INT NOT NULL,
-    semester VARCHAR(50),
+CREATE TABLE tbl_courses (
+    courses_pk INT AUTO_INCREMENT PRIMARY KEY,
+    course_name VARCHAR(255) NOT NULL,
+    course_number VARCHAR(50) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_term_code (term_code)
+    created_by_fk INT,
+    updated_by_fk INT,
+    UNIQUE KEY uk_course_name_number (course_name, course_number)
 );
 
 CREATE TABLE tbl_student_learning_outcomes (
     student_learning_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
-    slo_set_fk INT,
+    course_fk INT NOT NULL,
     slo_code VARCHAR(50) NOT NULL,
-    description TEXT NOT NULL,
-    assessment_method VARCHAR(255),
+    slo_description TEXT NOT NULL,
     sequence_num INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    UNIQUE KEY uk_slo_code (slo_code)
-);
-
-CREATE TABLE tbl_course_slos (
-    course_slos_pk INT AUTO_INCREMENT PRIMARY KEY,
-    course_fk INT NOT NULL,
-    student_learning_outcome_fk INT NOT NULL,
-    sequence_num INT DEFAULT 0,
-    is_required BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_course_slo (course_fk, student_learning_outcome_fk)
+    UNIQUE KEY uk_course_slo_code (course_fk, slo_code)
 );
 
 
@@ -177,40 +168,28 @@ CREATE TABLE tbl_students (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by_fk INT,
+    updated_by_fk INT,
     UNIQUE KEY uk_student_id (student_id)
 );
 
 
 -- ====================
--- COURSE SECTIONS & ENROLLMENT
+-- COURSE SECTIONS (CRN)
 -- ====================
 
 CREATE TABLE tbl_course_sections (
     course_sections_pk INT AUTO_INCREMENT PRIMARY KEY,
     course_fk INT NOT NULL,
-    term_fk INT NOT NULL,
     crn VARCHAR(20) NOT NULL,
     section_number VARCHAR(10),
-    modality VARCHAR(50),
     instructor_name VARCHAR(255),
-    max_enrollment INT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_crn_term (crn, term_fk)
-);
-
-CREATE TABLE tbl_enrollment (
-    enrollment_pk INT AUTO_INCREMENT PRIMARY KEY,
-    students_fk INT NOT NULL,
-    course_section_fk INT NOT NULL,
-    enrollment_status VARCHAR(20) DEFAULT 'active',
-    enrollment_date DATE,
-    completion_date DATE,
-    grade VARCHAR(5),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_student_section (students_fk, course_section_fk)
+    created_by_fk INT,
+    updated_by_fk INT,
+    UNIQUE KEY uk_crn (crn)
 );
 
 
@@ -220,7 +199,8 @@ CREATE TABLE tbl_enrollment (
 
 CREATE TABLE tbl_assessments (
     assessments_pk INT AUTO_INCREMENT PRIMARY KEY,
-    enrollment_fk INT NOT NULL,
+    course_section_fk INT NOT NULL COMMENT 'CRN FK',
+    students_fk INT NOT NULL,
     student_learning_outcome_fk INT NOT NULL,
     score_value DECIMAL(5,2),
     achievement_level VARCHAR(20) DEFAULT 'pending',
@@ -231,7 +211,7 @@ CREATE TABLE tbl_assessments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     assessed_by_fk INT,
-    UNIQUE KEY uk_enrollment_slo (enrollment_fk, student_learning_outcome_fk)
+    UNIQUE KEY uk_crn_student_slo (course_section_fk, students_fk, student_learning_outcome_fk)
 );
 
 

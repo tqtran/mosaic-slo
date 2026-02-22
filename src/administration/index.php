@@ -134,8 +134,13 @@ $theme->showHeader($context);
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-3">
-                        <a href="<?= BASE_URL ?>administration/institution.php" class="btn btn-app">
+                        <a href="<?= BASE_URL ?>administration/institutions.php" class="btn btn-app">
                             <i class="fas fa-university"></i> Institutions
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="btn btn-app">
+                            <i class="fas fa-flag"></i> Institutional Outcomes
                         </a>
                     </div>
                     <div class="col-md-3">
@@ -144,25 +149,47 @@ $theme->showHeader($context);
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="<?= BASE_URL ?>administration/enrollment.php" class="btn btn-app">
-                            <i class="fas fa-users"></i> Enrollment
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="<?= BASE_URL ?>administration/config.php" class="btn btn-app">
-                            <i class="fas fa-cog"></i> Configuration
+                        <a href="<?= BASE_URL ?>administration/program_outcomes.php" class="btn btn-app">
+                            <i class="fas fa-bullseye"></i> Program Outcomes
                         </a>
                     </div>
                 </div>
                 <div class="row mt-2">
                     <div class="col-md-3">
-                        <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="btn btn-app">
-                            <i class="fas fa-bullseye"></i> Institutional Outcomes
+                        <a href="<?= BASE_URL ?>administration/courses.php" class="btn btn-app">
+                            <i class="fas fa-book"></i> Courses
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="<?= BASE_URL ?>administration/program_outcomes.php" class="btn btn-app">
-                            <i class="fas fa-tasks"></i> Program Outcomes
+                        <a href="<?= BASE_URL ?>administration/course_sections.php" class="btn btn-app">
+                            <i class="fas fa-chalkboard-teacher"></i> Course Sections
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="<?= BASE_URL ?>administration/student_learning_outcomes.php" class="btn btn-app">
+                            <i class="fas fa-tasks"></i> SLOs
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="<?= BASE_URL ?>administration/students.php" class="btn btn-app">
+                            <i class="fas fa-user-graduate"></i> Students
+                        </a>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-3">
+                        <a href="<?= BASE_URL ?>administration/assessments.php" class="btn btn-app">
+                            <i class="fas fa-clipboard-check"></i> Assessments
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="<?= BASE_URL ?>administration/config.php" class="btn btn-app">
+                            <i class="fas fa-cog"></i> System Config
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="<?= BASE_URL ?>administration/institution.php" class="btn btn-app">
+                            <i class="fas fa-building"></i> Institution Setup
                         </a>
                     </div>
                     <div class="col-md-3">
@@ -241,11 +268,15 @@ $theme->showHeader($context);
             </div>
             <div class="card-body">
                 <ol>
-                    <li><a href="<?= BASE_URL ?>administration/institution.php">Configure institution details</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/institutions.php">Configure institution details</a></li>
                     <li><a href="<?= BASE_URL ?>administration/institutional_outcomes.php">Set up institutional outcomes</a></li>
                     <li><a href="<?= BASE_URL ?>administration/programs.php">Create academic programs</a></li>
-                    <li><a href="<?= BASE_URL ?>administration/program_outcomes.php">Define program outcomes and map to institutional</a></li>
-                    <li><a href="<?= BASE_URL ?>administration/enrollment.php">Manage student enrollments</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/program_outcomes.php">Define program outcomes</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/courses.php">Add courses to the catalog</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/course_sections.php">Create course sections (CRNs)</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/student_learning_outcomes.php">Define SLOs for courses</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/students.php">Add student records</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/assessments.php">Record assessment data</a></li>
                     <li>Configure LTI integration with your LMS</li>
                 </ol>
             </div>
