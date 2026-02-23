@@ -352,51 +352,10 @@ $theme->showHeader($context);
         </div>
         <?php endif; ?>
         
-        <!-- Statistics Row -->
-        <div class="row">
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-info"><i class="fas fa-university"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Total Institutions</span>
-                        <span class="info-box-number"><?= $totalInstitutions ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Active Institutions</span>
-                        <span class="info-box-number"><?= $activeInstitutions ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-warning"><i class="fas fa-ban"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Inactive Institutions</span>
-                        <span class="info-box-number"><?= $inactiveInstitutions ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Institutions Table -->
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title"><i class="fas fa-table"></i> Institution Settings</h3>
-                <div class="card-tools">
-                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                        <i class="fas fa-file-upload"></i> Import CSV
-                    </button>
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addInstitutionModal">
-                        <i class="fas fa-plus"></i> Add Institution
-                    </button>
-                </div>
             </div>
             <div class="card-body">
                 <table id="institutionsTable" class="table table-bordered table-striped">

@@ -4,18 +4,22 @@
  * Create Admin User Script
  * 
  * Creates an initial admin user in the MOSAIC system.
- * Must be run after src/setup.php has initialized the database.
+ * Must be run after database setup has been completed.
+ * 
+ * Usage: php src/system/scripts/create_admin_user.php
  */
 
 declare(strict_types=1);
 
-// Load Database class
-require_once __DIR__ . '/../Core/Database.php';
+// Load required files
+require_once __DIR__ . '/../../config/config.yaml';
+require_once __DIR__ . '/../includes/init.php';
+
 use Mosaic\Core\Database;
-use PDO;
+use Mosaic\Core\Logger;
 
 // Setup log file in project root logs directory
-$logFile = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR . 'admin_user_' . date('Y-m-d_His') . '.log';
+$logFile = __DIR__ . '/../../../logs/admin_user_' . date('Y-m-d_His') . '.log';
 $logDir = dirname($logFile);
 if (!is_dir($logDir)) {
     mkdir($logDir, 0755, true);
@@ -204,9 +208,13 @@ log_message("Password validated successfully");
 echo PHP_EOL;
 color_output("Creating admin user...", 'yellow');
 
-// Hash password with bcrypt cost 12
-log_message("Hashing password with bcrypt cost 12");
-$passwordHash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+// Hash password with Argon2id
+log_message("Hashing password with Argon2id");
+$passwordHash = password_hash($password, PASSWORD_ARGON2ID, [
+    'memory_cost' => 65536,  // 64 MB
+    'time_cost' => 4,
+    'threads' => 2
+]);
 
 // Insert user
 log_message("Inserting user record for: $userId");

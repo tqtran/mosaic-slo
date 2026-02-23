@@ -24,13 +24,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         switch ($action) {
             case 'add':
+                $sloSetFk = (int)($_POST['slo_set_fk'] ?? 0);
                 $courseFk = (int)($_POST['course_fk'] ?? 0);
+                $programOutcomesFk = !empty($_POST['program_outcomes_fk']) ? (int)$_POST['program_outcomes_fk'] : null;
                 $sloCode = trim($_POST['slo_code'] ?? '');
                 $sloDescription = trim($_POST['slo_description'] ?? '');
+                $assessmentMethod = trim($_POST['assessment_method'] ?? '');
                 $sequenceNum = (int)($_POST['sequence_num'] ?? 0);
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 $errors = [];
+                if ($sloSetFk <= 0) {
+                    $errors[] = 'SLO Set is required';
+                }
                 if ($courseFk <= 0) {
                     $errors[] = 'Course is required';
                 }
@@ -42,12 +48,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
-                    $db->query(
-                        "INSERT INTO {$dbPrefix}student_learning_outcomes (course_fk, slo_code, slo_description, sequence_num, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$courseFk, $sloCode, $sloDescription, $sequenceNum, $isActive],
-                        'issii'
-                    );
+                    if ($programOutcomesFk !== null) {
+                        $db->query(
+                            "INSERT INTO {$dbPrefix}student_learning_outcomes (slo_set_fk, course_fk, program_outcomes_fk, slo_code, slo_description, assessment_method, sequence_num, is_active, created_at, updated_at) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                            [$sloSetFk, $courseFk, $programOutcomesFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive],
+                            'iiisssii'
+                        );
+                    } else {
+                        $db->query(
+                            "INSERT INTO {$dbPrefix}student_learning_outcomes (slo_set_fk, course_fk, slo_code, slo_description, assessment_method, sequence_num, is_active, created_at, updated_at) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                            [$sloSetFk, $courseFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive],
+                            'iisssii'
+                        );
+                    }
                     $successMessage = 'SLO added successfully';
                 } else {
                     $errorMessage = implode('<br>', $errors);
@@ -56,15 +71,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'edit':
                 $id = (int)($_POST['slo_id'] ?? 0);
+                $sloSetFk = (int)($_POST['slo_set_fk'] ?? 0);
                 $courseFk = (int)($_POST['course_fk'] ?? 0);
+                $programOutcomesFk = !empty($_POST['program_outcomes_fk']) ? (int)$_POST['program_outcomes_fk'] : null;
                 $sloCode = trim($_POST['slo_code'] ?? '');
                 $sloDescription = trim($_POST['slo_description'] ?? '');
+                $assessmentMethod = trim($_POST['assessment_method'] ?? '');
                 $sequenceNum = (int)($_POST['sequence_num'] ?? 0);
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 $errors = [];
                 if ($id <= 0) {
                     $errors[] = 'Invalid SLO ID';
+                }
+                if ($sloSetFk <= 0) {
+                    $errors[] = 'SLO Set is required';
                 }
                 if ($courseFk <= 0) {
                     $errors[] = 'Course is required';
@@ -79,10 +100,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($errors)) {
                     $db->query(
                         "UPDATE {$dbPrefix}student_learning_outcomes 
-                         SET course_fk = ?, slo_code = ?, slo_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
+                         SET slo_set_fk = ?, course_fk = ?, program_outcomes_fk = ?, slo_code = ?, slo_description = ?, assessment_method = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
                          WHERE student_learning_outcomes_pk = ?",
-                        [$courseFk, $sloCode, $sloDescription, $sequenceNum, $isActive, $id],
-                        'issiii'
+                        [$sloSetFk, $courseFk, $programOutcomesFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive, $id],
+                        'iiisssiii'
                     );
                     $successMessage = 'SLO updated successfully';
                 } else {
@@ -148,27 +169,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $headers[0] = preg_replace('/^\x{FEFF}/u', '', $headers[0]);
                 }
                 
-                // Expected columns: course_number,slo_code,slo_description,sequence_num,is_active
+                // Expected columns: slo_set_code,course_number,program_outcome_code,slo_code,slo_description,sequence_num,is_active
                 $imported = 0;
                 $updated = 0;
                 $errors = [];
                 
                 while (($row = fgetcsv($handle)) !== false) {
-                    if (count($row) < 3) continue; // Need at least course_number, slo_code, slo_description
+                    if (count($row) < 4) continue; // Need at least slo_set_code, course_number, slo_code, slo_description
                     
                     $data = array_combine($headers, $row);
                     if ($data === false) continue;
                     
+                    $sloSetCode = trim($data['slo_set_code'] ?? '');
                     $courseNumber = trim($data['course_number'] ?? '');
+                    $programOutcomeCode = trim($data['program_outcome_code'] ?? '');
                     $sloCode = trim($data['slo_code'] ?? '');
                     $sloDescription = trim($data['slo_description'] ?? '');
+                    $assessmentMethod = trim($data['assessment_method'] ?? '');
                     $sequenceNum = (int)($data['sequence_num'] ?? 0);
                     $isActive = isset($data['is_active']) ? ((int)$data['is_active'] === 1 || strtolower($data['is_active']) === 'true') : true;
                     
-                    if (empty($courseNumber) || empty($sloCode) || empty($sloDescription)) {
-                        $errors[] = "Skipped row: missing required fields (course_number, slo_code, or slo_description)";
+                    if (empty($sloSetCode) || empty($courseNumber) || empty($sloCode) || empty($sloDescription)) {
+                        $errors[] = "Skipped row: missing required fields (slo_set_code, course_number, slo_code, or slo_description)";
                         continue;
                     }
+                    
+                    // Lookup slo_set_fk by set_code
+                    $result = $db->query(
+                        "SELECT slo_sets_pk FROM {$dbPrefix}slo_sets WHERE set_code = ?",
+                        [$sloSetCode],
+                        's'
+                    );
+                    $sloSetRow = $result->fetch();
+                    if (!$sloSetRow) {
+                        $errors[] = "Skipped row: SLO set code '$sloSetCode' not found";
+                        continue;
+                    }
+                    $sloSetFk = (int)$sloSetRow['slo_sets_pk'];
                     
                     // Lookup course_fk by course_number
                     $result = $db->query(
@@ -183,11 +220,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $courseFk = (int)$courseRow['courses_pk'];
                     
-                    // Check if SLO exists (based on unique course_fk + slo_code)
+                    // Lookup program_outcomes_fk by code (optional/nullable)
+                    $programOutcomesFk = null;
+                    if (!empty($programOutcomeCode)) {
+                        $result = $db->query(
+                            "SELECT program_outcomes_pk FROM {$dbPrefix}program_outcomes WHERE code = ?",
+                            [$programOutcomeCode],
+                            's'
+                        );
+                        $programOutcomeRow = $result->fetch();
+                        if (!$programOutcomeRow) {
+                            $errors[] = "Warning: program outcome code '$programOutcomeCode' not found, skipping program_outcomes_fk";
+                        } else {
+                            $programOutcomesFk = (int)$programOutcomeRow['program_outcomes_pk'];
+                        }
+                    }
+                    
+                    // Check if SLO exists (based on unique slo_set_fk + course_fk + slo_code)
                     $result = $db->query(
-                        "SELECT student_learning_outcomes_pk FROM {$dbPrefix}student_learning_outcomes WHERE course_fk = ? AND slo_code = ?",
-                        [$courseFk, $sloCode],
-                        'is'
+                        "SELECT student_learning_outcomes_pk FROM {$dbPrefix}student_learning_outcomes WHERE slo_set_fk = ? AND course_fk = ? AND slo_code = ?",
+                        [$sloSetFk, $courseFk, $sloCode],
+                        'iis'
                     );
                     $existing = $result->fetch();
                     
@@ -195,20 +248,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Update existing
                         $db->query(
                             "UPDATE {$dbPrefix}student_learning_outcomes 
-                             SET slo_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW() 
+                             SET program_outcomes_fk = ?, slo_description = ?, assessment_method = ?, sequence_num = ?, is_active = ?, updated_at = NOW() 
                              WHERE student_learning_outcomes_pk = ?",
-                            [$sloDescription, $sequenceNum, $isActive, $existing['student_learning_outcomes_pk']],
-                            'siii'
+                            [$programOutcomesFk, $sloDescription, $assessmentMethod, $sequenceNum, $isActive, $existing['student_learning_outcomes_pk']],
+                            'issiii'
                         );
                         $updated++;
                     } else {
                         // Insert new
-                        $db->query(
-                            "INSERT INTO {$dbPrefix}student_learning_outcomes (course_fk, slo_code, slo_description, sequence_num, is_active, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                            [$courseFk, $sloCode, $sloDescription, $sequenceNum, $isActive],
-                            'issii'
-                        );
+                        if ($programOutcomesFk !== null) {
+                            $db->query(
+                                "INSERT INTO {$dbPrefix}student_learning_outcomes (slo_set_fk, course_fk, program_outcomes_fk, slo_code, slo_description, assessment_method, sequence_num, is_active, created_at, updated_at) 
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                                [$sloSetFk, $courseFk, $programOutcomesFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive],
+                                'iiisssii'
+                            );
+                        } else {
+                            $db->query(
+                                "INSERT INTO {$dbPrefix}student_learning_outcomes (slo_set_fk, course_fk, slo_code, slo_description, assessment_method, sequence_num, is_active, created_at, updated_at) 
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                                [$sloSetFk, $courseFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive],
+                                'iisssii'
+                            );
+                        }
                         $imported++;
                     }
                 }
@@ -246,6 +308,14 @@ $activeSLOs = $stats['active'];
 // Get courses for dropdown
 $coursesResult = $db->query("SELECT courses_pk, course_name, course_number FROM {$dbPrefix}courses WHERE is_active = 1 ORDER BY course_name");
 $courses = $coursesResult->fetchAll();
+
+// Get SLO sets for dropdown
+$sloSetsResult = $db->query("SELECT slo_sets_pk, set_code, set_name, set_type FROM {$dbPrefix}slo_sets WHERE is_active = 1 ORDER BY start_date DESC, set_code");
+$sloSets = $sloSetsResult->fetchAll();
+
+// Get program outcomes for dropdown
+$programOutcomesResult = $db->query("SELECT program_outcomes_pk, code, description FROM {$dbPrefix}program_outcomes WHERE is_active = 1 ORDER BY code");
+$programOutcomes = $programOutcomesResult->fetchAll();
 
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
 use Mosaic\Core\ThemeLoader;
@@ -337,25 +407,27 @@ $theme->showHeader($context);
                     <thead>
                         <tr>
                             <th>ID</th>
+                            <th>SLO Set</th>
                             <th>Course</th>
+                            <th>Program Outcome</th>
                             <th>Code</th>
                             <th>Description</th>
                             <th>Sequence</th>
                             <th>Status</th>
                             <th>Actions</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                         </tr>
                     </thead>
-                    <tfoot>
-                        <tr>
-                            <th>ID</th>
-                            <th>Course</th>
-                            <th>Code</th>
-                            <th>Description</th>
-                            <th>Sequence</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </tfoot>
                     <tbody></tbody>
                 </table>
             </div>
@@ -377,6 +449,19 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="add">
                     
                     <div class="mb-3">
+                        <label for="sloSetFk" class="form-label">SLO Set (Period)</label>
+                        <select class="form-select" id="sloSetFk" name="slo_set_fk" required>
+                            <option value="">Select SLO Set</option>
+                            <?php foreach ($sloSets as $sloSet): ?>
+                                <option value="<?= $sloSet['slo_sets_pk'] ?>">
+                                    <?= htmlspecialchars($sloSet['set_name']) ?> (<?= htmlspecialchars($sloSet['set_code']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Links this SLO to a specific time period</div>
+                    </div>
+                    
+                    <div class="mb-3">
                         <label for="courseFk" class="form-label">Course</label>
                         <select class="form-select" id="courseFk" name="course_fk" required>
                             <option value="">Select Course</option>
@@ -386,6 +471,19 @@ $theme->showHeader($context);
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="programOutcomesFk" class="form-label">Program Outcome <small class="text-muted">(Optional)</small></label>
+                        <select class="form-select" id="programOutcomesFk" name="program_outcomes_fk">
+                            <option value="">None</option>
+                            <?php foreach ($programOutcomes as $po): ?>
+                                <option value="<?= $po['program_outcomes_pk'] ?>">
+                                    <?= htmlspecialchars($po['code']) ?> - <?= htmlspecialchars(substr($po['description'], 0, 60)) ?><?= strlen($po['description']) > 60 ? '...' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Links this SLO to a program-level outcome (optional)</div>
                     </div>
                     
                     <div class="row">
@@ -402,6 +500,12 @@ $theme->showHeader($context);
                     <div class="mb-3">
                         <label for="sloDescription" class="form-label">SLO Description</label>
                         <textarea class="form-control" id="sloDescription" name="slo_description" rows="4" required></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="assessmentMethod" class="form-label">Assessment Method</label>
+                        <textarea class="form-control" id="assessmentMethod" name="assessment_method" rows="2" maxlength="255" placeholder="e.g., Final exam, Portfolio review, Lab practical"></textarea>
+                        <div class="form-text">Describe how this SLO is assessed (optional)</div>
                     </div>
                     
                     <div class="form-check">
@@ -433,6 +537,19 @@ $theme->showHeader($context);
                     <input type="hidden" name="slo_id" id="editSLOId">
                     
                     <div class="mb-3">
+                        <label for="editSLOSetFk" class="form-label">SLO Set (Period)</label>
+                        <select class="form-select" id="editSLOSetFk" name="slo_set_fk" required>
+                            <option value="">Select SLO Set</option>
+                            <?php foreach ($sloSets as $sloSet): ?>
+                                <option value="<?= $sloSet['slo_sets_pk'] ?>">
+                                    <?= htmlspecialchars($sloSet['set_name']) ?> (<?= htmlspecialchars($sloSet['set_code']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Links this SLO to a specific time period</div>
+                    </div>
+                    
+                    <div class="mb-3">
                         <label for="editCourseFk" class="form-label">Course</label>
                         <select class="form-select" id="editCourseFk" name="course_fk" required>
                             <option value="">Select Course</option>
@@ -442,6 +559,19 @@ $theme->showHeader($context);
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editProgramOutcomesFk" class="form-label">Program Outcome <small class="text-muted">(Optional)</small></label>
+                        <select class="form-select" id="editProgramOutcomesFk" name="program_outcomes_fk">
+                            <option value="">None</option>
+                            <?php foreach ($programOutcomes as $po): ?>
+                                <option value="<?= $po['program_outcomes_pk'] ?>">
+                                    <?= htmlspecialchars($po['code']) ?> - <?= htmlspecialchars(substr($po['description'], 0, 60)) ?><?= strlen($po['description']) > 60 ? '...' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">Links this SLO to a program-level outcome (optional)</div>
                     </div>
                     
                     <div class="row">
@@ -460,6 +590,12 @@ $theme->showHeader($context);
                         <textarea class="form-control" id="editSLODescription" name="slo_description" rows="4" required></textarea>
                     </div>
                     
+                    <div class="mb-3">
+                        <label for="editAssessmentMethod" class="form-label">Assessment Method</label>
+                        <textarea class="form-control" id="editAssessmentMethod" name="assessment_method" rows="2" maxlength="255" placeholder="e.g., Final exam, Portfolio review, Lab practical"></textarea>
+                        <div class="form-text">Describe how this SLO is assessed (optional)</div>
+                    </div>
+                    
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
                         <label class="form-check-label" for="editIsActive">Active</label>
@@ -468,6 +604,41 @@ $theme->showHeader($context);
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Upload CSV Modal -->
+<div class="modal fade" id="uploadCsvModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title"><i class="fas fa-upload"></i> Import SLOs from CSV</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                    <input type="hidden" name="action" value="import">
+                    
+                    <div class="mb-3">
+                        <label for="csv_file" class="form-label">CSV File</label>
+                        <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+                    </div>
+                    
+                    <div class="alert alert-info mb-0">
+                        <strong>CSV Format:</strong><br>
+                        <code>slo_set_code,course_number,program_outcome_code,slo_code,slo_description,assessment_method,sequence_num,is_active</code><br>
+                        <small class="text-muted">program_outcome_code is optional (can be empty). assessment_method is optional. sequence_num defaults to 0. is_active should be 1/0 or true/false (default: true)</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-upload"></i> Upload
+                    </button>
                 </div>
             </form>
         </div>
@@ -499,10 +670,48 @@ $theme->showHeader($context);
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
 <script>
+// Convert PHP arrays to JavaScript
+var sloSets = <?= json_encode(array_map(function($s) { 
+    return ['name' => $s['set_name'], 'code' => $s['set_code']]; 
+}, $sloSets)) ?>;
+var courses = <?= json_encode(array_map(function($c) { 
+    return ['name' => $c['course_name'], 'number' => $c['course_number']]; 
+}, $courses)) ?>;
+var programOutcomes = <?= json_encode(array_map(function($po) { 
+    return ['code' => $po['code']]; 
+}, $programOutcomes)) ?>;
+
 $(document).ready(function() {
-    $('#slosTable tfoot th').each(function() {
-        var title = $(this).text();
-        if (title !== 'Actions') {
+    $('#slosTable thead tr:eq(1) th').each(function(i) {
+        var title = $('#slosTable thead tr:eq(0) th:eq(' + i + ')').text();
+        
+        // SLO Set column (index 1)
+        if (title === 'SLO Set') {
+            var select = $('<select class="form-select form-select-sm"><option value="">All SLO Sets</option></select>')
+                .appendTo($(this).empty());
+            sloSets.forEach(function(set) {
+                select.append('<option value="' + set.name + '">' + set.name + '</option>');
+            });
+        }
+        // Course column (index 2)
+        else if (title === 'Course') {
+            var select = $('<select class="form-select form-select-sm"><option value="">All Courses</option></select>')
+                .appendTo($(this).empty());
+            courses.forEach(function(course) {
+                select.append('<option value="' + course.name + '">' + course.name + '</option>');
+            });
+        }
+        // Program Outcome column (index 3)
+        else if (title === 'Program Outcome') {
+            var select = $('<select class="form-select form-select-sm"><option value="">All Program Outcomes</option></select>')
+                .appendTo($(this).empty());
+            programOutcomes.forEach(function(po) {
+                if (po.code) {
+                    select.append('<option value="' + po.code + '">' + po.code + '</option>');
+                }
+            });
+        }
+        else if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         } else {
             $(this).html('');
@@ -517,17 +726,22 @@ $(document).ready(function() {
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
         columns: [
             { data: 0, name: 'student_learning_outcomes_pk' },
-            { data: 1, name: 'course_name' },
-            { data: 2, name: 'slo_code' },
-            { data: 3, name: 'slo_description' },
-            { data: 4, name: 'sequence_num' },
-            { data: 5, name: 'is_active' },
-            { data: 6, name: 'actions', orderable: false, searchable: false }
+            { data: 1, name: 'set_name' },
+            { data: 2, name: 'course_name' },
+            { data: 3, name: 'program_outcome_code' },
+            { data: 4, name: 'slo_code' },
+            { data: 5, name: 'slo_description' },
+            { data: 6, name: 'sequence_num' },
+            { data: 7, name: 'is_active' },
+            { data: 8, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             this.api().columns().every(function() {
                 var column = this;
-                $('input', this.footer()).on('keyup change clear', function() {
+                $('select', this.header()).on('change', function() {
+                    column.search($(this).val()).draw();
+                });
+                $('input', this.header()).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -539,9 +753,12 @@ $(document).ready(function() {
 
 function editSLO(slo) {
     $('#editSLOId').val(slo.student_learning_outcomes_pk);
+    $('#editSLOSetFk').val(slo.slo_set_fk);
     $('#editCourseFk').val(slo.course_fk);
+    $('#editProgramOutcomesFk').val(slo.program_outcomes_fk || '');
     $('#editSLOCode').val(slo.slo_code);
     $('#editSLODescription').val(slo.slo_description);
+    $('#editAssessmentMethod').val(slo.assessment_method || '');
     $('#editSequenceNum').val(slo.sequence_num);
     $('#editIsActive').prop('checked', slo.is_active == 1);
     new bootstrap.Modal(document.getElementById('editSLOModal')).show();

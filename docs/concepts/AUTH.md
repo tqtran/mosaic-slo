@@ -6,7 +6,7 @@ Three concurrent authentication methods:
 
 ### 1. Dashboard Authentication
 - Local username/password
-- Bcrypt hashing (cost 12)
+- Argon2id hashing (64MB memory, 4 iterations, 2 threads)
 - Session-based
 - Used by: Admins, faculty, coordinators
 
@@ -23,6 +23,43 @@ Three concurrent authentication methods:
 - Automatic user provisioning
 - Supports MFA from IdP
 - Used by: All users via institutional login
+
+### Emergency Admin (Break Glass Account)
+
+**Configuration-Based Emergency Access**: Defined in `config.yaml`, bypasses database entirely for recovery scenarios.
+
+**Purpose**: 
+- Recover from database user lockouts
+- Emergency access when normal authentication fails
+- No database dependency
+
+**Configuration** (`config.yaml`):
+```yaml
+emergency_admin:
+  enabled: true                      # Set to false to disable
+  username: sloadmin@breakglass.idx  # Email format required; change after setup!
+  password: slopass                  # Change immediately after setup!
+```
+
+**Security Considerations**:
+- Password stored in **plain text** in config file
+- Bypasses all database checks and normal authorization
+- All logins logged with "Emergency admin login used" warning
+- Session marked with `is_emergency_admin` flag
+- **Change default credentials immediately** after installation
+- Disable by setting `enabled: false` when not needed
+
+**Authentication Flow**:
+1. User submits login form
+2. System checks emergency admin credentials FIRST
+3. If match: Instant access with special session
+4. If no match: Normal database authentication proceeds
+
+**Session Attributes**:
+- `user_id: 0` (special emergency admin ID)
+- `user_name: "Emergency Admin"`
+- `is_emergency_admin: true`
+- Full system access (equivalent to System Admin role)
 
 ## Authentication Flow
 
@@ -129,7 +166,7 @@ All link to same user record.
 **Password Policy:**
 - Minimum 8 characters
 - Requires: uppercase, lowercase, number
-- Bcrypt cost 12
+- Argon2id (64MB memory cost, 4 time cost, 2 threads)
 - No password reset via email (admin reset only)
 
 **OAuth/SAML Security:**

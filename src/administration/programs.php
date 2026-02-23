@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $code = trim($_POST['program_code'] ?? '');
                 $name = trim($_POST['program_name'] ?? '');
                 $degreeType = trim($_POST['degree_type'] ?? '');
+                $departmentFk = (int)($_POST['department_fk'] ?? 0);
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 // Validation
@@ -54,13 +55,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($name)) {
                     $errors[] = 'Program name is required';
                 }
+                if ($departmentFk <= 0) {
+                    $errors[] = 'Department is required';
+                } else {
+                    // Validate department exists
+                    $deptCheck = $db->query(
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}departments WHERE departments_pk = ? AND is_active = 1",
+                        [$departmentFk],
+                        'i'
+                    );
+                    $deptRow = $deptCheck->fetch();
+                    if ($deptRow['count'] == 0) {
+                        $errors[] = 'Invalid department selected';
+                    }
+                }
                 
                 if (empty($errors)) {
                     $db->query(
-                        "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, NOW(), NOW())",
-                        [$code, $name, $degreeType, $isActive],
-                        'sssi'
+                        "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, department_fk, is_active, created_at, updated_at) 
+                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                        [$code, $name, $degreeType, $departmentFk, $isActive],
+                        'sssii'
                     );
                     $successMessage = 'Program added successfully';
                 } else {
@@ -73,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $code = trim($_POST['program_code'] ?? '');
                 $name = trim($_POST['program_name'] ?? '');
                 $degreeType = trim($_POST['degree_type'] ?? '');
+                $departmentFk = (int)($_POST['department_fk'] ?? 0);
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 // Validation
@@ -99,14 +115,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($name)) {
                     $errors[] = 'Program name is required';
                 }
+                if ($departmentFk <= 0) {
+                    $errors[] = 'Department is required';
+                } else {
+                    // Validate department exists
+                    $deptCheck = $db->query(
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}departments WHERE departments_pk = ? AND is_active = 1",
+                        [$departmentFk],
+                        'i'
+                    );
+                    $deptRow = $deptCheck->fetch();
+                    if ($deptRow['count'] == 0) {
+                        $errors[] = 'Invalid department selected';
+                    }
+                }
                 
                 if (empty($errors)) {
                     $db->query(
                         "UPDATE {$dbPrefix}programs 
-                         SET program_code = ?, program_name = ?, degree_type = ?, is_active = ?, updated_at = NOW()
+                         SET program_code = ?, program_name = ?, degree_type = ?, department_fk = ?, is_active = ?, updated_at = NOW()
                          WHERE programs_pk = ?",
-                        [$code, $name, $degreeType, $isActive, $id],
-                        'sssii'
+                        [$code, $name, $degreeType, $departmentFk, $isActive, $id],
+                        'ssssii'
                     );
                     $successMessage = 'Program updated successfully';
                 } else {
@@ -167,9 +197,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $code = trim($row[0]);
                                 $name = trim($row[1]);
                                 $degreeType = isset($row[2]) ? trim($row[2]) : '';
-                                $isActive = isset($row[3]) && strtolower(trim($row[3])) === 'active' ? 1 : 0;
+                                $departmentCode = isset($row[3]) ? trim($row[3]) : '';
+                                $isActive = isset($row[4]) && strtolower(trim($row[4])) === 'active' ? 1 : 0;
                                 
-                                if (!empty($code) && !empty($name) && preg_match('/^[A-Z0-9_-]+$/i', $code)) {
+                                // Lookup department by code
+                                $departmentFk = null;
+                                if (!empty($departmentCode)) {
+                                    $deptLookup = $db->query(
+                                        "SELECT departments_pk FROM {$dbPrefix}departments WHERE department_code = ? AND is_active = 1",
+                                        [$departmentCode],
+                                        's'
+                                    );
+                                    if ($deptLookup->rowCount() > 0) {
+                                        $deptRow = $deptLookup->fetch();
+                                        $departmentFk = $deptRow['departments_pk'];
+                                    }
+                                }
+                                
+                                if (!empty($code) && !empty($name) && preg_match('/^[A-Z0-9_-]+$/i', $code) && $departmentFk !== null) {
                                     // Check if exists
                                     $result = $db->query(
                                         "SELECT programs_pk FROM {$dbPrefix}programs WHERE program_code = ?",
@@ -182,18 +227,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         $existing = $result->fetch();
                                         $db->query(
                                             "UPDATE {$dbPrefix}programs 
-                                             SET program_name = ?, degree_type = ?, is_active = ?, updated_at = NOW()
+                                             SET program_name = ?, degree_type = ?, department_fk = ?, is_active = ?, updated_at = NOW()
                                              WHERE programs_pk = ?",
-                                            [$name, $degreeType, $isActive, $existing['programs_pk']],
-                                            'ssii'
+                                            [$name, $degreeType, $departmentFk, $isActive, $existing['programs_pk']],
+                                            'ssiii'
                                         );
                                     } else {
                                         // Insert new
                                         $db->query(
-                                            "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, is_active, created_at, updated_at) 
-                                             VALUES (?, ?, ?, ?, NOW(), NOW())",
-                                            [$code, $name, $degreeType, $isActive],
-                                            'sssi'
+                                            "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, department_fk, is_active, created_at, updated_at) 
+                                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                                            [$code, $name, $degreeType, $departmentFk, $isActive],
+                                            'sssii'
                                         );
                                     }
                                     $imported++;
@@ -225,6 +270,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+// Fetch departments for dropdown
+$deptResult = $db->query("
+    SELECT departments_pk, department_code, department_name 
+    FROM {$dbPrefix}departments 
+    WHERE is_active = 1 
+    ORDER BY department_name
+");
+$departments = $deptResult->fetchAll();
 
 // Calculate statistics
 $statsResult = $db->query("
@@ -345,10 +399,21 @@ $theme->showHeader($context);
                             <th>ID</th>
                             <th>Program Code</th>
                             <th>Program Name</th>
+                            <th>Department</th>
                             <th>Degree Type</th>
                             <th>Status</th>
                             <th>Created</th>
                             <th>Actions</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tfoot>
@@ -356,6 +421,7 @@ $theme->showHeader($context);
                             <th>ID</th>
                             <th>Program Code</th>
                             <th>Program Name</th>
+                            <th>Department</th>
                             <th>Degree Type</th>
                             <th>Status</th>
                             <th>Created</th>
@@ -398,6 +464,15 @@ $theme->showHeader($context);
                         <label for="programName" class="form-label">Program Name</label>
                         <input type="text" class="form-control" id="programName" name="program_name" maxlength="255" required>
                     </div>
+                    <div class="mb-3">
+                        <label for="departmentFk" class="form-label">Department</label>
+                        <select class="form-select" id="departmentFk" name="department_fk" required>
+                            <option value="">Select Department</option>
+                            <?php foreach ($departments as $dept): ?>
+                            <option value="<?= $dept['departments_pk'] ?>"><?= htmlspecialchars($dept['department_name']) ?> (<?= htmlspecialchars($dept['department_code']) ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
                         <label class="form-check-label" for="isActive">Active</label>
@@ -439,6 +514,15 @@ $theme->showHeader($context);
                         <label for="editProgramName" class="form-label">Program Name</label>
                         <input type="text" class="form-control" id="editProgramName" name="program_name" maxlength="255" required>
                     </div>
+                    <div class="mb-3">
+                        <label for="editDepartmentFk" class="form-label">Department</label>
+                        <select class="form-select" id="editDepartmentFk" name="department_fk" required>
+                            <option value="">Select Department</option>
+                            <?php foreach ($departments as $dept): ?>
+                            <option value="<?= $dept['departments_pk'] ?>"><?= htmlspecialchars($dept['department_name']) ?> (<?= htmlspecialchars($dept['department_code']) ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
                         <label class="form-check-label" for="editIsActive">Active</label>
@@ -477,6 +561,12 @@ $theme->showHeader($context);
                         <strong>Degree Type:</strong>
                         <p id="viewDegreeType"></p>
                     </div>
+                    <div class="col-md-6">
+                        <strong>Department:</strong>
+                        <p id="viewDepartment"></p>
+                    </div>
+                </div>
+                <div class="row mb-3">
                     <div class="col-md-6">
                         <strong>Status:</strong>
                         <p id="viewProgramStatus"></p>
@@ -520,7 +610,7 @@ $theme->showHeader($context);
                     <div class="mb-3">
                         <label for="programUpload" class="form-label">Upload CSV File</label>
                         <input type="file" class="form-control" id="programUpload" name="program_upload" accept=".csv" required>
-                        <small class="form-text text-muted">CSV format: Program Code, Program Name, Degree Type, Status (Active/Inactive)</small>
+                        <small class="form-text text-muted">CSV format: Program Code, Program Name, Degree Type, Department Code, Status (Active/Inactive)</small>
                     </div>
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> Existing records with matching codes will be updated.
@@ -563,14 +653,29 @@ $theme->showHeader($context);
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
 <script>
+// Convert PHP arrays to JavaScript
+var departments = <?= json_encode(array_map(function($d) { 
+    return ['name' => $d['department_name'], 'code' => $d['department_code']]; 
+}, $departments)) ?>;
+
 $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#programsTable tfoot th').each(function() {
-        var title = $(this).text();
-        if (title !== 'Actions') {
+    // Setup - add filters to each header cell (second row)
+    $('#programsTable thead tr:eq(1) th').each(function(i) {
+        var title = $('#programsTable thead tr:eq(0) th:eq(' + i + ')').text();
+        
+        // Department column (index 3) gets dropdown
+        if (title === 'Department') {
+            var select = $('<select class="form-select form-select-sm"><option value="">All Departments</option></select>')
+                .appendTo($(this).empty());
+            
+            // Populate from PHP data
+            departments.forEach(function(dept) {
+                select.append('<option value="' + dept.name + '">' + dept.name + '</option>');
+            });
+        } else if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         } else {
-            $(this).html(''); // No filter for Actions column
+            $(this).html('');
         }
     });
     
@@ -586,16 +691,20 @@ $(document).ready(function() {
             { data: 0, name: 'programs_pk' },
             { data: 1, name: 'program_code' },
             { data: 2, name: 'program_name' },
-            { data: 3, name: 'degree_type' },
-            { data: 4, name: 'is_active' },
-            { data: 5, name: 'created_at' },
-            { data: 6, name: 'actions', orderable: false, searchable: false }
+            { data: 3, name: 'department_name' },
+            { data: 4, name: 'degree_type' },
+            { data: 5, name: 'is_active' },
+            { data: 6, name: 'created_at' },
+            { data: 7, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             // Apply the search
             this.api().columns().every(function() {
                 var column = this;
-                $('input', this.footer()).on('keyup change clear', function() {
+                $('select', this.header()).on('change', function() {
+                    column.search($(this).val()).draw();
+                });
+                $('input', this.header()).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -609,6 +718,7 @@ function viewProgram(prog) {
     $('#viewProgramName').text(prog.program_name);
     $('#viewProgramCode').text(prog.program_code);
     $('#viewDegreeType').text(prog.degree_type || 'N/A');
+    $('#viewDepartment').text(prog.department_name ? prog.department_name + ' (' + prog.department_code + ')' : 'N/A');
     $('#viewProgramStatus').html(prog.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>');
     $('#viewProgramId').text(prog.programs_pk);
     $('#viewProgramCreated').text(prog.created_at);
@@ -621,6 +731,7 @@ function editProgram(prog) {
     $('#editProgramCode').val(prog.program_code);
     $('#editProgramName').val(prog.program_name);
     $('#editDegreeType').val(prog.degree_type);
+    $('#editDepartmentFk').val(prog.department_fk);
     $('#editIsActive').prop('checked', prog.is_active == 1);
     new bootstrap.Modal(document.getElementById('editProgramModal')).show();
 }

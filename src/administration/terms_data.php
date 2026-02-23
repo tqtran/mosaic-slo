@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../system/includes/init.php';
 
-use System\Core\Database;
+use Mosaic\Core\Database;
 
 // Authentication check
 if (!isset($_SESSION['user_id'])) {
@@ -38,16 +38,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_term') {
         FROM tbl_terms
         WHERE terms_pk = ?
     ");
-    $stmt->bind_param('i', $termId);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $stmt->execute([$termId]);
     
-    if ($row = $result->fetch_assoc()) {
+    if ($row = $stmt->fetch()) {
         echo json_encode(['success' => true, 'term' => $row]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Term not found']);
     }
-    $stmt->close();
     exit;
 }
 
@@ -96,17 +93,16 @@ if (!empty($searchValue)) {
 
 // Total records
 $totalQuery = "SELECT COUNT(*) as total FROM tbl_terms t";
-$totalResult = $db->query($totalQuery);
-$totalRecords = $totalResult->fetch_assoc()['total'];
+$totalRow = $db->query($totalQuery)->fetch();
+$totalRecords = $totalRow['total'];
 
 // Filtered records
 $filteredQuery = "SELECT COUNT(*) as total " . $baseQuery . $whereClause;
 if (!empty($searchValue)) {
     $stmt = $db->prepare($filteredQuery);
-    $stmt->bind_param('ss', $searchParam, $searchParam);
-    $stmt->execute();
-    $filteredRecords = $stmt->get_result()->fetch_assoc()['total'];
-    $stmt->close();
+    $stmt->execute([$searchParam, $searchParam]);
+    $filteredRow = $stmt->fetch();
+    $filteredRecords = $filteredRow['total'];
 } else {
     $filteredRecords = $totalRecords;
 }
@@ -129,20 +125,16 @@ $query = "
     LIMIT ? OFFSET ?
 ";
 
+$stmt = $db->prepare($query);
 if (!empty($searchValue)) {
-    $stmt = $db->prepare($query);
-    $stmt->bind_param('ssii', $searchParam, $searchParam, $length, $start);
+    $stmt->execute([$searchParam, $searchParam, $length, $start]);
 } else {
-    $stmt = $db->prepare($query);
-    $stmt->bind_param('ii', $length, $start);
+    $stmt->execute([$length, $start]);
 }
-
-$stmt->execute();
-$result = $stmt->get_result();
 
 // Format data
 $data = [];
-while ($row = $result->fetch_assoc()) {
+while ($row = $stmt->fetch()) {
     $statusBadge = $row['is_active'] 
         ? '<span class="badge bg-success">Active</span>' 
         : '<span class="badge bg-secondary">Inactive</span>';
@@ -179,8 +171,6 @@ while ($row = $result->fetch_assoc()) {
         'actions' => $actions
     ];
 }
-
-$stmt->close();
 
 // Output DataTables JSON
 header('Content-Type: application/json');

@@ -473,20 +473,18 @@ $theme->showHeader($context);
                             <th>Created</th>
                             <th>Actions</th>
                         </tr>
-                    </thead>
-                    <tfoot>
                         <tr>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Search ID"></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Search Program"></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Search Code"></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Search Description"></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Search Inst. Outcome"></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Search Sequence"></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Search Status"></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Search Created"></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                             <th></th>
                         </tr>
-                    </tfoot>
+                    </thead>
                 </table>
             </div>
         </div>
@@ -765,6 +763,14 @@ $theme->showHeader($context);
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
 <script>
+// Convert PHP arrays to JavaScript
+var programs = <?= json_encode(array_map(function($p) { 
+    return ['name' => $p['program_name'], 'code' => $p['program_code']]; 
+}, $programs)) ?>;
+var institutionalOutcomes = <?= json_encode(array_map(function($io) { 
+    return ['code' => $io['outcome_code']]; 
+}, $institutionalOutcomes)) ?>;
+
 $(document).ready(function() {
     // Initialize DataTable
     var table = $('#outcomesTable').DataTable({
@@ -786,15 +792,43 @@ $(document).ready(function() {
             searchPlaceholder: "Search outcomes..."
         },
         initComplete: function() {
-            this.api().columns([1, 2, 3, 4, 5, 6, 7]).every(function() {
+            this.api().columns([1, 2, 3, 4, 5, 6, 7]).every(function(idx) {
                 var column = this;
-                var footer = $('input', this.footer());
+                var title = $(column.header()).text();
+                var header = $('#outcomesTable thead tr:eq(1) th:eq(' + (idx + 1) + ')');
                 
-                footer.on('keyup change clear', function() {
-                    if (column.search() !== this.value) {
-                        column.search(this.value).draw();
-                    }
-                });
+                // Program column (index 1 in DataTable, idx=1 in loop)
+                if (title === 'Program') {
+                    var select = $('<select class="form-select form-select-sm"><option value="">All Programs</option></select>')
+                        .appendTo(header.empty());
+                    programs.forEach(function(program) {
+                        select.append('<option value="' + program.name + '">' + program.name + '</option>');
+                    });
+                    select.on('change', function() {
+                        column.search($(this).val()).draw();
+                    });
+                }
+                // Institutional Outcome column (index 4 in DataTable, idx=4 in loop)
+                else if (title === 'Institutional Outcome') {
+                    var select = $('<select class="form-select form-select-sm"><option value="">All Institutional Outcomes</option></select>')
+                        .appendTo(header.empty());
+                    institutionalOutcomes.forEach(function(io) {
+                        if (io.code) {
+                            select.append('<option value="' + io.code + '">' + io.code + '</option>');
+                        }
+                    });
+                    select.on('change', function() {
+                        column.search($(this).val()).draw();
+                    });
+                }
+                else {
+                    header.html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+                    $('input', header).on('keyup change clear', function() {
+                        if (column.search() !== this.value) {
+                            column.search(this.value).draw();
+                        }
+                    });
+                }
             });
         }
     });

@@ -17,26 +17,29 @@ $params = getDataTablesParams();
 
 // Define searchable columns
 $searchableColumns = [
-    'program_code',
-    'program_name',
-    'degree_type'
+    'p.program_code',
+    'p.program_name',
+    'p.degree_type',
+    'd.department_name',
+    'd.department_code'
 ];
 
 // Column definitions for ordering (must match DataTables column order)
 $columns = [
-    'programs_pk',
-    'program_code',
-    'program_name',
-    'degree_type',
-    'is_active',
-    'created_at',
+    'p.programs_pk',
+    'p.program_code',
+    'p.program_name',
+    'd.department_name',
+    'p.degree_type',
+    'p.is_active',
+    'p.created_at',
     'actions' // Not sortable, placeholder
 ];
 
 // Get order column name
-$orderColumn = $columns[$params['orderColumn']] ?? 'program_name';
+$orderColumn = $columns[$params['orderColumn']] ?? 'p.program_name';
 if ($orderColumn === 'actions') {
-    $orderColumn = 'program_name';
+    $orderColumn = 'p.program_name';
 }
 
 // Build WHERE clause
@@ -53,7 +56,7 @@ $totalRow = $totalResult->fetch();
 $recordsTotal = $totalRow['total'];
 
 // Get filtered records count
-$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}programs {$whereClause}";
+$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}programs p LEFT JOIN {$dbPrefix}departments d ON p.department_fk = d.departments_pk {$whereClause}";
 if (!empty($whereParams)) {
     $filteredResult = $db->query($countQuery, $whereParams, $whereTypes);
 } else {
@@ -64,8 +67,9 @@ $recordsFiltered = $filteredRow['total'];
 
 // Get data
 $dataQuery = "
-    SELECT *
-    FROM {$dbPrefix}programs
+    SELECT p.*, d.department_name, d.department_code
+    FROM {$dbPrefix}programs p
+    LEFT JOIN {$dbPrefix}departments d ON p.department_fk = d.departments_pk
     {$whereClause}
     ORDER BY {$orderColumn} {$params['orderDir']}
     LIMIT ? OFFSET ?
@@ -93,6 +97,7 @@ foreach ($programs as $row) {
         htmlspecialchars($row['programs_pk']),
         '<span class="badge bg-primary">' . htmlspecialchars($row['program_code']) . '</span>',
         htmlspecialchars($row['program_name']),
+        htmlspecialchars($row['department_name'] ?? 'N/A'),
         htmlspecialchars($row['degree_type'] ?? ''),
         '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
         htmlspecialchars($row['created_at'] ?? ''),

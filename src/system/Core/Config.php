@@ -92,7 +92,9 @@ class Config
         $currentPath = [];
         $lastIndent = 0;
         
-        foreach ($lines as $line) {
+        for ($i = 0; $i < count($lines); $i++) {
+            $line = $lines[$i];
+            
             // Skip empty lines and comments
             if (trim($line) === '' || preg_match('/^\s*#/', $line)) {
                 continue;
@@ -101,25 +103,45 @@ class Config
             // Get indentation level
             preg_match('/^(\s*)/', $line, $matches);
             $indent = strlen($matches[1]);
-            $line = ltrim($line);
+            $trimmedLine = ltrim($line);
             
             // Handle indent changes
             $indentChange = ($indent - $lastIndent) / 2;
             if ($indentChange < 0) {
                 // Going back up the tree
-                for ($i = 0; $i < abs($indentChange); $i++) {
+                for ($j = 0; $j < abs($indentChange); $j++) {
                     array_pop($currentPath);
                 }
             }
             
             // Parse key-value pair
-            if (preg_match('/^([^:]+):\s*(.*)$/', $line, $matches)) {
+            if (preg_match('/^([^:]+):\s*(.*)$/', $trimmedLine, $matches)) {
                 $key = trim($matches[1]);
                 $value = trim($matches[2]);
                 
                 if ($value === '') {
-                    // This is a parent key
-                    $currentPath[] = $key;
+                    // Check if next non-empty, non-comment line is more indented
+                    $isParent = false;
+                    for ($j = $i + 1; $j < count($lines); $j++) {
+                        $nextLine = $lines[$j];
+                        if (trim($nextLine) === '' || preg_match('/^\s*#/', $nextLine)) {
+                            continue;
+                        }
+                        preg_match('/^(\s*)/', $nextLine, $nextMatches);
+                        $nextIndent = strlen($nextMatches[1]);
+                        if ($nextIndent > $indent) {
+                            $isParent = true;
+                        }
+                        break;
+                    }
+                    
+                    if ($isParent) {
+                        // This is a parent key
+                        $currentPath[] = $key;
+                    } else {
+                        // This is a key with empty value
+                        $this->setNestedValue($config, array_merge($currentPath, [$key]), '');
+                    }
                 } else {
                     // This is a key-value pair
                     $value = $this->parseValue($value);

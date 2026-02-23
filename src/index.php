@@ -85,6 +85,9 @@ if (file_exists(CONFIG_PATH)) {
         ini_set('display_errors', '1');
     }
     
+    // Start session for authentication
+    session_start();
+    
     // TODO: Autoloader will go here
     // require_once APP_ROOT . '/system/Core/Autoloader.php';
     
@@ -93,9 +96,14 @@ if (file_exists(CONFIG_PATH)) {
     // $router = new \Mosaic\Core\Router();
     // $router->dispatch($_SERVER['REQUEST_URI'], $_SERVER['REQUEST_METHOD']);
     
-    // Temporary: Redirect to administration dashboard
-    // Later, this can become a public landing page or login page
-    \Mosaic\Core\Path::redirect('administration/');
+    // Check authentication
+    if (!isset($_SESSION['user_id'])) {
+        // Not logged in - redirect to login page
+        \Mosaic\Core\Path::redirect('login.php');
+    } else {
+        // Logged in - redirect to administration dashboard
+        \Mosaic\Core\Path::redirect('administration/');
+    }
     
 } else {
     // No configuration - redirect to web-based setup

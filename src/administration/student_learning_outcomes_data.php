@@ -6,11 +6,13 @@ require_once __DIR__ . '/../system/includes/init.php';
 
 $params = getDataTablesParams();
 
-$searchableColumns = ['slo_code', 'slo_description', 'c.course_name'];
+$searchableColumns = ['slo_code', 'slo_description', 'c.course_name', 'ss.set_name', 'po.code'];
 
 $columns = [
     'student_learning_outcomes_pk',
+    'set_name',
     'course_name',
+    'program_outcome_code',
     'slo_code',
     'slo_description',
     'sequence_num',
@@ -24,6 +26,12 @@ if ($orderColumn === 'actions') {
 }
 if ($orderColumn === 'course_name') {
     $orderColumn = 'c.course_name';
+}
+if ($orderColumn === 'set_name') {
+    $orderColumn = 'ss.set_name';
+}
+if ($orderColumn === 'program_outcome_code') {
+    $orderColumn = 'po.code';
 }
 
 $whereParams = [];
@@ -39,7 +47,9 @@ $recordsTotal = $totalRow['total'];
 
 $countQuery = "SELECT COUNT(*) as total 
                FROM {$dbPrefix}student_learning_outcomes slo 
-               LEFT JOIN {$dbPrefix}courses c ON slo.course_fk = c.courses_pk 
+               LEFT JOIN {$dbPrefix}courses c ON slo.course_fk = c.courses_pk
+               LEFT JOIN {$dbPrefix}slo_sets ss ON slo.slo_set_fk = ss.slo_sets_pk 
+               LEFT JOIN {$dbPrefix}program_outcomes po ON slo.program_outcomes_fk = po.program_outcomes_pk 
                {$whereClause}";
 if (!empty($whereParams)) {
     $filteredResult = $db->query($countQuery, $whereParams, $whereTypes);
@@ -50,9 +60,11 @@ $filteredRow = $filteredResult->fetch();
 $recordsFiltered = $filteredRow['total'];
 
 $dataQuery = "
-    SELECT slo.*, c.course_name, c.course_number
+    SELECT slo.*, c.course_name, c.course_number, ss.set_name, ss.set_code, po.code as program_outcome_code
     FROM {$dbPrefix}student_learning_outcomes slo
     LEFT JOIN {$dbPrefix}courses c ON slo.course_fk = c.courses_pk
+    LEFT JOIN {$dbPrefix}slo_sets ss ON slo.slo_set_fk = ss.slo_sets_pk
+    LEFT JOIN {$dbPrefix}program_outcomes po ON slo.program_outcomes_fk = po.program_outcomes_pk
     {$whereClause}
     ORDER BY {$orderColumn} {$params['orderDir']}
     LIMIT ? OFFSET ?
@@ -78,9 +90,15 @@ foreach ($slos as $row) {
         ? substr($row['slo_description'], 0, 60) . '...' 
         : $row['slo_description'];
     
+    $programOutcomeDisplay = !empty($row['program_outcome_code']) 
+        ? '<span class="badge bg-info">' . htmlspecialchars($row['program_outcome_code']) . '</span>' 
+        : '<span class="text-muted">-</span>';
+    
     $data[] = [
         htmlspecialchars($row['student_learning_outcomes_pk']),
+        htmlspecialchars($row['set_name'] ?? '') . ' <small class="text-muted">(' . htmlspecialchars($row['set_code'] ?? '') . ')</small>',
         htmlspecialchars($row['course_name'] ?? '') . ' (' . htmlspecialchars($row['course_number'] ?? '') . ')',
+        $programOutcomeDisplay,
         '<span class="badge bg-primary">' . htmlspecialchars($row['slo_code']) . '</span>',
         htmlspecialchars($descriptionPreview),
         htmlspecialchars($row['sequence_num']),

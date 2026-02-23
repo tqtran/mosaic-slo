@@ -75,8 +75,8 @@ Data (Prepared Statements, Encryption, Audit)
 ### 5. Authentication Security
 
 **Password Security:**
-- Bcrypt hashing, cost 12
-- Salt automatically handled by bcrypt
+- Argon2id hashing (64MB memory, 4 iterations, 2 threads)
+- Salt automatically handled by Argon2id
 - No password length maximum
 - Rate limiting on login attempts
 
@@ -107,7 +107,7 @@ Data (Prepared Statements, Encryption, Audit)
 
 **Encryption:**
 - Secrets encrypted at rest (AES-256)
-- Passwords hashed with bcrypt
+- Passwords hashed with Argon2id
 - API keys encrypted in database
 - TLS 1.2+ for transport
 
@@ -212,7 +212,7 @@ Data (Prepared Statements, Encryption, Audit)
 
 ### Pre-Deployment
 
-- [ ] All passwords hashed with bcrypt
+- [ ] All passwords hashed with Argon2id
 - [ ] Prepared statements for all queries
 - [ ] Output escaping on all user data
 - [ ] CSRF tokens on all forms

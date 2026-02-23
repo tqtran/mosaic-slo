@@ -283,17 +283,15 @@ $theme->showHeader($context);
                             <th>Created</th>
                             <th>Actions</th>
                         </tr>
-                    </thead>
-                    <tfoot>
                         <tr>
-                            <th>ID</th>
-                            <th>Institution Code</th>
-                            <th>Institution Name</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Actions</th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                         </tr>
-                    </tfoot>
+                    </thead>
                     <tbody>
                         <!-- Data loaded via AJAX -->
                     </tbody>
@@ -450,9 +448,9 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#institutionsTable tfoot th').each(function() {
-        var title = $(this).text();
+    // Setup - add a text input to each header cell (second row)
+    $('#institutionsTable thead tr:eq(1) th').each(function(i) {
+        var title = $('#institutionsTable thead tr:eq(0) th:eq(' + i + ')').text();
         if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         } else {
@@ -480,7 +478,7 @@ $(document).ready(function() {
             // Apply the search
             this.api().columns().every(function() {
                 var column = this;
-                $('input', this.footer()).on('keyup change clear', function() {
+                $('input', this.header()).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }

@@ -28,7 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         switch ($action) {
             case 'add':
-                $institutionFk = (int)($_POST['institution_fk'] ?? 0);
                 $outcomeCode = trim($_POST['outcome_code'] ?? '');
                 $outcomeDescription = trim($_POST['outcome_description'] ?? '');
                 $sequenceNum = (int)($_POST['sequence_num'] ?? 0);
@@ -36,9 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Validation
                 $errors = [];
-                if ($institutionFk <= 0) {
-                    $errors[] = 'Institution is required';
-                }
                 if (empty($outcomeCode)) {
                     $errors[] = 'Outcome code is required';
                 } elseif (!preg_match('/^[A-Z0-9_.-]+$/i', $outcomeCode)) {
@@ -46,13 +42,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     // Check uniqueness
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}institutional_outcomes WHERE outcome_code = ? AND institution_fk = ?",
-                        [$outcomeCode, $institutionFk],
-                        'si'
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}institutional_outcomes WHERE outcome_code = ?",
+                        [$outcomeCode],
+                        's'
                     );
                     $row = $result->fetch();
                     if ($row['count'] > 0) {
-                        $errors[] = 'Outcome code already exists for this institution';
+                        $errors[] = 'Outcome code already exists';
                     }
                 }
                 if (empty($outcomeDescription)) {
@@ -61,10 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (empty($errors)) {
                     $db->query(
-                        "INSERT INTO {$dbPrefix}institutional_outcomes (institution_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$institutionFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive],
-                        'issii'
+                        "INSERT INTO {$dbPrefix}institutional_outcomes (outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
+                         VALUES (?, ?, ?, ?, NOW(), NOW())",
+                        [$outcomeCode, $outcomeDescription, $sequenceNum, $isActive],
+                        'ssii'
                     );
                     $successMessage = 'Institutional outcome added successfully';
                 } else {
@@ -74,7 +70,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'edit':
                 $id = (int)($_POST['outcome_id'] ?? 0);
-                $institutionFk = (int)($_POST['institution_fk'] ?? 0);
                 $outcomeCode = trim($_POST['outcome_code'] ?? '');
                 $outcomeDescription = trim($_POST['outcome_description'] ?? '');
                 $sequenceNum = (int)($_POST['sequence_num'] ?? 0);
@@ -85,9 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($id <= 0) {
                     $errors[] = 'Invalid outcome ID';
                 }
-                if ($institutionFk <= 0) {
-                    $errors[] = 'Institution is required';
-                }
                 if (empty($outcomeCode)) {
                     $errors[] = 'Outcome code is required';
                 } elseif (!preg_match('/^[A-Z0-9_.-]+$/i', $outcomeCode)) {
@@ -96,13 +88,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Check uniqueness (excluding current record)
                     $result = $db->query(
                         "SELECT COUNT(*) as count FROM {$dbPrefix}institutional_outcomes 
-                         WHERE outcome_code = ? AND institution_fk = ? AND institutional_outcomes_pk != ?",
-                        [$outcomeCode, $institutionFk, $id],
-                        'sii'
+                         WHERE outcome_code = ? AND institutional_outcomes_pk != ?",
+                        [$outcomeCode, $id],
+                        'si'
                     );
                     $row = $result->fetch();
                     if ($row['count'] > 0) {
-                        $errors[] = 'Outcome code already exists for this institution';
+                        $errors[] = 'Outcome code already exists';
                     }
                 }
                 if (empty($outcomeDescription)) {
@@ -112,10 +104,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($errors)) {
                     $db->query(
                         "UPDATE {$dbPrefix}institutional_outcomes 
-                         SET institution_fk = ?, outcome_code = ?, outcome_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
+                         SET outcome_code = ?, outcome_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
                          WHERE institutional_outcomes_pk = ?",
-                        [$institutionFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive, $id],
-                        'issiii'
+                        [$outcomeCode, $outcomeDescription, $sequenceNum, $isActive, $id],
+                        'ssiii'
                     );
                     $successMessage = 'Institutional outcome updated successfully';
                 } else {
@@ -172,30 +164,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $skipped = 0;
                         
                         while (($row = fgetcsv($handle)) !== false) {
-                            if (count($row) >= 3) {
-                                $institutionCode = trim($row[0]);
-                                $outcomeCode = trim($row[1]);
-                                $outcomeDescription = trim($row[2]);
-                                $sequenceNum = isset($row[3]) ? (int)trim($row[3]) : 0;
-                                $isActive = isset($row[4]) && strtolower(trim($row[4])) === 'active' ? 1 : 0;
+                            if (count($row) >= 2) {
+                                $outcomeCode = trim($row[0]);
+                                $outcomeDescription = trim($row[1]);
+                                $sequenceNum = isset($row[2]) ? (int)trim($row[2]) : 0;
+                                $isActive = isset($row[3]) && strtolower(trim($row[3])) === 'active' ? 1 : 0;
                                 
-                                // Find institution by code
-                                $instResult = $db->query(
-                                    "SELECT institution_pk FROM {$dbPrefix}institution WHERE institution_code = ?",
-                                    [$institutionCode],
-                                    's'
-                                );
-                                
-                                if ($instResult->rowCount() > 0 && !empty($outcomeCode) && !empty($outcomeDescription) && preg_match('/^[A-Z0-9_.-]+$/i', $outcomeCode)) {
-                                    $inst = $instResult->fetch();
-                                    $institutionFk = $inst['institution_pk'];
-                                    
+                                if (!empty($outcomeCode) && !empty($outcomeDescription) && preg_match('/^[A-Z0-9_.-]+$/i', $outcomeCode)) {
                                     // Check if exists
                                     $result = $db->query(
                                         "SELECT institutional_outcomes_pk FROM {$dbPrefix}institutional_outcomes 
-                                         WHERE outcome_code = ? AND institution_fk = ?",
-                                        [$outcomeCode, $institutionFk],
-                                        'si'
+                                         WHERE outcome_code = ?",
+                                        [$outcomeCode],
+                                        's'
                                     );
                                     
                                     if ($result->rowCount() > 0) {
@@ -211,10 +192,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     } else {
                                         // Insert new
                                         $db->query(
-                                            "INSERT INTO {$dbPrefix}institutional_outcomes (institution_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
-                                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                                            [$institutionFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive],
-                                            'issii'
+                                            "INSERT INTO {$dbPrefix}institutional_outcomes (outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
+                                             VALUES (?, ?, ?, ?, NOW(), NOW())",
+                                            [$outcomeCode, $outcomeDescription, $sequenceNum, $isActive],
+                                            'ssii'
                                         );
                                     }
                                     $imported++;
@@ -246,10 +227,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
-
-// Fetch institutions for dropdown
-$institutionsResult = $db->query("SELECT * FROM {$dbPrefix}institution WHERE is_active = 1 ORDER BY institution_name ASC");
-$institutions = $institutionsResult->fetchAll();
 
 // Calculate statistics
 $statsResult = $db->query("
@@ -368,7 +345,6 @@ $theme->showHeader($context);
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Institution</th>
                             <th>Code</th>
                             <th>Description</th>
                             <th>Sequence</th>
@@ -376,11 +352,19 @@ $theme->showHeader($context);
                             <th>Created</th>
                             <th>Actions</th>
                         </tr>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                        </tr>
                     </thead>
                     <tfoot>
                         <tr>
                             <th>ID</th>
-                            <th>Institution</th>
                             <th>Code</th>
                             <th>Description</th>
                             <th>Sequence</th>
@@ -410,15 +394,6 @@ $theme->showHeader($context);
                 <div class="modal-body">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="action" value="add">
-                    <div class="mb-3">
-                        <label for="institutionFk" class="form-label">Institution</label>
-                        <select class="form-select" id="institutionFk" name="institution_fk" required>
-                            <option value="">Select Institution</option>
-                            <?php foreach ($institutions as $inst): ?>
-                            <option value="<?= $inst['institution_pk'] ?>"><?= htmlspecialchars($inst['institution_name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="outcomeCode" class="form-label">Outcome Code</label>
@@ -461,15 +436,6 @@ $theme->showHeader($context);
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" name="outcome_id" id="editOutcomeId">
-                    <div class="mb-3">
-                        <label for="editInstitutionFk" class="form-label">Institution</label>
-                        <select class="form-select" id="editInstitutionFk" name="institution_fk" required>
-                            <option value="">Select Institution</option>
-                            <?php foreach ($institutions as $inst): ?>
-                            <option value="<?= $inst['institution_pk'] ?>"><?= htmlspecialchars($inst['institution_name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="editOutcomeCode" class="form-label">Outcome Code</label>
@@ -509,12 +475,12 @@ $theme->showHeader($context);
             <div class="modal-body">
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <strong>Institution:</strong>
-                        <p id="viewInstitution"></p>
-                    </div>
-                    <div class="col-md-6">
                         <strong>Outcome Code:</strong>
                         <p id="viewOutcomeCode"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Sequence:</strong>
+                        <p id="viewSequenceNum"></p>
                     </div>
                 </div>
                 <div class="row mb-3">
@@ -524,15 +490,11 @@ $theme->showHeader($context);
                     </div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-4">
-                        <strong>Sequence:</strong>
-                        <p id="viewSequenceNum"></p>
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <strong>Status:</strong>
                         <p id="viewOutcomeStatus"></p>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <strong>ID:</strong>
                         <p id="viewOutcomeId"></p>
                     </div>
@@ -571,7 +533,7 @@ $theme->showHeader($context);
                     <div class="mb-3">
                         <label for="outcomeUpload" class="form-label">Upload CSV File</label>
                         <input type="file" class="form-control" id="outcomeUpload" name="outcome_upload" accept=".csv" required>
-                        <small class="form-text text-muted">CSV format: Institution Code, Outcome Code, Description, Sequence, Status (Active/Inactive)</small>
+                        <small class="form-text text-muted">CSV format: Outcome Code, Description, Sequence, Status (Active/Inactive)</small>
                     </div>
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> Existing records with matching codes will be updated.
@@ -615,9 +577,9 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#outcomesTable tfoot th').each(function() {
-        var title = $(this).text();
+    // Setup - add a text input to each header cell (second row)
+    $('#outcomesTable thead tr:eq(1) th').each(function(i) {
+        var title = $('#outcomesTable thead tr:eq(0) th:eq(' + i + ')').text();
         if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         } else {
@@ -635,19 +597,18 @@ $(document).ready(function() {
         ],
         columns: [
             { data: 0, name: 'institutional_outcomes_pk' },
-            { data: 1, name: 'institution_name' },
-            { data: 2, name: 'outcome_code' },
-            { data: 3, name: 'outcome_description' },
-            { data: 4, name: 'sequence_num' },
-            { data: 5, name: 'is_active' },
-            { data: 6, name: 'created_at' },
-            { data: 7, name: 'actions', orderable: false, searchable: false }
+            { data: 1, name: 'outcome_code' },
+            { data: 2, name: 'outcome_description' },
+            { data: 3, name: 'sequence_num' },
+            { data: 4, name: 'is_active' },
+            { data: 5, name: 'created_at' },
+            { data: 6, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             // Apply the search
             this.api().columns().every(function() {
                 var column = this;
-                $('input', this.footer()).on('keyup change clear', function() {
+                $('input', this.header()).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -658,7 +619,6 @@ $(document).ready(function() {
 });
 
 function viewOutcome(outcome) {
-    $('#viewInstitution').text(outcome.institution_name);
     $('#viewOutcomeCode').text(outcome.outcome_code);
     $('#viewOutcomeDescription').text(outcome.outcome_description);
     $('#viewSequenceNum').text(outcome.sequence_num);
@@ -671,7 +631,6 @@ function viewOutcome(outcome) {
 
 function editOutcome(outcome) {
     $('#editOutcomeId').val(outcome.institutional_outcomes_pk);
-    $('#editInstitutionFk').val(outcome.institution_fk);
     $('#editOutcomeCode').val(outcome.outcome_code);
     $('#editOutcomeDescription').val(outcome.outcome_description);
     $('#editSequenceNum').val(outcome.sequence_num);

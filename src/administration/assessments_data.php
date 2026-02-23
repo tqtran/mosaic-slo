@@ -25,7 +25,8 @@ if (!in_array($orderDirection, ['ASC', 'DESC'])) {
 
 $columns = [
     'a.assessments_pk', 
-    'cs.crn', 
+    'e.term_code', 
+    'e.crn', 
     'CONCAT(s.student_last_name, ", ", s.student_first_name)', 
     'slo.slo_code', 
     'a.score_value', 
@@ -36,7 +37,7 @@ $columns = [
 $orderColumn = $columns[$orderColumnIndex] ?? 'a.assessed_date';
 
 $columnSearch = [];
-$searchColumns = ['crn', 'student_name', 'slo_code', 'score_value', 'achievement_level', 'assessed_date', 'is_finalized'];
+$searchColumns = ['term_code', 'crn', 'student_name', 'slo_code', 'score_value', 'achievement_level', 'assessed_date', 'is_finalized'];
 foreach ($searchColumns as $index => $column) {
     $searchVal = $_GET['columns'][$index + 1]['search']['value'] ?? '';
     if ($searchVal !== '') {
@@ -50,8 +51,9 @@ $types = '';
 
 if ($searchValue !== '') {
     $searchConditions = [];
-    $searchConditions[] = "cs.crn LIKE ?";
-    $searchConditions[] = "s.student_id LIKE ?";
+    $searchConditions[] = "e.term_code LIKE ?";
+    $searchConditions[] = "e.crn LIKE ?";
+    $searchConditions[] = "s.c_number LIKE ?";
     $searchConditions[] = "s.student_first_name LIKE ?";
     $searchConditions[] = "s.student_last_name LIKE ?";
     $searchConditions[] = "slo.slo_code LIKE ?";
@@ -69,15 +71,20 @@ foreach ($columnSearch as $column => $value) {
         $where[] = "a.is_finalized = ?";
         $params[] = $activeValue;
         $types .= 'i';
+    } else if ($column === 'term_code') {
+        $where[] = "e.term_code LIKE ?";
+        $params[] = "%{$value}%";
+        $types .= 's';
     } else if ($column === 'crn') {
-        $where[] = "cs.crn LIKE ?";
+        $where[] = "e.crn LIKE ?";
         $params[] = "%{$value}%";
         $types .= 's';
     } else if ($column === 'student_name') {
-        $where[] = "(s.student_first_name LIKE ? OR s.student_last_name LIKE ?)";
+        $where[] = "(s.student_first_name LIKE ? OR s.student_last_name LIKE ? OR s.c_number LIKE ?)";
         $params[] = "%{$value}%";
         $params[] = "%{$value}%";
-        $types .= 'ss';
+        $params[] = "%{$value}%";
+        $types .= 'sss';
     } else if ($column === 'slo_code') {
         $where[] = "slo.slo_code LIKE ?";
         $params[] = "%{$value}%";
@@ -96,11 +103,9 @@ $totalRow = $totalResult->fetch();
 $totalRecords = $totalRow['total'];
 
 $fromClause = "FROM {$dbPrefix}assessments a
-    LEFT JOIN {$dbPrefix}course_sections cs ON a.course_section_fk = cs.course_sections_pk
-    LEFT JOIN {$dbPrefix}courses c ON cs.course_fk = c.courses_pk
-    LEFT JOIN {$dbPrefix}students s ON a.students_fk = s.students_pk
-    LEFT JOIN {$dbPrefix}student_learning_outcomes slo ON a.student_learning_outcome_fk = slo.student_learning_outcomes_pk
-    LEFT JOIN {$dbPrefix}courses c2 ON slo.course_fk = c2.courses_pk";
+    INNER JOIN {$dbPrefix}enrollment e ON a.enrollment_fk = e.enrollment_pk
+    INNER JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
+    LEFT JOIN {$dbPrefix}student_learning_outcomes slo ON a.student_learning_outcome_fk = slo.student_learning_outcomes_pk";
 
 if ($whereClause) {
     $filteredResult = $db->query(
@@ -114,13 +119,11 @@ if ($whereClause) {
     $totalFiltered = $totalRecords;
 }
 
-$sql = "SELECT a.assessments_pk, a.course_section_fk, a.students_fk, a.student_learning_outcome_fk,
+$sql = "SELECT a.assessments_pk, a.enrollment_fk, a.student_learning_outcome_fk,
                a.score_value, a.achievement_level, a.assessment_method, a.notes, a.assessed_date, a.is_finalized,
-               cs.crn,
-               c.course_name, c.course_number,
-               s.student_id, s.student_first_name, s.student_last_name,
-               slo.slo_code, slo.slo_description,
-               c2.course_name as slo_course_name, c2.course_number as slo_course_number
+               e.term_code, e.crn,
+               s.c_number, s.student_first_name, s.student_last_name,
+               slo.slo_code, slo.slo_description
         {$fromClause}
         {$whereClause}
         ORDER BY {$orderColumn} {$orderDirection}
@@ -144,8 +147,7 @@ while ($row = $result->fetch()) {
     
     $rowData = json_encode([
         'assessments_pk' => $row['assessments_pk'],
-        'course_section_fk' => $row['course_section_fk'],
-        'students_fk' => $row['students_fk'],
+        'enrollment_fk' => $row['enrollment_fk'],
         'student_learning_outcome_fk' => $row['student_learning_outcome_fk'],
         'score_value' => $row['score_value'],
         'achievement_level' => $row['achievement_level'],
@@ -169,6 +171,7 @@ while ($row = $result->fetch()) {
     
     $data[] = [
         $row['assessments_pk'],
+        htmlspecialchars($row['term_code']),
         htmlspecialchars($row['crn']),
         $studentName,
         $sloDisplay,

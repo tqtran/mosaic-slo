@@ -18,14 +18,12 @@ $params = getDataTablesParams();
 // Define searchable columns
 $searchableColumns = [
     'io.outcome_code',
-    'io.outcome_description',
-    'i.institution_name'
+    'io.outcome_description'
 ];
 
 // Column definitions for ordering (must match DataTables column order)
 $columns = [
     'io.institutional_outcomes_pk',
-    'i.institution_name',
     'io.outcome_code',
     'io.outcome_description',
     'io.sequence_num',
@@ -57,7 +55,6 @@ $recordsTotal = $totalRow['total'];
 $countQuery = "
     SELECT COUNT(*) as total 
     FROM {$dbPrefix}institutional_outcomes io
-    JOIN {$dbPrefix}institution i ON io.institution_fk = i.institution_pk
     {$whereClause}
 ";
 if (!empty($whereParams)) {
@@ -72,8 +69,6 @@ $recordsFiltered = $filteredRow['total'];
 $dataQuery = "
     SELECT 
         io.institutional_outcomes_pk,
-        io.institution_fk,
-        i.institution_name,
         io.outcome_code,
         io.outcome_description,
         io.sequence_num,
@@ -81,7 +76,6 @@ $dataQuery = "
         io.created_at,
         io.updated_at
     FROM {$dbPrefix}institutional_outcomes io
-    JOIN {$dbPrefix}institution i ON io.institution_fk = i.institution_pk
     {$whereClause}
     ORDER BY {$orderColumn} {$params['orderDir']}
     LIMIT ? OFFSET ?
@@ -112,7 +106,6 @@ foreach ($outcomes as $row) {
     
     $data[] = [
         htmlspecialchars($row['institutional_outcomes_pk']),
-        htmlspecialchars($row['institution_name']),
         '<span class="badge bg-primary">' . htmlspecialchars($row['outcome_code']) . '</span>',
         htmlspecialchars($descriptionPreview),
         htmlspecialchars($row['sequence_num']),

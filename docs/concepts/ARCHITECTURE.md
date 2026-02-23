@@ -164,7 +164,7 @@ users
 
 ## Security Features
 
-- Password hashing (bcrypt)
+- Password hashing (Argon2id)
 - SQL injection prevention (prepared statements)
 - XSS protection (output escaping)
 - CSRF protection

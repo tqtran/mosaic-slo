@@ -22,6 +22,9 @@ declare(strict_types=1);
  *   BASE_PATH    - Constant alternative to $basePath
  *   SITE_NAME    - Constant alternative to $siteName
  *   APP_VERSION  - Constant alternative to $appVersion
+ *   EMERGENCY_ADMIN_ENABLED  - Whether emergency admin is enabled
+ *   EMERGENCY_ADMIN_USERNAME - Emergency admin username (break glass)
+ *   EMERGENCY_ADMIN_PASSWORD - Emergency admin password (break glass)
  * 
  * Usage:
  *   require_once __DIR__ . '/../system/includes/init.php';
@@ -64,6 +67,24 @@ if (!defined('BASE_URL')) define('BASE_URL', $baseUrl);
 if (!defined('BASE_PATH')) define('BASE_PATH', $basePath);
 if (!defined('SITE_NAME')) define('SITE_NAME', $siteName);
 if (!defined('APP_VERSION')) define('APP_VERSION', $appVersion);
+if (!defined('DEBUG_MODE')) define('DEBUG_MODE', $debugMode);
+
+// Emergency admin (break glass account)
+if (!defined('EMERGENCY_ADMIN_ENABLED')) {
+    define('EMERGENCY_ADMIN_ENABLED', $config->get('emergency_admin.enabled', false) === true);
+}
+if (!defined('EMERGENCY_ADMIN_USERNAME')) {
+    define('EMERGENCY_ADMIN_USERNAME', $config->get('emergency_admin.username', null));
+}
+if (!defined('EMERGENCY_ADMIN_PASSWORD')) {
+    define('EMERGENCY_ADMIN_PASSWORD', $config->get('emergency_admin.password', null));
+}
+
+// DEBUG: Log what was loaded
+error_log("[INIT] Config loaded - emergency_admin.enabled: " . var_export($config->get('emergency_admin.enabled'), true));
+error_log("[INIT] Config loaded - emergency_admin.username: " . var_export($config->get('emergency_admin.username'), true));
+error_log("[INIT] Config loaded - emergency_admin.password: " . var_export($config->get('emergency_admin.password'), true));
+error_log("[INIT] Full config dump: " . print_r($config->all(), true));
 
 // Initialize database connection
 $db = \Mosaic\Core\Database::getInstance($configData['database']);

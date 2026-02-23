@@ -103,9 +103,17 @@ require_once __DIR__ . '/system/includes/header.php';
 
 **Three concurrent auth methods:**
 
-1. **Dashboard**: Local bcrypt (cost 12) with session-based auth
+1. **Dashboard**: Local Argon2id (64MB memory, 4 iterations) with session-based auth
 2. **LTI**: OAuth 1.0 (LTI 1.1) or JWT/JWKS (LTI 1.3) from Learning Management Systems
 3. **SAML SSO**: SAML 2.0 federation with institutional Identity Providers
+
+**Emergency Admin (Break Glass)**:
+- Configuration-based account in `config.yaml` (default: sloadmin@breakglass.idx/slopass)
+- Email format required for login form compatibility
+- Bypasses database for emergency recovery access
+- Password stored in plain text - change immediately after setup
+- Checked BEFORE database authentication
+- Disable by setting `emergency_admin.enabled: false`
 
 **Security Requirements** (see [docs/concepts/SECURITY.md](../docs/concepts/SECURITY.md)):
 

@@ -60,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $studentCNum = trim($_POST['student_c_number'] ?? '');
                 $enrollmentStatus = trim($_POST['enrollment_status'] ?? 'enrolled');
                 $enrollmentDate = trim($_POST['enrollment_date'] ?? date('Y-m-d'));
+                $dropDate = !empty($_POST['drop_date']) ? trim($_POST['drop_date']) : null;
                 
                 // Validation
                 $errors = [];
@@ -109,10 +110,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         // Insert enrollment
                         $db->query(
-                            "INSERT INTO {$dbPrefix}enrollment (term_code, crn, student_fk, enrollment_status, enrollment_date, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                            [$termCode, $crn, $studentFk, $enrollmentStatus, $enrollmentDate],
-                            'ssiss'
+                            "INSERT INTO {$dbPrefix}enrollment (term_code, crn, student_fk, enrollment_status, enrollment_date, drop_date, created_at, updated_at) 
+                             VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                            [$termCode, $crn, $studentFk, $enrollmentStatus, $enrollmentDate, $dropDate],
+                            'ssisss'
                         );
                         $successMessage = 'Enrollment added successfully';
                     }
@@ -127,14 +128,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id = (int)($_POST['enrollment_id'] ?? 0);
                 $enrollmentStatus = trim($_POST['enrollment_status'] ?? 'enrolled');
                 $enrollmentDate = trim($_POST['enrollment_date'] ?? date('Y-m-d'));
+                $dropDate = !empty($_POST['drop_date']) ? trim($_POST['drop_date']) : null;
                 
                 if ($id > 0) {
                     $db->query(
                         "UPDATE {$dbPrefix}enrollment 
-                         SET enrollment_status = ?, enrollment_date = ?, updated_at = NOW()
+                         SET enrollment_status = ?, enrollment_date = ?, drop_date = ?, updated_at = NOW()
                          WHERE enrollment_pk = ?",
-                        [$enrollmentStatus, $enrollmentDate, $id],
-                        'ssi'
+                        [$enrollmentStatus, $enrollmentDate, $dropDate, $id],
+                        'sssi'
                     );
                     $successMessage = 'Enrollment updated successfully';
                 } else {
@@ -174,7 +176,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $lastName = isset($row[4]) ? trim($row[4]) : '';  // LN
                                 $enrollmentStatus = isset($row[5]) ? trim($row[5]) : '1';  // status (1,2,7)
                                 $enrollmentDate = isset($row[6]) ? trim($row[6]) : date('Y-m-d');  // regdate
-                                $lastUpdated = isset($row[7]) ? trim($row[7]) : null;  // updated
+                                $dropDate = isset($row[7]) ? trim($row[7]) : null;  // drop_date
+                                $lastUpdated = isset($row[8]) ? trim($row[8]) : null;  // updated
                                 
                                 if (empty($termCode) || empty($crn) || empty($studentCNum)) {
                                     $skipped++;
@@ -227,22 +230,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     // Update existing
                                     $enroll = $enrollResult->fetch();
                                     $updateSql = "UPDATE {$dbPrefix}enrollment 
-                                                  SET enrollment_status = ?, enrollment_date = ?, updated_at = ";
+                                                  SET enrollment_status = ?, enrollment_date = ?, drop_date = ?, updated_at = ";
                                     $updateSql .= $lastUpdated ? "?" : "NOW()";
                                     $updateSql .= " WHERE enrollment_pk = ?";
                                     
                                     if ($lastUpdated) {
-                                        $db->query($updateSql, [$enrollmentStatus, $enrollmentDate, $lastUpdated, $enroll['enrollment_pk']], 'sssi');
+                                        $db->query($updateSql, [$enrollmentStatus, $enrollmentDate, $dropDate, $lastUpdated, $enroll['enrollment_pk']], 'ssssi');
                                     } else {
-                                        $db->query($updateSql, [$enrollmentStatus, $enrollmentDate, $enroll['enrollment_pk']], 'ssi');
+                                        $db->query($updateSql, [$enrollmentStatus, $enrollmentDate, $dropDate, $enroll['enrollment_pk']], 'sssi');
                                     }
                                 } else {
                                     // Insert new
                                     $db->query(
-                                        "INSERT INTO {$dbPrefix}enrollment (term_code, crn, student_fk, enrollment_status, enrollment_date, created_at, updated_at) 
-                                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                                        [$termCode, $crn, $studentFk, $enrollmentStatus, $enrollmentDate],
-                                        'ssiss'
+                                        "INSERT INTO {$dbPrefix}enrollment (term_code, crn, student_fk, enrollment_status, enrollment_date, drop_date, created_at, updated_at) 
+                                         VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                                        [$termCode, $crn, $studentFk, $enrollmentStatus, $enrollmentDate, $dropDate],
+                                        'ssisss'
                                     );
                                 }
                                 $imported++;
@@ -410,22 +413,22 @@ $theme->showHeader($context);
                             <th>Student C-Number</th>
                             <th>Status</th>
                             <th>Enrollment Date</th>
+                            <th>Drop Date</th>
                             <th>Last Updated</th>
                             <th>Actions</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                         </tr>
                     </thead>
-                    <tfoot>
-                        <tr>
-                            <th>ID</th>
-                            <th>Term Code</th>
-                            <th>CRN</th>
-                            <th>Student C-Number</th>
-                            <th>Status</th>
-                            <th>Enrollment Date</th>
-                            <th>Last Updated</th>
-                            <th>Actions</th>
-                        </tr>
-                    </tfoot>
                     <tbody>
                         <!-- Data loaded via AJAX -->
                     </tbody>
@@ -476,6 +479,10 @@ $theme->showHeader($context);
                         <div class="col-md-6 mb-3">
                             <label for="enrollmentDate" class="form-label">Enrollment Date</label>
                             <input type="date" class="form-control" id="enrollmentDate" name="enrollment_date" value="<?= date('Y-m-d') ?>" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="dropDate" class="form-label">Drop Date <small class="text-muted">(Optional)</small></label>
+                            <input type="date" class="form-control" id="dropDate" name="drop_date">
                         </div>
                     </div>
                 </div>
@@ -533,6 +540,10 @@ $theme->showHeader($context);
                             <input type="date" class="form-control" id="editEnrollmentDate" name="enrollment_date" required>
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <label for="editDropDate" class="form-label">Drop Date <small class="text-muted">(Optional)</small></label>
+                        <input type="date" class="form-control" id="editDropDate" name="drop_date">
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -578,6 +589,12 @@ $theme->showHeader($context);
                         <p id="viewEnrollmentDate"></p>
                     </div>
                     <div class="col-md-6">
+                        <strong>Drop Date:</strong>
+                        <p id="viewDropDate"></p>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
                         <strong>ID:</strong>
                         <p id="viewEnrollmentId"></p>
                     </div>
@@ -616,7 +633,7 @@ $theme->showHeader($context);
                     <div class="mb-3">
                         <label for="enrollmentUpload" class="form-label">Upload CSV File</label>
                         <input type="file" class="form-control" id="enrollmentUpload" name="enrollment_upload" accept=".csv" required>
-                        <small class="form-text text-muted">CSV format: Term_Code, CRN, Student_C_Number, Enrollment_Status, Enrollment_Date, Last_Updated</small>
+                        <small class="form-text text-muted">CSV format: Term_Code, CRN, Student_C_Number, Enrollment_Status, Enrollment_Date, Drop_Date, Last_Updated</small>
                     </div>
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> <strong>Auto-Creation:</strong> 
@@ -658,9 +675,9 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#enrollmentTable tfoot th').each(function() {
-        var title = $(this).text();
+    // Setup - add a text input to each header cell (second row)
+    $('#enrollmentTable thead tr:eq(1) th').each(function(i) {
+        var title = $('#enrollmentTable thead tr:eq(0) th:eq(' + i + ')').text();
         if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         } else {
@@ -683,15 +700,16 @@ $(document).ready(function() {
             { data: 3, name: 'c_number' },
             { data: 4, name: 'enrollment_status' },
             { data: 5, name: 'enrollment_date' },
-            { data: 6, name: 'updated_at' },
-            { data: 7, name: 'actions', orderable: false, searchable: false }
+            { data: 6, name: 'drop_date' },
+            { data: 7, name: 'updated_at' },
+            { data: 8, name: 'actions', orderable: false, searchable: false }
         ],
-        order: [[6, 'desc']], // Sort by last updated
+        order: [[7, 'desc']], // Sort by last updated
         initComplete: function() {
             // Apply the search
             this.api().columns().every(function() {
                 var column = this;
-                $('input', this.footer()).on('keyup change clear', function() {
+                $('input', this.header()).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -707,6 +725,7 @@ function viewEnrollment(enroll) {
     $('#viewStudentCNumber').text(enroll.c_number);
     $('#viewEnrollmentStatus').html('<span class="badge bg-' + getStatusClass(enroll.enrollment_status) + '">' + enroll.enrollment_status + '</span>');
     $('#viewEnrollmentDate').text(enroll.enrollment_date);
+    $('#viewDropDate').text(enroll.drop_date || '-');
     $('#viewEnrollmentId').text(enroll.enrollment_pk);
     $('#viewEnrollmentCreated').text(enroll.created_at);
     $('#viewEnrollmentUpdated').text(enroll.updated_at);
@@ -720,6 +739,7 @@ function editEnrollment(enroll) {
     $('#editStudentCNumber').text(enroll.c_number);
     $('#editEnrollmentStatus').val(enroll.enrollment_status);
     $('#editEnrollmentDate').val(enroll.enrollment_date);
+    $('#editDropDate').val(enroll.drop_date || '');
     new bootstrap.Modal(document.getElementById('editEnrollmentModal')).show();
 }
 

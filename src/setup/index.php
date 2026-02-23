@@ -16,6 +16,38 @@ require_once __DIR__ . '/../system/Core/Path.php';
 // Define base URL for easy access in this script
 define('BASE_URL', \Mosaic\Core\Path::getBaseUrl());
 
+// Load template defaults
+function getTemplateDefaults(): array {
+    $templateFile = __DIR__ . '/../config/config.yaml.template';
+    if (!file_exists($templateFile)) {
+        return [];
+    }
+    
+    $content = file_get_contents($templateFile);
+    $lines = explode("\n", $content);
+    $defaults = [];
+    
+    foreach ($lines as $line) {
+        // Skip comments and empty lines
+        if (preg_match('/^\s*#/', $line) || trim($line) === '') {
+            continue;
+        }
+        
+        // Parse key: value pairs (simple extraction, ignoring nested structure)
+        if (preg_match('/^\s*(\w+):\s*(.*)$/', $line, $matches)) {
+            $key = $matches[1];
+            $value = trim($matches[2]);
+            if ($value !== '') {
+                $defaults[$key] = $value;
+            }
+        }
+    }
+    
+    return $defaults;
+}
+
+$templateDefaults = getTemplateDefaults();
+
 // TEMP: Allow re-running setup for debugging
 // Prevent setup from running if already configured
 $configFile = __DIR__ . '/../config/config.yaml';
@@ -230,6 +262,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                             
                             $summaryMsg = "Schema execution complete: $successCount succeeded, $failureCount failed";
                             if ($setupLog) fwrite($setupLog, "\n$summaryMsg\n\n");
+                            
+                            // ========================================================
+                            // CREATE DEFAULT ADMIN USER
+                            // ========================================================
+                            if ($setupLog) fwrite($setupLog, "\n=== Creating Default Admin User ===\n");
+                            try {
+                                $adminUsername = 'sloadmin';
+                                $adminPassword = 'slopass';
+                                $adminEmail = 'admin@' . ($db_host === 'localhost' ? 'localhost' : parse_url('http://' . $db_host, PHP_URL_HOST));
+                                $adminFirstName = 'SLO';
+                                $adminLastName = 'Administrator';
+                                
+                                // Hash password with Argon2id
+                                $passwordHash = password_hash($adminPassword, PASSWORD_ARGON2ID, [
+                                    'memory_cost' => 65536,  // 64 MB
+                                    'time_cost' => 4,
+                                    'threads' => 2
+                                ]);
+                                
+                                // Insert admin user
+                                $stmt = $pdo->prepare("
+                                    INSERT INTO {$db_prefix}users (user_id, first_name, last_name, email, password_hash, is_active) 
+                                    VALUES (?, ?, ?, ?, ?, 1)
+                                ");
+                                $stmt->execute([$adminUsername, $adminFirstName, $adminLastName, $adminEmail, $passwordHash]);
+                                $adminUserId = $pdo->lastInsertId();
+                                
+                                $adminMsg = "Default admin user created: username='$adminUsername', password='$adminPassword'";
+                                if ($setupLog) fwrite($setupLog, "$adminMsg\n");
+                                echo "<!-- $adminMsg -->\n";
+                                flush();
+                                
+                            } catch (PDOException $e) {
+                                $errorMsg = "Failed to create admin user: " . $e->getMessage();
+                                if ($setupLog) fwrite($setupLog, "ERROR: $errorMsg\n");
+                                echo "<!-- ERROR: $errorMsg -->\n";
+                                flush();
+                                // Continue even if admin creation fails
+                            }
                             
                             // SEED DATA IMPORT DISABLED - User will import manually
                             if (false && file_exists($seedFile)) {
@@ -574,26 +645,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                     $configContent .= "  prefix: " . $db_prefix . "\n";
                                     $configContent .= "  username: " . $db_user . "\n";
                                     $configContent .= "  password: " . $db_pass . "\n";
-                                    $configContent .= "  charset: utf8mb4\n\n";
+                                    $configContent .= "  charset: " . ($templateDefaults['charset'] ?? 'utf8mb4') . "\n\n";
                                     $configContent .= "app:\n";
                                     $configContent .= "  name: " . $site_name . "\n";
-                                    $configContent .= "  timezone: America/Los_Angeles\n";
+                                    $configContent .= "  timezone: " . ($templateDefaults['timezone'] ?? 'America/Los_Angeles') . "\n";
                                     $configContent .= "  base_url: " . $base_url . "\n";
-                                    $configContent .= "  debug_mode: true\n\n";
+                                    $configContent .= "  debug_mode: " . ($templateDefaults['debug_mode'] ?? 'true') . "\n\n";
                                     $configContent .= "# Theme Configuration\n";
                                     $configContent .= "# Available themes: theme-default, theme-adminlte, theme-metis\n";
                                     $configContent .= "theme:\n";
-                                    $configContent .= "  active_theme: theme-default\n\n";
+                                    $configContent .= "  active_theme: " . ($templateDefaults['active_theme'] ?? 'theme-adminlte') . "\n\n";
                                     $configContent .= "# Email configuration for notifications\n";
                                     $configContent .= "email:\n";
                                     $configContent .= "  method: " . $mail_method . "\n";
                                     $configContent .= "  from_email: " . $smtp_from_email . "\n";
                                     $configContent .= "  from_name: " . $smtp_from_name . "\n";
                                     $configContent .= "  smtp_host: " . $smtp_host . "\n";
-                                    $configContent .= "  smtp_port: " . ($smtp_port ?: 587) . "\n";
+                                    $configContent .= "  smtp_port: " . ($smtp_port ?: ($templateDefaults['smtp_port'] ?? 587)) . "\n";
                                     $configContent .= "  smtp_username: " . $smtp_user . "\n";
                                     $configContent .= "  smtp_password: " . $smtp_pass . "\n";
-                                    $configContent .= "  smtp_encryption: " . $smtp_encryption . "\n";
+                                    $configContent .= "  smtp_encryption: " . ($smtp_encryption ?: ($templateDefaults['smtp_encryption'] ?? 'tls')) . "\n\n";
+                                    $configContent .= "# Emergency Admin Account (Break Glass)\n";
+                                    $configContent .= "# WARNING: This account bypasses the database and provides emergency access\n";
+                                    $configContent .= "# Use ONLY for recovery purposes when locked out of normal accounts\n";
+                                    $configContent .= "# To disable: Set enabled to false or remove this section\n";
+                                    $configContent .= "# SECURITY: Change username and password immediately after setup!\n";
+                                    $configContent .= "emergency_admin:\n";
+                                    $configContent .= "  enabled: " . ($templateDefaults['enabled'] ?? 'true') . "\n";
+                                    $configContent .= "  username: " . ($templateDefaults['username'] ?? 'sloadmin@breakglass.idx') . "\n";
+                                    $configContent .= "  password: " . ($templateDefaults['password'] ?? 'slopass') . "\n";
                                     
                                     if (file_put_contents($configFile, $configContent)) {
                                         // Create .htaccess to protect config directory
@@ -722,29 +802,29 @@ ob_start();
     }
     
     .requirements li {
-        padding: 5px 0 5px 24px;
+        padding: 5px 0 5px 50px;
         position: relative;
     }
     
     .requirements li:before {
-        font-family: "Font Awesome 6 Free";
-        font-weight: 900;
         position: absolute;
         left: 0;
+        font-weight: bold;
+        font-family: monospace;
     }
     
     .requirements li.pass:before {
-        content: "\f00c";
+        content: "[OK]";
         color: #28a745;
     }
     
     .requirements li.warning:before {
-        content: "\f06a";
+        content: "[!]";
         color: #ffc107;
     }
     
     .requirements li.fail:before {
-        content: "\f00d";
+        content: "[X]";
         color: #dc3545;
     }
     
@@ -760,21 +840,32 @@ ob_start();
 </style>
 <?php
 $customStyles = ob_get_clean();
-
-// Load theme system (auto-loads ThemeContext and Theme)
-require_once __DIR__ . '/../system/Core/ThemeLoader.php';
-use Mosaic\Core\ThemeLoader;
-use Mosaic\Core\ThemeContext;
-
-$context = new ThemeContext([
-    'layout' => 'default',
-    'pageTitle' => 'MOSAIC Setup',
-    'customCss' => $customStyles
-]);
-
-$theme = ThemeLoader::getActiveTheme();
-$theme->showHeader($context);
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOSAIC Setup</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    
+    <style>
+        :root {
+            --primary-dark: #0D47A1;
+            --accent-blue: #1976D2;
+            --brand-teal: #1565C0;
+        }
+    </style>
+    
+    <?= $customStyles ?>
+</head>
+<body>
 
 <div class="setup-container">
     <div class="setup-header">
@@ -806,8 +897,9 @@ $theme->showHeader($context);
                 $pdo_ok = extension_loaded('pdo');
                 $pdo_mysql_ok = extension_loaded('pdo_mysql');
                 $pdo_sqlsrv_ok = extension_loaded('pdo_sqlsrv');
+                $argon2_ok = defined('PASSWORD_ARGON2ID');
                 $db_driver_ok = $pdo_mysql_ok || $pdo_sqlsrv_ok;
-                $all_checks_pass = $php_ok && $pdo_ok && $db_driver_ok;
+                $all_checks_pass = $php_ok && $pdo_ok && $db_driver_ok && $argon2_ok;
                 ?>
                 
                 <div class="requirements">
@@ -827,6 +919,9 @@ $theme->showHeader($context);
                         </li>
                         <li class="<?php echo $db_driver_ok ? 'pass' : 'fail'; ?>">
                             At least one database driver required
+                        </li>
+                        <li class="<?php echo $argon2_ok ? 'pass' : 'fail'; ?>">
+                            Argon2 password hashing support <span class="text-muted">(PHP 7.3+ with libargon2)</span>
                         </li>
                     </ul>
                 </div>
@@ -970,7 +1065,7 @@ $theme->showHeader($context);
                         <div class="form-group">
                             <label for="smtp_host">SMTP Server</label>
                             <input type="text" class="form-control" id="smtp_host" name="smtp_host" 
-                                   value="<?php echo htmlspecialchars($_POST['smtp_host'] ?? ''); ?>" 
+                                   value="<?php echo htmlspecialchars($_POST['smtp_host'] ?? $templateDefaults['smtp_host'] ?? ''); ?>" 
                                    placeholder="e.g., smtp.gmail.com">
                             <small class="form-text text-muted">Your email server address</small>
                         </div>
@@ -1001,7 +1096,7 @@ $theme->showHeader($context);
                         <div class="form-group">
                             <label for="smtp_user">SMTP Username</label>
                             <input type="text" class="form-control" id="smtp_user" name="smtp_user" 
-                                   value="<?php echo htmlspecialchars($_POST['smtp_user'] ?? ''); ?>" 
+                                   value="<?php echo htmlspecialchars($_POST['smtp_user'] ?? $templateDefaults['smtp_username'] ?? ''); ?>" 
                                    placeholder="Your email or username">
                             <small class="form-text text-muted">Usually your full email address</small>
                         </div>
@@ -1009,7 +1104,7 @@ $theme->showHeader($context);
                         <div class="form-group">
                             <label for="smtp_pass">SMTP Password</label>
                             <input type="password" class="form-control" id="smtp_pass" name="smtp_pass" 
-                                   value="<?php echo htmlspecialchars($_POST['smtp_pass'] ?? ''); ?>" 
+                                   value="<?php echo htmlspecialchars($_POST['smtp_pass'] ?? $templateDefaults['smtp_password'] ?? ''); ?>" 
                                    placeholder="Your email password or app password">
                             <small class="form-text text-muted">For Gmail, use an <a href="https://support.google.com/accounts/answer/185833" target="_blank">App Password</a></small>
                         </div>
@@ -1019,7 +1114,7 @@ $theme->showHeader($context);
                         <div class="form-group">
                             <label for="smtp_from_email">From Email Address</label>
                             <input type="email" class="form-control" id="smtp_from_email" name="smtp_from_email" 
-                                   value="<?php echo htmlspecialchars($_POST['smtp_from_email'] ?? ''); ?>" 
+                                   value="<?php echo htmlspecialchars($_POST['smtp_from_email'] ?? $templateDefaults['from_email'] ?? ''); ?>" 
                                    placeholder="noreply@yourdomain.edu">
                             <small class="form-text text-muted">Email address that notifications will be sent from</small>
                         </div>
@@ -1070,4 +1165,7 @@ $theme->showHeader($context);
         </div>
     </div>
 
-<?php $theme->showFooter($context); ?>
+<!-- Bootstrap Bundle with Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

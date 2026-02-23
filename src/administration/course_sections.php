@@ -25,14 +25,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         switch ($action) {
             case 'add':
                 $courseFk = (int)($_POST['course_fk'] ?? 0);
+                $termFk = (int)($_POST['term_fk'] ?? 0);
                 $crn = trim($_POST['crn'] ?? '');
                 $sectionNumber = trim($_POST['section_number'] ?? '');
-                $instructorName = trim($_POST['instructor_name'] ?? '');
+                $instructorFk = !empty($_POST['instructor_fk']) ? (int)$_POST['instructor_fk'] : null;
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 $errors = [];
                 if ($courseFk <= 0) {
                     $errors[] = 'Course is required';
+                }
+                if ($termFk <= 0) {
+                    $errors[] = 'Term is required';
                 }
                 if (empty($crn)) {
                     $errors[] = 'CRN is required';
@@ -40,10 +44,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (empty($errors)) {
                     $db->query(
-                        "INSERT INTO {$dbPrefix}course_sections (course_fk, crn, section_number, instructor_name, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$courseFk, $crn, $sectionNumber, $instructorName, $isActive],
-                        'isssi'
+                        "INSERT INTO {$dbPrefix}course_sections (course_fk, term_fk, crn, section_number, instructor_fk, is_active, created_at, updated_at) 
+                         VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                        [$courseFk, $termFk, $crn, $sectionNumber, $instructorFk, $isActive],
+                        'iissii'
                     );
                     $successMessage = 'Course section added successfully';
                 } else {
@@ -54,9 +58,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'edit':
                 $id = (int)($_POST['section_id'] ?? 0);
                 $courseFk = (int)($_POST['course_fk'] ?? 0);
+                $termFk = (int)($_POST['term_fk'] ?? 0);
                 $crn = trim($_POST['crn'] ?? '');
                 $sectionNumber = trim($_POST['section_number'] ?? '');
-                $instructorName = trim($_POST['instructor_name'] ?? '');
+                $instructorFk = !empty($_POST['instructor_fk']) ? (int)$_POST['instructor_fk'] : null;
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 $errors = [];
@@ -66,6 +71,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($courseFk <= 0) {
                     $errors[] = 'Course is required';
                 }
+                if ($termFk <= 0) {
+                    $errors[] = 'Term is required';
+                }
                 if (empty($crn)) {
                     $errors[] = 'CRN is required';
                 }
@@ -73,10 +81,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($errors)) {
                     $db->query(
                         "UPDATE {$dbPrefix}course_sections 
-                         SET course_fk = ?, crn = ?, section_number = ?, instructor_name = ?, is_active = ?, updated_at = NOW()
+                         SET course_fk = ?, term_fk = ?, crn = ?, section_number = ?, instructor_fk = ?, is_active = ?, updated_at = NOW()
                          WHERE course_sections_pk = ?",
-                        [$courseFk, $crn, $sectionNumber, $instructorName, $isActive, $id],
-                        'isssii'
+                        [$courseFk, $termFk, $crn, $sectionNumber, $instructorFk, $isActive, $id],
+                        'iissiii'
                     );
                     $successMessage = 'Course section updated successfully';
                 } else {
@@ -142,25 +150,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $headers[0] = preg_replace('/^\x{FEFF}/u', '', $headers[0]);
                 }
                 
-                // Expected columns: course_number,crn,section_number,instructor_name,is_active
+                // Expected columns: course_number,term_code,crn,section_number,instructor_user_id,is_active (or instructor_email)
                 $imported = 0;
                 $updated = 0;
                 $errors = [];
                 
                 while (($row = fgetcsv($handle)) !== false) {
-                    if (count($row) < 2) continue; // Need at least course_number and crn
+                    if (count($row) < 3) continue; // Need at least course_number, term_code, and crn
                     
                     $data = array_combine($headers, $row);
                     if ($data === false) continue;
                     
                     $courseNumber = trim($data['course_number'] ?? '');
+                    $termCode = trim($data['term_code'] ?? '');
                     $crn = trim($data['crn'] ?? '');
                     $sectionNumber = trim($data['section_number'] ?? '');
-                    $instructorName = trim($data['instructor_name'] ?? '');
+                    $instructorUserId = trim($data['instructor_user_id'] ?? '');
+                    $instructorEmail = trim($data['instructor_email'] ?? '');
                     $isActive = isset($data['is_active']) ? ((int)$data['is_active'] === 1 || strtolower($data['is_active']) === 'true') : true;
                     
-                    if (empty($courseNumber) || empty($crn)) {
-                        $errors[] = "Skipped row: missing required fields (course_number or crn)";
+                    if (empty($courseNumber) || empty($termCode) || empty($crn)) {
+                        $errors[] = "Skipped row: missing required fields (course_number, term_code, or crn)";
                         continue;
                     }
                     
@@ -177,6 +187,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $courseFk = (int)$courseRow['courses_pk'];
                     
+                    // Lookup term_fk by term_code
+                    $result = $db->query(
+                        "SELECT terms_pk FROM {$dbPrefix}terms WHERE term_code = ?",
+                        [$termCode],
+                        's'
+                    );
+                    $termRow = $result->fetch();
+                    if (!$termRow) {
+                        $errors[] = "Skipped row: term code '$termCode' not found";
+                        continue;
+                    }
+                    $termFk = (int)$termRow['terms_pk'];
+                    
+                    // Lookup instructor_fk by user_id or email
+                    $instructorFk = null;
+                    if (!empty($instructorUserId)) {
+                        $result = $db->query(
+                            "SELECT users_pk FROM {$dbPrefix}users WHERE user_id = ?",
+                            [$instructorUserId],
+                            's'
+                        );
+                        $userRow = $result->fetch();
+                        if ($userRow) {
+                            $instructorFk = (int)$userRow['users_pk'];
+                        } else {
+                            $errors[] = "Warning: user_id '$instructorUserId' not found for CRN '$crn' (instructor field will be NULL)";
+                        }
+                    } elseif (!empty($instructorEmail)) {
+                        $result = $db->query(
+                            "SELECT users_pk FROM {$dbPrefix}users WHERE email = ?",
+                            [$instructorEmail],
+                            's'
+                        );
+                        $userRow = $result->fetch();
+                        if ($userRow) {
+                            $instructorFk = (int)$userRow['users_pk'];
+                        } else {
+                            $errors[] = "Warning: email '$instructorEmail' not found for CRN '$crn' (instructor field will be NULL)";
+                        }
+                    }
+                    
                     // Check if section exists (based on unique crn)
                     $result = $db->query(
                         "SELECT course_sections_pk FROM {$dbPrefix}course_sections WHERE crn = ?",
@@ -189,19 +240,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Update existing
                         $db->query(
                             "UPDATE {$dbPrefix}course_sections 
-                             SET course_fk = ?, section_number = ?, instructor_name = ?, is_active = ?, updated_at = NOW() 
+                             SET course_fk = ?, term_fk = ?, section_number = ?, instructor_fk = ?, is_active = ?, updated_at = NOW() 
                              WHERE course_sections_pk = ?",
-                            [$courseFk, $sectionNumber, $instructorName, $isActive, $existing['course_sections_pk']],
-                            'issii'
+                            [$courseFk, $termFk, $sectionNumber, $instructorFk, $isActive, $existing['course_sections_pk']],
+                            'iisiii'
                         );
                         $updated++;
                     } else {
                         // Insert new
                         $db->query(
-                            "INSERT INTO {$dbPrefix}course_sections (course_fk, crn, section_number, instructor_name, is_active, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                            [$courseFk, $crn, $sectionNumber, $instructorName, $isActive],
-                            'isssi'
+                            "INSERT INTO {$dbPrefix}course_sections (course_fk, term_fk, crn, section_number, instructor_fk, is_active, created_at, updated_at) 
+                             VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                            [$courseFk, $termFk, $crn, $sectionNumber, $instructorFk, $isActive],
+                            'iissii'
                         );
                         $imported++;
                     }
@@ -240,6 +291,14 @@ $activeSections = $stats['active'];
 // Get courses for dropdown
 $coursesResult = $db->query("SELECT courses_pk, course_name, course_number FROM {$dbPrefix}courses WHERE is_active = 1 ORDER BY course_name");
 $courses = $coursesResult->fetchAll();
+
+// Get terms for dropdown
+$termsResult = $db->query("SELECT terms_pk, term_code, term_name FROM {$dbPrefix}terms WHERE is_active = 1 ORDER BY term_code DESC");
+$terms = $termsResult->fetchAll();
+
+// Get users/instructors for dropdown
+$usersResult = $db->query("SELECT users_pk, user_id, first_name, last_name, email FROM {$dbPrefix}users WHERE is_active = 1 ORDER BY last_name, first_name");
+$users = $usersResult->fetchAll();
 
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
 use Mosaic\Core\ThemeLoader;
@@ -333,23 +392,23 @@ $theme->showHeader($context);
                             <th>ID</th>
                             <th>CRN</th>
                             <th>Course</th>
+                            <th>Term</th>
                             <th>Section</th>
                             <th>Instructor</th>
                             <th>Status</th>
                             <th>Actions</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                         </tr>
                     </thead>
-                    <tfoot>
-                        <tr>
-                            <th>ID</th>
-                            <th>CRN</th>
-                            <th>Course</th>
-                            <th>Section</th>
-                            <th>Instructor</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </tfoot>
                     <tbody></tbody>
                 </table>
             </div>
@@ -382,6 +441,18 @@ $theme->showHeader($context);
                         </select>
                     </div>
                     
+                    <div class="mb-3">
+                        <label for="termFk" class="form-label">Term</label>
+                        <select class="form-select" id="termFk" name="term_fk" required>
+                            <option value="">Select Term</option>
+                            <?php foreach ($terms as $term): ?>
+                                <option value="<?= $term['terms_pk'] ?>">
+                                    <?= htmlspecialchars($term['term_name']) ?> (<?= htmlspecialchars($term['term_code']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="crn" class="form-label">CRN</label>
@@ -394,8 +465,18 @@ $theme->showHeader($context);
                     </div>
                     
                     <div class="mb-3">
-                        <label for="instructorName" class="form-label">Instructor Name</label>
-                        <input type="text" class="form-control" id="instructorName" name="instructor_name" maxlength="255">
+                        <label for="instructorFk" class="form-label">Instructor</label>
+                        <select class="form-select" id="instructorFk" name="instructor_fk">
+                            <option value="">Select Instructor (Optional)</option>
+                            <?php foreach ($users as $user): ?>
+                                <option value="<?= $user['users_pk'] ?>">
+                                    <?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?>
+                                    <?php if (!empty($user['email'])): ?>
+                                        (<?= htmlspecialchars($user['email']) ?>)
+                                    <?php endif; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     
                     <div class="form-check">
@@ -438,6 +519,18 @@ $theme->showHeader($context);
                         </select>
                     </div>
                     
+                    <div class="mb-3">
+                        <label for="editTermFk" class="form-label">Term</label>
+                        <select class="form-select" id="editTermFk" name="term_fk" required>
+                            <option value="">Select Term</option>
+                            <?php foreach ($terms as $term): ?>
+                                <option value="<?= $term['terms_pk'] ?>">
+                                    <?= htmlspecialchars($term['term_name']) ?> (<?= htmlspecialchars($term['term_code']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="editCrn" class="form-label">CRN</label>
@@ -450,8 +543,18 @@ $theme->showHeader($context);
                     </div>
                     
                     <div class="mb-3">
-                        <label for="editInstructorName" class="form-label">Instructor Name</label>
-                        <input type="text" class="form-control" id="editInstructorName" name="instructor_name" maxlength="255">
+                        <label for="editInstructorFk" class="form-label">Instructor</label>
+                        <select class="form-select" id="editInstructorFk" name="instructor_fk">
+                            <option value="">Select Instructor (Optional)</option>
+                            <?php foreach ($users as $user): ?>
+                                <option value="<?= $user['users_pk'] ?>">
+                                    <?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?>
+                                    <?php if (!empty($user['email'])): ?>
+                                        (<?= htmlspecialchars($user['email']) ?>)
+                                    <?php endif; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     
                     <div class="form-check">
@@ -462,6 +565,45 @@ $theme->showHeader($context);
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Upload CSV Modal -->
+<div class="modal fade" id="uploadCsvModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title"><i class="fas fa-upload"></i> Import Course Sections from CSV</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                    <input type="hidden" name="action" value="import">
+                    <div class="mb-3">
+                        <label for="csvFile" class="form-label">Upload CSV File</label>
+                        <input type="file" class="form-control" id="csvFile" name="csv_file" accept=".csv" required>
+                        <small class="form-text text-muted">
+                            CSV format: course_number, term_code, crn, section_number, instructor_user_id, is_active<br>
+                            Alternative: Use instructor_email instead of instructor_user_id
+                        </small>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> <strong>Import Notes:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Course and term must already exist in the system</li>
+                            <li>Instructor lookup by user_id or email (leave blank if unknown)</li>
+                            <li>Existing sections (by CRN) will be updated</li>
+                            <li>New sections will be created</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-upload"></i> Import</button>
                 </div>
             </form>
         </div>
@@ -493,10 +635,48 @@ $theme->showHeader($context);
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
 <script>
+// Convert PHP arrays to JavaScript
+var courses = <?= json_encode(array_map(function($c) { 
+    return ['name' => $c['course_name'], 'number' => $c['course_number']]; 
+}, $courses)) ?>;
+var terms = <?= json_encode(array_map(function($t) { 
+    return ['name' => $t['term_name'], 'code' => $t['term_code']]; 
+}, $terms)) ?>;
+var instructors = <?= json_encode(array_map(function($u) { 
+    return ['name' => $u['first_name'] . ' ' . $u['last_name']]; 
+}, $users ?? [])) ?>;
+
 $(document).ready(function() {
-    $('#sectionsTable tfoot th').each(function() {
-        var title = $(this).text();
-        if (title !== 'Actions') {
+    $('#sectionsTable thead tr:eq(1) th').each(function(i) {
+        var title = $('#sectionsTable thead tr:eq(0) th:eq(' + i + ')').text();
+        
+        // Course column (index 2)
+        if (title === 'Course') {
+            var select = $('<select class="form-select form-select-sm"><option value="">All Courses</option></select>')
+                .appendTo($(this).empty());
+            courses.forEach(function(course) {
+                select.append('<option value="' + course.name + '">' + course.name + '</option>');
+            });
+        }
+        // Term column (index 3)
+        else if (title === 'Term') {
+            var select = $('<select class="form-select form-select-sm"><option value="">All Terms</option></select>')
+                .appendTo($(this).empty());
+            terms.forEach(function(term) {
+                select.append('<option value="' + term.name + '">' + term.name + '</option>');
+            });
+        }
+        // Instructor column (index 5)
+        else if (title === 'Instructor') {
+            var select = $('<select class="form-select form-select-sm"><option value="">All Instructors</option></select>')
+                .appendTo($(this).empty());
+            instructors.forEach(function(instructor) {
+                if (instructor.name.trim() !== '') {
+                    select.append('<option value="' + instructor.name + '">' + instructor.name + '</option>');
+                }
+            });
+        }
+        else if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         } else {
             $(this).html('');
@@ -513,15 +693,19 @@ $(document).ready(function() {
             { data: 0, name: 'course_sections_pk' },
             { data: 1, name: 'crn' },
             { data: 2, name: 'course_name' },
-            { data: 3, name: 'section_number' },
-            { data: 4, name: 'instructor_name' },
-            { data: 5, name: 'is_active' },
-            { data: 6, name: 'actions', orderable: false, searchable: false }
+            { data: 3, name: 'term_name' },
+            { data: 4, name: 'section_number' },
+            { data: 5, name: 'instructor_name' },
+            { data: 6, name: 'is_active' },
+            { data: 7, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             this.api().columns().every(function() {
                 var column = this;
-                $('input', this.footer()).on('keyup change clear', function() {
+                $('select', this.header()).on('change', function() {
+                    column.search($(this).val()).draw();
+                });
+                $('input', this.header()).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -534,9 +718,10 @@ $(document).ready(function() {
 function editSection(section) {
     $('#editSectionId').val(section.course_sections_pk);
     $('#editCourseFk').val(section.course_fk);
+    $('#editTermFk').val(section.term_fk);
     $('#editCrn').val(section.crn);
     $('#editSectionNumber').val(section.section_number);
-    $('#editInstructorName').val(section.instructor_name);
+    $('#editInstructorFk').val(section.instructor_fk || '');
     $('#editIsActive').prop('checked', section.is_active == 1);
     new bootstrap.Modal(document.getElementById('editSectionModal')).show();
 }

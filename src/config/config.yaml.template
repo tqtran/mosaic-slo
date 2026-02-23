@@ -99,7 +99,7 @@ app:
   # @required: true
   # @type: boolean
   # @default: true
-  # @help: Set to false in production for security
+  # @help: Set to false in production for security. Also enables authentication debug logging.
   debug_mode: true
 
 # Theme Configuration
@@ -109,9 +109,9 @@ theme:
   # @required: false
   # @type: select
   # @options: theme-default|Default (Bootstrap 5 - Minimal),theme-adminlte|AdminLTE 4 (Recommended for Admin),theme-metis|Metis Material Design
-  # @default: theme-default
+  # @default: theme-adminlte
   # @help: Use theme-adminlte for admin interface with sidebar navigation
-  active_theme: theme-default
+  active_theme: theme-adminlte
 
 # Email Configuration
 email:
@@ -130,7 +130,7 @@ email:
   # @type: email
   # @validation: email
   # @help: Required if email method is not disabled
-  from_email: noreply@example.com
+  from_email: myemail@myorg.org
   
   # @label: From Name
   # @description: Display name shown as sender
@@ -144,7 +144,7 @@ email:
   # @required: false
   # @type: string
   # @help: Required if method is smtp
-  smtp_host: smtp.example.com
+  smtp_host: localhost
   
   # @label: SMTP Port
   # @description: SMTP server port
@@ -160,13 +160,13 @@ email:
   # @required: false
   # @type: string
   # @help: Required if SMTP server requires authentication
-  smtp_username: 
+  smtp_username: smtp_username 
   
   # @label: SMTP Password
   # @description: Password for SMTP authentication
   # @required: false
   # @type: password
-  smtp_password: 
+  smtp_password: smtp_password 
   
   # @label: SMTP Encryption
   # @description: Encryption method for SMTP connection
@@ -175,3 +175,32 @@ email:
   # @options: tls|TLS (recommended),ssl|SSL,none|None (insecure)
   # @default: tls
   smtp_encryption: tls
+
+# Emergency Admin Account (Break Glass)
+# WARNING: This account bypasses the database and provides emergency access
+# Use ONLY for recovery purposes when locked out of normal accounts
+# To disable: Comment out or remove this entire section
+emergency_admin:
+  # @label: Enable Emergency Admin
+  # @description: Enable emergency break-glass admin account
+  # @required: true
+  # @type: boolean
+  # @default: true
+  # @help: Set to false or remove this section to disable emergency access
+  enabled: true
+  
+  # @label: Emergency Username
+  # @description: Username for emergency admin login
+  # @required: true
+  # @type: string
+  # @default: sloadmin@breakglass.idx
+  # @help: Change this immediately after setup for security
+  username: sloadmin@breakglass.idx
+  
+  # @label: Emergency Password
+  # @description: Password for emergency admin login
+  # @required: true
+  # @type: password
+  # @default: slopass
+  # @help: Change this immediately after setup for security. STORED IN PLAIN TEXT!
+  password: slopass

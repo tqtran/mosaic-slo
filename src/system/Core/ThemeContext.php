@@ -39,6 +39,9 @@ class ThemeContext
         if (!isset($this->data['pageTitle'])) {
             $this->data['pageTitle'] = defined('SITE_NAME') ? SITE_NAME : 'MOSAIC';
         }
+        if (!isset($this->data['appVersion'])) {
+            $this->data['appVersion'] = defined('APP_VERSION') ? APP_VERSION : '1.0.0';
+        }
     }
     
     /**

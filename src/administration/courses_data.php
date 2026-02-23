@@ -12,20 +12,27 @@ require_once __DIR__ . '/../system/includes/init.php';
 
 $params = getDataTablesParams();
 
-$searchableColumns = ['course_name', 'course_number'];
+$searchableColumns = [
+    'c.course_name', 
+    'c.course_number',
+    'd.department_name',
+    'd.department_code'
+];
 
 $columns = [
-    'courses_pk',
-    'course_name',
-    'course_number',
-    'is_active',
-    'created_at',
+    'c.courses_pk',
+    'c.course_name',
+    'c.course_number',
+    'd.department_name',
+    'c.credit_hours',
+    'c.is_active',
+    'c.created_at',
     'actions'
 ];
 
-$orderColumn = $columns[$params['orderColumn']] ?? 'course_name';
+$orderColumn = $columns[$params['orderColumn']] ?? 'c.course_name';
 if ($orderColumn === 'actions') {
-    $orderColumn = 'course_name';
+    $orderColumn = 'c.course_name';
 }
 
 $whereParams = [];
@@ -39,7 +46,7 @@ $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}courses");
 $totalRow = $totalResult->fetch();
 $recordsTotal = $totalRow['total'];
 
-$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}courses {$whereClause}";
+$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}courses c LEFT JOIN {$dbPrefix}departments d ON c.department_fk = d.departments_pk {$whereClause}";
 if (!empty($whereParams)) {
     $filteredResult = $db->query($countQuery, $whereParams, $whereTypes);
 } else {
@@ -49,8 +56,9 @@ $filteredRow = $filteredResult->fetch();
 $recordsFiltered = $filteredRow['total'];
 
 $dataQuery = "
-    SELECT *
-    FROM {$dbPrefix}courses
+    SELECT c.*, d.department_name, d.department_code
+    FROM {$dbPrefix}courses c
+    LEFT JOIN {$dbPrefix}departments d ON c.department_fk = d.departments_pk
     {$whereClause}
     ORDER BY {$orderColumn} {$params['orderDir']}
     LIMIT ? OFFSET ?
@@ -76,6 +84,8 @@ foreach ($courses as $row) {
         htmlspecialchars($row['courses_pk']),
         htmlspecialchars($row['course_name']),
         '<span class="badge bg-primary">' . htmlspecialchars($row['course_number']) . '</span>',
+        htmlspecialchars($row['department_name'] ?? 'N/A'),
+        htmlspecialchars($row['credit_hours'] ?? '-'),
         '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
         htmlspecialchars($row['created_at'] ?? ''),
         '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editCourse(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .

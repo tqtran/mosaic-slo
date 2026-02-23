@@ -24,8 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         switch ($action) {
             case 'add':
-                $courseSectionFk = (int)($_POST['course_section_fk'] ?? 0);
-                $studentsFk = (int)($_POST['students_fk'] ?? 0);
+                $enrollmentFk = (int)($_POST['enrollment_fk'] ?? 0);
                 $sloFk = (int)($_POST['student_learning_outcome_fk'] ?? 0);
                 $scoreValue = trim($_POST['score_value'] ?? '');
                 $achievementLevel = trim($_POST['achievement_level'] ?? '');
@@ -35,11 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $isFinalized = isset($_POST['is_finalized']) ? 1 : 0;
                 
                 $errors = [];
-                if ($courseSectionFk <= 0) {
-                    $errors[] = 'Course section is required';
-                }
-                if ($studentsFk <= 0) {
-                    $errors[] = 'Student is required';
+                if ($enrollmentFk <= 0) {
+                    $errors[] = 'Enrollment is required';
                 }
                 if ($sloFk <= 0) {
                     $errors[] = 'Student Learning Outcome is required';
@@ -54,10 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($errors)) {
                     $db->query(
                         "INSERT INTO {$dbPrefix}assessments 
-                         (course_section_fk, students_fk, student_learning_outcome_fk, score_value, achievement_level, assessment_method, notes, assessed_date, is_finalized, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$courseSectionFk, $studentsFk, $sloFk, $scoreValue, $achievementLevel, $assessmentMethod, $notes, $assessedDate, $isFinalized],
-                        'iiidssssi'
+                         (enrollment_fk, student_learning_outcome_fk, score_value, achievement_level, assessment_method, notes, assessed_date, is_finalized, created_at, updated_at) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                        [$enrollmentFk, $sloFk, $scoreValue, $achievementLevel, $assessmentMethod, $notes, $assessedDate, $isFinalized],
+                        'iidssssi'
                     );
                     $successMessage = 'Assessment added successfully';
                 } else {
@@ -67,8 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'edit':
                 $id = (int)($_POST['assessments_pk'] ?? 0);
-                $courseSectionFk = (int)($_POST['course_section_fk'] ?? 0);
-                $studentsFk = (int)($_POST['students_fk'] ?? 0);
+                $enrollmentFk = (int)($_POST['enrollment_fk'] ?? 0);
                 $sloFk = (int)($_POST['student_learning_outcome_fk'] ?? 0);
                 $scoreValue = trim($_POST['score_value'] ?? '');
                 $achievementLevel = trim($_POST['achievement_level'] ?? '');
@@ -81,11 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($id <= 0) {
                     $errors[] = 'Invalid assessment PK';
                 }
-                if ($courseSectionFk <= 0) {
-                    $errors[] = 'Course section is required';
-                }
-                if ($studentsFk <= 0) {
-                    $errors[] = 'Student is required';
+                if ($enrollmentFk <= 0) {
+                    $errors[] = 'Enrollment is required';
                 }
                 if ($sloFk <= 0) {
                     $errors[] = 'Student Learning Outcome is required';
@@ -100,11 +92,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($errors)) {
                     $db->query(
                         "UPDATE {$dbPrefix}assessments 
-                         SET course_section_fk = ?, students_fk = ?, student_learning_outcome_fk = ?, 
+                         SET enrollment_fk = ?, student_learning_outcome_fk = ?, 
                              score_value = ?, achievement_level = ?, assessment_method = ?, notes = ?, assessed_date = ?, is_finalized = ?, updated_at = NOW()
                          WHERE assessments_pk = ?",
-                        [$courseSectionFk, $studentsFk, $sloFk, $scoreValue, $achievementLevel, $assessmentMethod, $notes, $assessedDate, $isFinalized, $id],
-                        'iiidssssi i'
+                        [$enrollmentFk, $sloFk, $scoreValue, $achievementLevel, $assessmentMethod, $notes, $assessedDate, $isFinalized, $id],
+                        'iidssssi i'
                     );
                     $successMessage = 'Assessment updated successfully';
                 } else {
@@ -159,19 +151,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $headers[0] = preg_replace('/^\x{FEFF}/u', '', $headers[0]);
                 }
                 
-                // Expected columns: crn,student_id,slo_code,score_value,achievement_level,assessment_method,notes,assessed_date,is_finalized
+                // Expected columns: term_code,crn,c_number,slo_code,score_value,achievement_level,assessment_method,notes,assessed_date,is_finalized
                 $imported = 0;
                 $updated = 0;
                 $errors = [];
                 
                 while (($row = fgetcsv($handle)) !== false) {
-                    if (count($row) < 4) continue; // Need at least crn, student_id, slo_code, score_value
+                    if (count($row) < 4) continue; // Need at least term_code, crn, c_number, slo_code, score_value
                     
                     $data = array_combine($headers, $row);
                     if ($data === false) continue;
                     
+                    $termCode = trim($data['term_code'] ?? '');
                     $crn = trim($data['crn'] ?? '');
-                    $studentId = trim($data['student_id'] ?? '');
+                    $cNumber = trim($data['c_number'] ?? '');
                     $sloCode = trim($data['slo_code'] ?? '');
                     $scoreValue = trim($data['score_value'] ?? '');
                     $achievementLevel = trim($data['achievement_level'] ?? 'pending');
@@ -180,56 +173,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $assessedDate = trim($data['assessed_date'] ?? '');
                     $isFinalized = isset($data['is_finalized']) ? ((int)$data['is_finalized'] === 1 || strtolower($data['is_finalized']) === 'true') : false;
                     
-                    if (empty($crn) || empty($studentId) || empty($sloCode) || $scoreValue === '') {
-                        $errors[] = "Skipped row: missing required fields (crn, student_id, slo_code, or score_value)";
+                    if (empty($termCode) || empty($crn) || empty($cNumber) || empty($sloCode) || $scoreValue === '') {
+                        $errors[] = "Skipped row: missing required fields (term_code, crn, c_number, slo_code, or score_value)";
                         continue;
                     }
                     
-                    // Lookup course_section_fk by crn
+                    // Lookup student by c_number
                     $result = $db->query(
-                        "SELECT course_sections_pk, course_fk FROM {$dbPrefix}course_sections WHERE crn = ?",
-                        [$crn],
-                        's'
-                    );
-                    $sectionRow = $result->fetch();
-                    if (!$sectionRow) {
-                        $errors[] = "Skipped row: CRN '$crn' not found";
-                        continue;
-                    }
-                    $courseSectionFk = (int)$sectionRow['course_sections_pk'];
-                    $courseFk = (int)$sectionRow['course_fk'];
-                    
-                    // Lookup students_fk by student_id
-                    $result = $db->query(
-                        "SELECT students_pk FROM {$dbPrefix}students WHERE student_id = ?",
-                        [$studentId],
+                        "SELECT students_pk FROM {$dbPrefix}students WHERE c_number = ?",
+                        [$cNumber],
                         's'
                     );
                     $studentRow = $result->fetch();
                     if (!$studentRow) {
-                        $errors[] = "Skipped row: student ID '$studentId' not found";
+                        $errors[] = "Skipped row: C-Number '$cNumber' not found";
                         continue;
                     }
                     $studentsFk = (int)$studentRow['students_pk'];
                     
-                    // Lookup student_learning_outcome_fk by course_fk + slo_code
+                    // Lookup enrollment by term_code + crn + student_fk
                     $result = $db->query(
-                        "SELECT student_learning_outcomes_pk FROM {$dbPrefix}student_learning_outcomes WHERE course_fk = ? AND slo_code = ?",
-                        [$courseFk, $sloCode],
-                        'is'
+                        "SELECT e.enrollment_pk, cs.course_fk 
+                         FROM {$dbPrefix}enrollment e
+                         LEFT JOIN {$dbPrefix}course_sections cs ON e.course_section_fk = cs.course_sections_pk
+                         WHERE e.term_code = ? AND e.crn = ? AND e.student_fk = ?",
+                        [$termCode, $crn, $studentsFk],
+                        'ssi'
                     );
+                    $enrollmentRow = $result->fetch();
+                    if (!$enrollmentRow) {
+                        $errors[] = "Skipped row: Enrollment not found for term '$termCode', CRN '$crn', C-Number '$cNumber'";
+                        continue;
+                    }
+                    $enrollmentFk = (int)$enrollmentRow['enrollment_pk'];
+                    $courseFk = (int)$enrollmentRow['course_fk'];
+                    
+                    // Lookup student_learning_outcome_fk by course_fk + slo_code (if course_fk available)
+                    if ($courseFk > 0) {
+                        $result = $db->query(
+                            "SELECT student_learning_outcomes_pk FROM {$dbPrefix}student_learning_outcomes WHERE course_fk = ? AND slo_code = ?",
+                            [$courseFk, $sloCode],
+                            'is'
+                        );
+                    } else {
+                        // Fallback: lookup by slo_code only
+                        $result = $db->query(
+                            "SELECT student_learning_outcomes_pk FROM {$dbPrefix}student_learning_outcomes WHERE slo_code = ?",
+                            [$sloCode],
+                            's'
+                        );
+                    }
                     $sloRow = $result->fetch();
                     if (!$sloRow) {
-                        $errors[] = "Skipped row: SLO code '$sloCode' not found for this course";
+                        $errors[] = "Skipped row: SLO code '$sloCode' not found";
                         continue;
                     }
                     $sloFk = (int)$sloRow['student_learning_outcomes_pk'];
                     
-                    // Check if assessment exists (based on unique course_section_fk + students_fk + slo_fk)
+                    // Check if assessment exists (based on unique enrollment_fk + slo_fk)
                     $result = $db->query(
-                        "SELECT assessments_pk FROM {$dbPrefix}assessments WHERE course_section_fk = ? AND students_fk = ? AND student_learning_outcome_fk = ?",
-                        [$courseSectionFk, $studentsFk, $sloFk],
-                        'iii'
+                        "SELECT assessments_pk FROM {$dbPrefix}assessments WHERE enrollment_fk = ? AND student_learning_outcome_fk = ?",
+                        [$enrollmentFk, $sloFk],
+                        'ii'
                     );
                     $existing = $result->fetch();
                     
@@ -246,10 +251,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         // Insert new
                         $db->query(
-                            "INSERT INTO {$dbPrefix}assessments (course_section_fk, students_fk, student_learning_outcome_fk, score_value, achievement_level, assessment_method, notes, assessed_date, is_finalized, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                            [$courseSectionFk, $studentsFk, $sloFk, $scoreValue, $achievementLevel, $assessmentMethod, $notes, $assessedDate, $isFinalized],
-                            'iiidssss i'
+                            "INSERT INTO {$dbPrefix}assessments (enrollment_fk, student_learning_outcome_fk, score_value, achievement_level, assessment_method, notes, assessed_date, is_finalized, created_at, updated_at) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                            [$enrollmentFk, $sloFk, $scoreValue, $achievementLevel, $assessmentMethod, $notes, $assessedDate, $isFinalized],
+                            'iidssss i'
                         );
                         $imported++;
                     }
@@ -285,22 +290,18 @@ $stats = $statsResult->fetch();
 $totalAssessments = $stats['total'];
 $activeAssessments = $stats['finalized'];
 
-$courseSectionsResult = $db->query("
-    SELECT cs.course_sections_pk, cs.crn, c.course_name, c.course_number
-    FROM {$dbPrefix}course_sections cs
+$enrollmentsResult = $db->query("
+    SELECT e.enrollment_pk, e.term_code, e.crn, 
+           s.c_number, s.student_first_name, s.student_last_name,
+           cs.course_sections_pk, c.course_name
+    FROM {$dbPrefix}enrollment e
+    LEFT JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
+    LEFT JOIN {$dbPrefix}course_sections cs ON e.course_section_fk = cs.course_sections_pk
     LEFT JOIN {$dbPrefix}courses c ON cs.course_fk = c.courses_pk
-    WHERE cs.is_active = 1
-    ORDER BY c.course_name, cs.crn
+    WHERE e.enrollment_status IN ('enrolled', 'completed')
+    ORDER BY e.term_code DESC, e.crn, s.student_last_name, s.student_first_name
 ");
-$courseSections = $courseSectionsResult->fetchAll();
-
-$studentsResult = $db->query("
-    SELECT students_pk, student_id, student_first_name, student_last_name
-    FROM {$dbPrefix}students
-    WHERE is_active = 1
-    ORDER BY student_last_name, student_first_name
-");
-$students = $studentsResult->fetchAll();
+$enrollments = $enrollmentsResult->fetchAll();
 
 $slosResult = $db->query("
     SELECT slo.student_learning_outcomes_pk, slo.slo_code, slo.slo_description, c.course_name, c.course_number
@@ -401,6 +402,7 @@ $theme->showHeader($context);
                     <thead>
                         <tr>
                             <th>PK</th>
+                            <th>Term</th>
                             <th>CRN</th>
                             <th>Student</th>
                             <th>SLO</th>
@@ -409,21 +411,20 @@ $theme->showHeader($context);
                             <th>Date</th>
                             <th>Status</th>
                             <th>Actions</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                         </tr>
                     </thead>
-                    <tfoot>
-                        <tr>
-                            <th>PK</th>
-                            <th>CRN</th>
-                            <th>Student</th>
-                            <th>SLO</th>
-                            <th>Score</th>
-                            <th>Achievement</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </tfoot>
                     <tbody></tbody>
                 </table>
             </div>
@@ -445,25 +446,17 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="add">
                     
                     <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="courseSectionFk" class="form-label">Course Section (CRN) <span class="text-danger">*</span></label>
-                            <select class="form-select" id="courseSectionFk" name="course_section_fk" required>
-                                <option value="">Select Course Section</option>
-                                <?php foreach ($courseSections as $section): ?>
-                                    <option value="<?= $section['course_sections_pk'] ?>">
-                                        <?= htmlspecialchars($section['crn']) ?> - <?= htmlspecialchars($section['course_name']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="studentsFk" class="form-label">Student <span class="text-danger">*</span></label>
-                            <select class="form-select" id="studentsFk" name="students_fk" required>
-                                <option value="">Select Student</option>
-                                <?php foreach ($students as $student): ?>
-                                    <option value="<?= $student['students_pk'] ?>">
-                                        <?= htmlspecialchars($student['student_id']) ?> - <?= htmlspecialchars($student['student_last_name']) ?>, <?= htmlspecialchars($student['student_first_name']) ?>
+                        <div class="col-md-8 mb-3">
+                            <label for="enrollmentFk" class="form-label">Enrollment (Term CRN - Student) <span class="text-danger">*</span></label>
+                            <select class="form-select" id="enrollmentFk" name="enrollment_fk" required>
+                                <option value="">Select Enrollment</option>
+                                <?php foreach ($enrollments as $enrollment): 
+                                    $studentName = htmlspecialchars(($enrollment['student_last_name'] ?? '') . ', ' . ($enrollment['student_first_name'] ?? ''));
+                                    $courseName = htmlspecialchars($enrollment['course_name'] ?? 'Course');
+                                    $displayText = htmlspecialchars($enrollment['term_code']) . ' ' . htmlspecialchars($enrollment['crn']) . ' - ' . htmlspecialchars($enrollment['c_number'] ?? '') . ' (' . trim($studentName, ', ') . ') - ' . $courseName;
+                                ?>
+                                    <option value="<?= $enrollment['enrollment_pk'] ?>">
+                                        <?= $displayText ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -545,25 +538,17 @@ $theme->showHeader($context);
                     <input type="hidden" name="assessments_pk" id="editAssessmentPk">
                     
                     <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="editCourseSectionFk" class="form-label">Course Section (CRN) <span class="text-danger">*</span></label>
-                            <select class="form-select" id="editCourseSectionFk" name="course_section_fk" required>
-                                <option value="">Select Course Section</option>
-                                <?php foreach ($courseSections as $section): ?>
-                                    <option value="<?= $section['course_sections_pk'] ?>">
-                                        <?= htmlspecialchars($section['crn']) ?> - <?= htmlspecialchars($section['course_name']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <label for="editStudentsFk" class="form-label">Student <span class="text-danger">*</span></label>
-                            <select class="form-select" id="editStudentsFk" name="students_fk" required>
-                                <option value="">Select Student</option>
-                                <?php foreach ($students as $student): ?>
-                                    <option value="<?= $student['students_pk'] ?>">
-                                        <?= htmlspecialchars($student['student_id']) ?> - <?= htmlspecialchars($student['student_last_name']) ?>, <?= htmlspecialchars($student['student_first_name']) ?>
+                        <div class="col-md-8 mb-3">
+                            <label for="editEnrollmentFk" class="form-label">Enrollment (Term CRN - Student) <span class="text-danger">*</span></label>
+                            <select class="form-select" id="editEnrollmentFk" name="enrollment_fk" required>
+                                <option value="">Select Enrollment</option>
+                                <?php foreach ($enrollments as $enrollment): 
+                                    $studentName = htmlspecialchars(($enrollment['student_last_name'] ?? '') . ', ' . ($enrollment['student_first_name'] ?? ''));
+                                    $courseName = htmlspecialchars($enrollment['course_name'] ?? 'Course');
+                                    $displayText = htmlspecialchars($enrollment['term_code']) . ' ' . htmlspecialchars($enrollment['crn']) . ' - ' . htmlspecialchars($enrollment['c_number'] ?? '') . ' (' . trim($studentName, ', ') . ') - ' . $courseName;
+                                ?>
+                                    <option value="<?= $enrollment['enrollment_pk'] ?>">
+                                        <?= $displayText ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -656,8 +641,8 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-    $('#assessmentsTable tfoot th').each(function() {
-        var title = $(this).text();
+    $('#assessmentsTable thead tr:eq(1) th').each(function(i) {
+        var title = $('#assessmentsTable thead tr:eq(0) th:eq(' + i + ')').text();
         if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         } else {
@@ -673,20 +658,21 @@ $(document).ready(function() {
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
         columns: [
             { data: 0, name: 'assessments_pk' },
-            { data: 1, name: 'crn' },
-            { data: 2, name: 'student_name' },
-            { data: 3, name: 'slo_code' },
-            { data: 4, name: 'score_value' },
-            { data: 5, name: 'achievement_level' },
-            { data: 6, name: 'assessed_date' },
-            { data: 7, name: 'is_active' },
-            { data: 8, name: 'actions', orderable: false, searchable: false }
+            { data: 1, name: 'term_code' },
+            { data: 2, name: 'crn' },
+            { data: 3, name: 'student_name' },
+            { data: 4, name: 'slo_code' },
+            { data: 5, name: 'score_value' },
+            { data: 6, name: 'achievement_level' },
+            { data: 7, name: 'assessed_date' },
+            { data: 8, name: 'is_active' },
+            { data: 9, name: 'actions', orderable: false, searchable: false }
         ],
-        order: [[6, 'desc']],
+        order: [[7, 'desc']],
         initComplete: function() {
             this.api().columns().every(function() {
                 var column = this;
-                $('input', this.footer()).on('keyup change clear', function() {
+                $('input', this.header()).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -698,8 +684,7 @@ $(document).ready(function() {
 
 function editAssessment(assessment) {
     $('#editAssessmentPk').val(assessment.assessments_pk);
-    $('#editCourseSectionFk').val(assessment.course_section_fk);
-    $('#editStudentsFk').val(assessment.students_fk);
+    $('#editEnrollmentFk').val(assessment.enrollment_fk);
     $('#editSloFk').val(assessment.student_learning_outcome_fk);
     $('#editScoreValue').val(assessment.score_value);
     $('#editAchievementLevel').val(assessment.achievement_level);

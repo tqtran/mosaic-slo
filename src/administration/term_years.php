@@ -446,6 +446,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 break;
+                
+            case 'import':
+                if (isset($_FILES['term_years_upload']) && $_FILES['term_years_upload']['error'] === UPLOAD_ERR_OK) {
+                    $csvFile = $_FILES['term_years_upload']['tmp_name'];
+                    $handle = fopen($csvFile, 'r');
+                    
+                    if ($handle !== false) {
+                        // Skip header row
+                        fgetcsv($handle);
+                        
+                        $imported = 0;
+                        $skipped = 0;
+                        
+                        while (($row = fgetcsv($handle)) !== false) {
+                            if (count($row) >= 2) {
+                                $termName = trim($row[0]);
+                                $startDate = isset($row[1]) && !empty(trim($row[1])) ? trim($row[1]) : null;
+                                $endDate = isset($row[2]) && !empty(trim($row[2])) ? trim($row[2]) : null;
+                                $isActive = isset($row[3]) && strtolower(trim($row[3])) === 'active' ? 1 : 0;
+                                $isCurrent = isset($row[4]) && strtolower(trim($row[4])) === 'yes' ? 1 : 0;
+                                
+                                if (!empty($termName)) {
+                                    // Check if term exists
+                                    $checkResult = $db->query(
+                                        "SELECT term_years_pk FROM {$dbPrefix}term_years WHERE term_name = ?",
+                                        [$termName],
+                                        's'
+                                    );
+                                    
+                                    if ($checkRow = $checkResult->fetch()) {
+                                        // Update existing
+                                        $db->query(
+                                            "UPDATE {$dbPrefix}term_years 
+                                             SET start_date = ?, end_date = ?, is_active = ?, is_current = ?, updated_at = NOW()
+                                             WHERE term_years_pk = ?",
+                                            [$startDate, $endDate, $isActive, $isCurrent, $checkRow['term_years_pk']],
+                                            'ssiii'
+                                        );
+                                    } else {
+                                        // Insert new
+                                        $db->query(
+                                            "INSERT INTO {$dbPrefix}term_years (term_name, start_date, end_date, is_active, is_current, created_at, updated_at)
+                                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                                            [$termName, $startDate, $endDate, $isActive, $isCurrent],
+                                            'ssiii'
+                                        );
+                                    }
+                                    $imported++;
+                                } else {
+                                    $skipped++;
+                                }
+                            }
+                        }
+                        
+                        fclose($handle);
+                        $successMessage = "Import completed: {$imported} records imported/updated, {$skipped} skipped";
+                    } else {
+                        $errorMessage = 'Failed to read CSV file';
+                    }
+                } else {
+                    $errorMessage = 'No file uploaded or upload error occurred';
+                }
+                break;
         }
     } catch (\Exception $e) {
         $errorMessage = 'Operation failed: ' . htmlspecialchars($e->getMessage());
@@ -563,85 +626,6 @@ $theme->showHeader($context);
             </div>
         </div>
         
-        <!-- Term Operations -->
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h3 class="card-title"><i class="fas fa-copy"></i> Copy Term Data</h3>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST" action="" id="copyTermForm">
-                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                            <input type="hidden" name="action" value="copy_term">
-                            
-                            <div class="mb-3">
-                                <label for="sourceTermId" class="form-label">Copy From (Source Term)</label>
-                                <select class="form-select" id="sourceTermId" name="source_term_id" required>
-                                    <option value="">-- Select Source Term --</option>
-                                    <?php foreach ($allTerms as $term): ?>
-                                        <option value="<?= $term['term_years_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="targetTermId" class="form-label">Copy To (Target Term)</label>
-                                <select class="form-select" id="targetTermId" name="target_term_id" required>
-                                    <option value="">-- Select Target Term --</option>
-                                    <?php foreach ($allTerms as $term): ?>
-                                        <option value="<?= $term['term_years_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            
-                            <div class="alert alert-warning">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                <strong>Warning:</strong> This will copy all programs, program outcomes, courses, course sections, and SLOs from the source term to the target term. Existing programs/courses in the target term will be updated.
-                            </div>
-                            
-                            <button type="button" class="btn btn-primary w-100" onclick="confirmCopyTerm()">
-                                <i class="fas fa-copy"></i> Copy Term Data
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-md-6">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-danger text-white">
-                        <h3 class="card-title"><i class="fas fa-trash"></i> Clear Term Data</h3>
-                    </div>
-                    <div class="card-body">
-                        <form method="POST" action="" id="clearTermForm">
-                            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-                            <input type="hidden" name="action" value="clear_term">
-                            
-                            <div class="mb-3">
-                                <label for="clearTermId" class="form-label">Select Term to Clear</label>
-                                <select class="form-select" id="clearTermId" name="term_id" required>
-                                    <option value="">-- Select Term --</option>
-                                    <?php foreach ($allTerms as $term): ?>
-                                        <option value="<?= $term['term_years_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            
-                            <div class="alert alert-danger">
-                                <i class="fas fa-exclamation-circle"></i>
-                                <strong>Danger:</strong> This will permanently delete ALL programs, program outcomes, courses, sections, and SLOs for the selected term. This action CANNOT be undone!
-                            </div>
-                            
-                            <button type="button" class="btn btn-danger w-100" onclick="confirmClearTerm()">
-                                <i class="fas fa-trash"></i> Clear All Data for Selected Term
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
         <!-- Term Years Table -->
         <div class="card shadow-sm mt-4">
             <div class="card-header">
@@ -649,6 +633,22 @@ $theme->showHeader($context);
                     <i class="fas fa-calendar"></i> Term Years
                 </h3>
                 <div class="card-tools">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#copyTermModal">
+                                <i class="fas fa-copy"></i> Copy Term Data
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#clearTermModal">
+                                <i class="fas fa-trash"></i> Clear Term Data
+                            </a></li>
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                        <i class="fas fa-file-upload"></i> Import CSV
+                    </button>
                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTermModal">
                         <i class="fas fa-plus"></i> Add Term
                     </button>
@@ -845,6 +845,144 @@ $theme->showHeader($context);
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Copy Term Data Modal -->
+<div class="modal fade" id="copyTermModal" tabindex="-1" aria-labelledby="copyTermModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="" id="copyTermForm">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                <input type="hidden" name="action" value="copy_term">
+                
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="copyTermModalLabel">
+                        <i class="fas fa-copy"></i> Copy Term Data
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="sourceTermId" class="form-label">Copy From (Source Term)</label>
+                        <select class="form-select" id="sourceTermId" name="source_term_id" required>
+                            <option value="">-- Select Source Term --</option>
+                            <?php foreach ($allTerms as $term): ?>
+                                <option value="<?= $term['term_years_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="targetTermId" class="form-label">Copy To (Target Term)</label>
+                        <select class="form-select" id="targetTermId" name="target_term_id" required>
+                            <option value="">-- Select Target Term --</option>
+                            <?php foreach ($allTerms as $term): ?>
+                                <option value="<?= $term['term_years_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Warning:</strong> This will copy all programs, program outcomes, courses, course sections, and SLOs from the source term to the target term. Existing programs/courses in the target term will be updated.
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmCopyTerm()">
+                        <i class="fas fa-copy"></i> Copy Term Data
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Clear Term Data Modal -->
+<div class="modal fade" id="clearTermModal" tabindex="-1" aria-labelledby="clearTermModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="" id="clearTermForm">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                <input type="hidden" name="action" value="clear_term">
+                
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="clearTermModalLabel">
+                        <i class="fas fa-trash"></i> Clear Term Data
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="clearTermId" class="form-label">Select Term to Clear</label>
+                        <select class="form-select" id="clearTermId" name="term_id" required>
+                            <option value="">-- Select Term --</option>
+                            <?php foreach ($allTerms as $term): ?>
+                                <option value="<?= $term['term_years_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <strong>Danger:</strong> This will permanently delete ALL programs, program outcomes, courses, sections, and SLOs for the selected term. This action CANNOT be undone!
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmClearTerm()">
+                        <i class="fas fa-trash"></i> Clear All Data for Selected Term
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Upload CSV Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                <input type="hidden" name="action" value="import">
+                
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uploadModalLabel">
+                        <i class="fas fa-file-upload"></i> Import Term Years from CSV
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="term_years_upload" class="form-label">CSV File</label>
+                        <input type="file" class="form-control" id="term_years_upload" 
+                               name="term_years_upload" accept=".csv" required>
+                        <div class="form-text">
+                            CSV format: Term Name, Start Date (YYYY-MM-DD), End Date (YYYY-MM-DD), Status (Active/Inactive), Is Current (Yes/No)
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> Existing term years with matching names will be updated. New term years will be created.
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-upload"></i> Upload
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
