@@ -10,6 +10,7 @@
 -- Simplified schema focused on core platform functionality
 
 -- Drop existing tables if they exist (for clean reinstall)
+-- Order matters due to foreign key constraints
 DROP TABLE IF EXISTS tbl_lti_nonces;
 DROP TABLE IF EXISTS tbl_user_roles;
 DROP TABLE IF EXISTS tbl_roles;
@@ -22,6 +23,8 @@ DROP TABLE IF EXISTS tbl_programs;
 DROP TABLE IF EXISTS tbl_institutional_outcomes;
 DROP TABLE IF EXISTS tbl_institution;
 DROP TABLE IF EXISTS tbl_students;
+DROP TABLE IF EXISTS tbl_terms;
+DROP TABLE IF EXISTS tbl_term_years;
 DROP TABLE IF EXISTS tbl_users;
 DROP TABLE IF EXISTS tbl_audit_log;
 DROP TABLE IF EXISTS tbl_error_log;
@@ -102,6 +105,7 @@ CREATE TABLE tbl_institutional_outcomes (
 
 CREATE TABLE tbl_programs (
     programs_pk INT AUTO_INCREMENT PRIMARY KEY,
+    term_year_fk INT NOT NULL,
     program_code VARCHAR(50) NOT NULL,
     program_name VARCHAR(255) NOT NULL,
     degree_type VARCHAR(50),
@@ -110,7 +114,7 @@ CREATE TABLE tbl_programs (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    UNIQUE KEY uk_program_code (program_code)
+    UNIQUE KEY uk_term_program_code (term_year_fk, program_code)
 );
 
 CREATE TABLE tbl_program_outcomes (
@@ -128,8 +132,37 @@ CREATE TABLE tbl_program_outcomes (
     UNIQUE KEY uk_prog_outcome_code (program_fk, outcome_code)
 );
 
+CREATE TABLE tbl_term_years (
+    term_years_pk INT AUTO_INCREMENT PRIMARY KEY,
+    term_name VARCHAR(50) NOT NULL,
+    start_date DATE,
+    end_date DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    is_current BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by_fk INT,
+    updated_by_fk INT,
+    UNIQUE KEY uk_term_name (term_name)
+);
+
+CREATE TABLE tbl_terms (
+    terms_pk INT AUTO_INCREMENT PRIMARY KEY,
+    term_year_fk INT NOT NULL,
+    term_name VARCHAR(50) NOT NULL COMMENT 'Fall 2025, Spring 2026, Summer 2026',
+    start_date DATE,
+    end_date DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by_fk INT,
+    updated_by_fk INT,
+    UNIQUE KEY uk_term_name (term_year_fk, term_name)
+);
+
 CREATE TABLE tbl_courses (
     courses_pk INT AUTO_INCREMENT PRIMARY KEY,
+    program_fk INT NOT NULL,
     course_name VARCHAR(255) NOT NULL,
     course_number VARCHAR(50) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
@@ -137,7 +170,7 @@ CREATE TABLE tbl_courses (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    UNIQUE KEY uk_course_name_number (course_name, course_number)
+    UNIQUE KEY uk_program_course_number (program_fk, course_number)
 );
 
 CREATE TABLE tbl_student_learning_outcomes (
@@ -181,6 +214,7 @@ CREATE TABLE tbl_students (
 CREATE TABLE tbl_course_sections (
     course_sections_pk INT AUTO_INCREMENT PRIMARY KEY,
     course_fk INT NOT NULL,
+    term_fk INT NOT NULL,
     crn VARCHAR(20) NOT NULL,
     section_number VARCHAR(10),
     instructor_name VARCHAR(255),

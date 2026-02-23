@@ -56,6 +56,24 @@
                     </a>
                 </li>
                 
+                <li class="nav-header">ACADEMIC CALENDAR</li>
+                
+                <!-- Term Years -->
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/term_years.php" class="nav-link <?= ($currentPage ?? '') === 'admin_term_years' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-calendar-range"></i>
+                        <p>Term Years</p>
+                    </a>
+                </li>
+                
+                <!-- Terms -->
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/terms.php" class="nav-link <?= ($currentPage ?? '') === 'admin_terms' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-calendar-week"></i>
+                        <p>Terms</p>
+                    </a>
+                </li>
+                
                 <li class="nav-header">PROGRAMS</li>
                 
                 <!-- Program Management -->
