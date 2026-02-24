@@ -617,9 +617,6 @@ $theme->showHeader($context);
 
 <script>
 // Convert PHP arrays to JavaScript
-var sloSets = <?= json_encode(array_map(function($s) { 
-    return ['name' => $s['set_name'], 'code' => $s['set_code']]; 
-}, $sloSets)) ?>;
 var courses = <?= json_encode(array_map(function($c) { 
     return ['name' => $c['course_name'], 'number' => $c['course_number']]; 
 }, $courses)) ?>;
@@ -631,23 +628,15 @@ $(document).ready(function() {
     $('#slosTable thead tr:eq(1) th').each(function(i) {
         var title = $('#slosTable thead tr:eq(0) th:eq(' + i + ')').text();
         
-        // SLO Set column (index 1)
-        if (title === 'SLO Set') {
-            var select = $('<select class="form-select form-select-sm"><option value="">All SLO Sets</option></select>')
-                .appendTo($(this).empty());
-            sloSets.forEach(function(set) {
-                select.append('<option value="' + set.name + '">' + set.name + '</option>');
-            });
-        }
-        // Course column (index 2)
-        else if (title === 'Course') {
+        // Course column (index 1)
+        if (title === 'Course') {
             var select = $('<select class="form-select form-select-sm"><option value="">All Courses</option></select>')
                 .appendTo($(this).empty());
             courses.forEach(function(course) {
                 select.append('<option value="' + course.name + '">' + course.name + '</option>');
             });
         }
-        // Program Outcome column (index 3)
+        // Program Outcome column (index 2)
         else if (title === 'Program Outcome') {
             var select = $('<select class="form-select form-select-sm"><option value="">All Program Outcomes</option></select>')
                 .appendTo($(this).empty());
@@ -672,14 +661,13 @@ $(document).ready(function() {
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
         columns: [
             { data: 0, name: 'student_learning_outcomes_pk' },
-            { data: 1, name: 'set_name' },
-            { data: 2, name: 'course_name' },
-            { data: 3, name: 'program_outcome_code' },
-            { data: 4, name: 'slo_code' },
-            { data: 5, name: 'slo_description' },
-            { data: 6, name: 'sequence_num' },
-            { data: 7, name: 'is_active' },
-            { data: 8, name: 'actions', orderable: false, searchable: false }
+            { data: 1, name: 'course_name' },
+            { data: 2, name: 'program_outcome_code' },
+            { data: 3, name: 'slo_code' },
+            { data: 4, name: 'slo_description' },
+            { data: 5, name: 'sequence_num' },
+            { data: 6, name: 'is_active' },
+            { data: 7, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             this.api().columns().every(function() {

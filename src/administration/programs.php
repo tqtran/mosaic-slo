@@ -384,11 +384,11 @@ $theme->showHeader($context);
             <div class="card-header">
                 <h3 class="card-title"><i class="fas fa-table"></i> Academic Programs</h3>
                 <div class="card-tools">
-                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                        <i class="fas fa-file-upload"></i> Import CSV
-                    </button>
                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProgramModal">
                         <i class="fas fa-plus"></i> Add Program
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                        <i class="fas fa-file-upload"></i> Import CSV
                     </button>
                 </div>
             </div>

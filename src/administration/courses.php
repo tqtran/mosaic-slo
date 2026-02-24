@@ -466,8 +466,8 @@ $theme->showHeader($context);
                             <th>ID</th>
                             <th>Course Name</th>
                             <th>Course Number</th>
-                            <th>Department</th>
-                            <th>Credit Hours</th>
+                            <th>Program</th>
+                            <th>Term</th>
                             <th>Status</th>
                             <th>Created</th>
                             <th>Actions</th>
@@ -488,8 +488,8 @@ $theme->showHeader($context);
                             <th>ID</th>
                             <th>Course Name</th>
                             <th>Course Number</th>
-                            <th>Department</th>
-                            <th>Credit Hours</th>
+                            <th>Program</th>
+                            <th>Term</th>
                             <th>Status</th>
                             <th>Created</th>
                             <th>Actions</th>
@@ -673,24 +673,38 @@ $theme->showHeader($context);
 
 <script>
 // Convert PHP arrays to JavaScript
-var departments = <?= json_encode(array_map(function($d) { 
-    return ['name' => $d['department_name'], 'code' => $d['department_code']]; 
-}, $departments)) ?>;
+var programs = <?= json_encode(array_map(function($p) { 
+    return ['name' => $p['program_name'], 'code' => $p['program_code']]; 
+}, $programs)) ?>;
+var terms = <?= json_encode(array_map(function($t) { 
+    return ['name' => $t['term_name'], 'code' => $t['term_code']]; 
+}, $terms)) ?>;
 
 $(document).ready(function() {
     $('#coursesTable thead tr:eq(1) th').each(function(i) {
         var title = $('#coursesTable thead tr:eq(0) th:eq(' + i + ')').text();
         
-        // Department column (index 3) gets dropdown
-        if (title === 'Department') {
-            var select = $('<select class="form-select form-select-sm"><option value="">All Departments</option></select>')
+        // Program column (index 3) gets dropdown
+        if (title === 'Program') {
+            var select = $('<select class="form-select form-select-sm"><option value="">All Programs</option></select>')
                 .appendTo($(this).empty());
             
             // Populate from PHP data
-            departments.forEach(function(dept) {
-                select.append('<option value="' + dept.name + '">' + dept.name + '</option>');
+            programs.forEach(function(prog) {
+                select.append('<option value="' + prog.name + '">' + prog.name + '</option>');
             });
-        } else if (title !== 'Actions') {
+        }
+        // Term column (index 4) gets dropdown
+        else if (title === 'Term') {
+            var select = $('<select class="form-select form-select-sm"><option value="">All Terms</option></select>')
+                .appendTo($(this).empty());
+            
+            // Populate from PHP data
+            terms.forEach(function(term) {
+                select.append('<option value="' + term.name + '">' + term.name + '</option>');
+            });
+        }
+        else if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         } else {
             $(this).html('');
@@ -707,8 +721,8 @@ $(document).ready(function() {
             { data: 0, name: 'courses_pk' },
             { data: 1, name: 'course_name' },
             { data: 2, name: 'course_number' },
-            { data: 3, name: 'department_name' },
-            { data: 4, name: 'credit_hours' },
+            { data: 3, name: 'program_name' },
+            { data: 4, name: 'term_name' },
             { data: 5, name: 'is_active' },
             { data: 6, name: 'created_at' },
             { data: 7, name: 'actions', orderable: false, searchable: false }

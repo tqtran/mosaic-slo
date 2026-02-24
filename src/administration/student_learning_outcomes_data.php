@@ -6,7 +6,7 @@ require_once __DIR__ . '/../system/includes/init.php';
 
 $params = getDataTablesParams();
 
-$searchableColumns = ['slo_code', 'slo_description', 'c.course_name', 'po.code'];
+$searchableColumns = ['slo_code', 'slo_description', 'c.course_name', 'po.outcome_code'];
 
 $columns = [
     'student_learning_outcomes_pk',
@@ -27,7 +27,7 @@ if ($orderColumn === 'course_name') {
     $orderColumn = 'c.course_name';
 }
 if ($orderColumn === 'program_outcome_code') {
-    $orderColumn = 'po.code';
+    $orderColumn = 'po.outcome_code';
 }
 
 $whereParams = [];
@@ -55,7 +55,7 @@ $filteredRow = $filteredResult->fetch();
 $recordsFiltered = $filteredRow['total'];
 
 $dataQuery = "
-    SELECT slo.*, c.course_name, c.course_number, po.code as program_outcome_code
+    SELECT slo.*, c.course_name, c.course_number, po.outcome_code as program_outcome_code
     FROM {$dbPrefix}student_learning_outcomes slo
     LEFT JOIN {$dbPrefix}courses c ON slo.course_fk = c.courses_pk
     LEFT JOIN {$dbPrefix}program_outcomes po ON slo.program_outcomes_fk = po.program_outcomes_pk
