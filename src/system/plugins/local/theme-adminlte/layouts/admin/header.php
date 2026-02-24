@@ -74,7 +74,8 @@
             }
         }
         ?>
-        <li class="nav-item me-3">
+        <li class="nav-item me-3 d-flex align-items-center">
+            <span class="me-2"><strong>Term:</strong></span>
             <select id="headerTermSelector" class="form-select form-select-sm" style="min-width: 200px;">
                 <option value="">All Terms</option>
                 <?php if (empty($headerTerms)): ?>
@@ -89,8 +90,29 @@
                 <?php endif; ?>
             </select>
         </li>
-        <li class="nav-item">
-            <span class="nav-link"><strong><?= htmlspecialchars(SITE_NAME ?? 'MOSAIC') ?></strong></span>
+        <li class="nav-item dropdown">
+            <a class="nav-link" data-bs-toggle="dropdown" href="#" role="button">
+                <i class="bi bi-person-circle"></i>
+                <span class="d-none d-md-inline ms-1">
+                    <?php
+                    // Get logged in user info from session
+                    $loggedInUser = $_SESSION['user_name'] ?? $_SESSION['username'] ?? 'Administrator';
+                    echo htmlspecialchars($loggedInUser);
+                    ?>
+                </span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+                <a href="<?= BASE_URL ?>administration/users.php" class="dropdown-item">
+                    <i class="bi bi-person me-2"></i> My Profile
+                </a>
+                <a href="<?= BASE_URL ?>administration/config.php" class="dropdown-item">
+                    <i class="bi bi-gear me-2"></i> Settings
+                </a>
+                <div class="dropdown-divider"></div>
+                <a href="<?= BASE_URL ?>logout.php" class="dropdown-item">
+                    <i class="bi bi-box-arrow-right me-2"></i> Logout
+                </a>
+            </div>
         </li>
     </ul>
 </nav>

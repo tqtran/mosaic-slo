@@ -372,25 +372,9 @@ $theme->showHeader($context);
         </div>
         <?php endif; ?>
         
-        <!-- Filter and Statistics Row -->
+        <!-- Statistics Row -->
         <div class="row mb-3">
-            <div class="col-12 col-md-3">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <label for="termFilter" class="form-label"><i class="fas fa-filter"></i> Filter by Term</label>
-                        <select id="termFilter" class="form-select">
-                            <?php foreach ($terms as $term): ?>
-                                <option value="<?= $term['terms_pk'] ?>" <?= $term['terms_pk'] == $selectedTermFk ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($term['term_name']) ?>
-                                    <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-info"><i class="fas fa-users"></i></span>
                     <div class="info-box-content">
@@ -400,7 +384,7 @@ $theme->showHeader($context);
                 </div>
             </div>
             
-            <div class="col-12 col-sm-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-success"><i class="fas fa-user-check"></i></span>
                     <div class="info-box-content">
@@ -410,7 +394,7 @@ $theme->showHeader($context);
                 </div>
             </div>
             
-            <div class="col-12 col-sm-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-primary"><i class="fas fa-graduation-cap"></i></span>
                     <div class="info-box-content">
@@ -702,19 +686,6 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-    // Sync local term filter with header selector
-    var selectedTerm = '<?= $selectedTermFk ?? '' ?>';
-    if (selectedTerm) {
-        $('#termFilter').val(selectedTerm);
-        $('#headerTermSelector').val(selectedTerm);
-    }
-    
-    // Term filter change handler
-    $('#termFilter').on('change', function() {
-        var termFk = $(this).val();
-        window.location.href = '<?= BASE_URL ?>administration/enrollment.php?term_fk=' + termFk;
-    });
-    
     // Setup - add a text input to each header cell (second row)
     $('#enrollmentTable thead tr:eq(1) th').each(function(i) {
         var title = $('#enrollmentTable thead tr:eq(0) th:eq(' + i + ')').text();

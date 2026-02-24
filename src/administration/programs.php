@@ -351,25 +351,9 @@ $theme->showHeader($context);
         </div>
         <?php endif; ?>
         
-        <!-- Filter and Statistics Row -->
+        <!-- Statistics Row -->
         <div class="row mb-3">
-            <div class="col-12 col-md-3">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <label for="termFilter" class="form-label"><i class="fas fa-filter"></i> Filter by Term</label>
-                        <select id="termFilter" class="form-select">
-                            <?php foreach ($terms as $term): ?>
-                                <option value="<?= $term['terms_pk'] ?>" <?= $term['terms_pk'] == $selectedTermFk ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($term['term_name']) ?>
-                                    <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-3">
+            <div class="col-12 col-sm-6 col-md-4">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-info"><i class="fas fa-graduation-cap"></i></span>
                     <div class="info-box-content">
@@ -379,7 +363,7 @@ $theme->showHeader($context);
                 </div>
             </div>
             
-            <div class="col-12 col-sm-6 col-md-3">
+            <div class="col-12 col-sm-6 col-md-4">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
                     <div class="info-box-content">
@@ -389,7 +373,7 @@ $theme->showHeader($context);
                 </div>
             </div>
             
-            <div class="col-12 col-sm-6 col-md-3">
+            <div class="col-12 col-sm-6 col-md-4">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-warning"><i class="fas fa-ban"></i></span>
                     <div class="info-box-content">
@@ -665,12 +649,7 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-    // Term filter change handler
-    $('#termFilter').on('change', function() {
-        var termFk = $(this).val();
-        window.location.href = '<?= BASE_URL ?>administration/programs.php?term_fk=' + termFk;
-    });
-    
+
     // Setup - add filters to each header cell (second row)
     $('#programsTable thead tr:eq(1) th').each(function(i) {
         var title = $('#programsTable thead tr:eq(0) th:eq(' + i + ')').text();
