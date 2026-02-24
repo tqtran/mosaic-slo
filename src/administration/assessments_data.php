@@ -50,6 +50,16 @@ $where = [];
 $params = [];
 $types = '';
 
+// Term filter (join through enrollment to terms)
+$termJoin = '';
+$termFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : null;
+if ($termFk) {
+    $termJoin = "INNER JOIN {$dbPrefix}terms t ON e.term_code = t.term_code";
+    $where[] = "t.terms_pk = ?";
+    $params[] = $termFk;
+    $types .= 'i';
+}
+
 if ($searchValue !== '') {
     $searchConditions = [];
     $searchConditions[] = "e.term_code LIKE ?";
@@ -106,7 +116,8 @@ $totalRecords = $totalRow['total'];
 $fromClause = "FROM {$dbPrefix}assessments a
     INNER JOIN {$dbPrefix}enrollment e ON a.enrollment_fk = e.enrollment_pk
     INNER JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
-    LEFT JOIN {$dbPrefix}student_learning_outcomes slo ON a.student_learning_outcome_fk = slo.student_learning_outcomes_pk";
+    LEFT JOIN {$dbPrefix}student_learning_outcomes slo ON a.student_learning_outcome_fk = slo.student_learning_outcomes_pk
+    {$termJoin}";
 
 if ($whereClause) {
     $filteredResult = $db->query(

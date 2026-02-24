@@ -808,6 +808,35 @@ $(document).ready(function() {
         window.location.href = '<?= BASE_URL ?>administration/program_outcomes.php?term_fk=' + termFk;
     });
     
+    // Setup - add filters to each header cell (second row)
+    $('#outcomesTable thead tr:eq(1) th').each(function(i) {
+        var title = $('#outcomesTable thead tr:eq(0) th:eq(' + i + ')').text();
+        
+        // Program column (index 1)
+        if (title === 'Program') {
+            var select = $('<select class="form-select form-select-sm"><option value="">All Programs</option></select>')
+                .appendTo($(this).empty());
+            programs.forEach(function(program) {
+                select.append('<option value="' + program.name + '">' + program.name + '</option>');
+            });
+        }
+        // Institutional Outcome column (index 4)
+        else if (title === 'Institutional Outcome') {
+            var select = $('<select class="form-select form-select-sm"><option value="">All</option></select>')
+                .appendTo($(this).empty());
+            institutionalOutcomes.forEach(function(io) {
+                if (io.code) {
+                    select.append('<option value="' + io.code + '">' + io.code + '</option>');
+                }
+            });
+        }
+        else if (title !== 'Actions' && title !== 'ID') {
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+        } else {
+            $(this).html('');
+        }
+    });
+    
     // Initialize DataTable
     var table = $('#outcomesTable').DataTable({
         orderCellsTop: true,
@@ -834,43 +863,17 @@ $(document).ready(function() {
             searchPlaceholder: "Search outcomes..."
         },
         initComplete: function() {
-            this.api().columns([1, 2, 3, 4, 5, 6, 7]).every(function(idx) {
+            // Apply the search
+            this.api().columns().every(function() {
                 var column = this;
-                var title = $(column.header()).text();
-                var header = $('#outcomesTable thead tr:eq(1) th:eq(' + (idx + 1) + ')');
-                
-                // Program column (index 1 in DataTable, idx=1 in loop)
-                if (title === 'Program') {
-                    var select = $('<select class="form-select form-select-sm"><option value="">All Programs</option></select>')
-                        .appendTo(header.empty());
-                    programs.forEach(function(program) {
-                        select.append('<option value="' + program.name + '">' + program.name + '</option>');
-                    });
-                    select.on('change', function() {
-                        column.search($(this).val()).draw();
-                    });
-                }
-                // Institutional Outcome column (index 4 in DataTable, idx=4 in loop)
-                else if (title === 'Institutional Outcome') {
-                    var select = $('<select class="form-select form-select-sm"><option value="">All Institutional Outcomes</option></select>')
-                        .appendTo(header.empty());
-                    institutionalOutcomes.forEach(function(io) {
-                        if (io.code) {
-                            select.append('<option value="' + io.code + '">' + io.code + '</option>');
-                        }
-                    });
-                    select.on('change', function() {
-                        column.search($(this).val()).draw();
-                    });
-                }
-                else {
-                    header.html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
-                    $('input', header).on('keyup change clear', function() {
-                        if (column.search() !== this.value) {
-                            column.search(this.value).draw();
-                        }
-                    });
-                }
+                $('select', this.header()).on('change', function() {
+                    column.search($(this).val()).draw();
+                });
+                $('input', this.header()).on('keyup change clear', function() {
+                    if (column.search() !== this.value) {
+                        column.search(this.value).draw();
+                    }
+                });
             });
         }
     });

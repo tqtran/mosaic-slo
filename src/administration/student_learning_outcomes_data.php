@@ -32,10 +32,22 @@ if ($orderColumn === 'program_outcome_code') {
 
 $whereParams = [];
 $whereTypes = '';
+
+// Term filter (join through courses)
+$whereConditions = [];
+$termFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : null;
+if ($termFk) {
+    $whereConditions[] = 'c.term_fk = ?';
+    $whereParams[] = $termFk;
+    $whereTypes .= 'i';
+}
+
 $whereClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
 if (!empty($whereClause)) {
-    $whereClause = "WHERE {$whereClause}";
+    $whereConditions[] = $whereClause;
 }
+
+$finalWhereClause = !empty($whereConditions) ? "WHERE " . implode(' AND ', $whereConditions) : '';
 
 $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}student_learning_outcomes");
 $totalRow = $totalResult->fetch();
@@ -45,7 +57,7 @@ $countQuery = "SELECT COUNT(*) as total
                FROM {$dbPrefix}student_learning_outcomes slo 
                LEFT JOIN {$dbPrefix}courses c ON slo.course_fk = c.courses_pk
                LEFT JOIN {$dbPrefix}program_outcomes po ON slo.program_outcomes_fk = po.program_outcomes_pk 
-               {$whereClause}";
+               {$finalWhereClause}";
 if (!empty($whereParams)) {
     $filteredResult = $db->query($countQuery, $whereParams, $whereTypes);
 } else {
@@ -59,7 +71,7 @@ $dataQuery = "
     FROM {$dbPrefix}student_learning_outcomes slo
     LEFT JOIN {$dbPrefix}courses c ON slo.course_fk = c.courses_pk
     LEFT JOIN {$dbPrefix}program_outcomes po ON slo.program_outcomes_fk = po.program_outcomes_pk
-    {$whereClause}
+    {$finalWhereClause}
     ORDER BY {$orderColumn} {$params['orderDir']}
     LIMIT ? OFFSET ?
 ";

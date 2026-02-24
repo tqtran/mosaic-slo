@@ -38,16 +38,28 @@ if ($orderColumn === 'actions') {
 
 $whereParams = [];
 $whereTypes = '';
+
+// Term filter
+$whereConditions = [];
+$termFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : null;
+if ($termFk) {
+    $whereConditions[] = 'c.term_fk = ?';
+    $whereParams[] = $termFk;
+    $whereTypes .= 'i';
+}
+
 $whereClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
 if (!empty($whereClause)) {
-    $whereClause = "WHERE {$whereClause}";
+    $whereConditions[] = $whereClause;
 }
+
+$finalWhereClause = !empty($whereConditions) ? "WHERE " . implode(' AND ', $whereConditions) : '';
 
 $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}courses");
 $totalRow = $totalResult->fetch();
 $recordsTotal = $totalRow['total'];
 
-$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}courses c LEFT JOIN {$dbPrefix}programs p ON c.program_fk = p.programs_pk LEFT JOIN {$dbPrefix}terms t ON c.term_fk = t.terms_pk {$whereClause}";
+$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}courses c LEFT JOIN {$dbPrefix}programs p ON c.program_fk = p.programs_pk LEFT JOIN {$dbPrefix}terms t ON c.term_fk = t.terms_pk {$finalWhereClause}";
 if (!empty($whereParams)) {
     $filteredResult = $db->query($countQuery, $whereParams, $whereTypes);
 } else {
@@ -61,7 +73,7 @@ $dataQuery = "
     FROM {$dbPrefix}courses c
     LEFT JOIN {$dbPrefix}programs p ON c.program_fk = p.programs_pk
     LEFT JOIN {$dbPrefix}terms t ON c.term_fk = t.terms_pk
-    {$whereClause}
+    {$finalWhereClause}
     ORDER BY {$orderColumn} {$params['orderDir']}
     LIMIT ? OFFSET ?
 ";

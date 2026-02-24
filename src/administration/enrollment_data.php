@@ -59,6 +59,16 @@ $whereConditions = [];
 $params = [];
 $types = '';
 
+// Term filter (join through terms table)
+$termJoin = '';
+$termFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : null;
+if ($termFk) {
+    $termJoin = "LEFT JOIN {$dbPrefix}terms t ON e.term_code = t.term_code";
+    $whereConditions[] = 't.terms_pk = ?';
+    $params[] = $termFk;
+    $types .= 'i';
+}
+
 if (!empty($searchValue)) {
     $searchConditions = [
         'e.enrollment_pk LIKE ?',
@@ -97,6 +107,8 @@ $recordsTotal = $totalRow['total'];
 $countQuery = "
     SELECT COUNT(*) as total 
     FROM {$dbPrefix}enrollment e
+    LEFT JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
+    {$termJoin}
     {$whereClause}
 ";
 if (!empty($params)) {
@@ -122,6 +134,7 @@ $dataQuery = "
         e.updated_at
     FROM {$dbPrefix}enrollment e
     LEFT JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
+    {$termJoin}
     {$whereClause}
     ORDER BY {$orderColumn} {$orderDir}
     LIMIT ? OFFSET ?

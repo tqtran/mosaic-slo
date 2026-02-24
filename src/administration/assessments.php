@@ -378,25 +378,24 @@ $theme->showHeader($context);
     </div>
 <?php endif; ?>
 
-<!-- Page Header -->
+<!-- Filter and Statistics Row -->
 <div class="row mb-3">
-    <div class="col-md-8">
-        <h1 class="h3"><i class="fas fa-chart-line"></i> Assessment Management</h1>
-        <p class="text-muted">Manage student learning outcome assessments</p>
+    <div class="col-12 col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <label for="termFilter" class="form-label"><i class="fas fa-filter"></i> Filter by Term</label>
+                <select id="termFilter" class="form-select">
+                    <?php foreach ($terms as $term): ?>
+                        <option value="<?= $term['terms_pk'] ?>" <?= $term['terms_pk'] == $selectedTermFk ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($term['term_name']) ?>
+                            <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
     </div>
-    <div class="col-md-4 text-end">
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAssessmentModal">
-            <i class="fas fa-plus"></i> Add Assessment
-        </button>
-        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#importModal">
-            <i class="fas fa-upload"></i> Import CSV
-        </button>
-    </div>
-</div>
-
-<!-- Statistics Cards -->
-<div class="row mb-4">
-    <div class="col-md-6">
+    <div class="col-12 col-md-4">
         <div class="card bg-primary text-white">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -411,7 +410,7 @@ $theme->showHeader($context);
             </div>
         </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-12 col-md-4">
         <div class="card bg-success text-white">
             <div class="card-body">
                 <div class="d-flex align-items-center">
@@ -690,6 +689,12 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
+    // Term filter change handler
+    $('#termFilter').on('change', function() {
+        var termFk = $(this).val();
+        window.location.href = '<?= BASE_URL ?>administration/assessments.php?term_fk=' + termFk;
+    });
+    
     // Initialize DataTable with individual column search
     $('#assessmentsTable thead tr:eq(1) th').each(function(i) {
         var title = $('#assessmentsTable thead tr:eq(0) th:eq(' + i + ')').text();
@@ -704,7 +709,12 @@ $(document).ready(function() {
         orderCellsTop: true,
         processing: true,
         serverSide: true,
-        ajax: '<?= BASE_URL ?>administration/assessments_data.php',
+        ajax: {
+            url: '<?= BASE_URL ?>administration/assessments_data.php',
+            data: function(d) {
+                d.term_fk = $('#termFilter').val();
+            }
+        },
         dom: 'Bfrtip',
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
         columns: [
