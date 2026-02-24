@@ -12,8 +12,11 @@ declare(strict_types=1);
 require_once __DIR__ . '/../system/includes/datatables_helper.php';
 require_once __DIR__ . '/../system/includes/init.php';
 
-// Get DataTables parameters
-$params = getDataTablesParams();
+header('Content-Type: application/json');
+
+try {
+    // Get DataTables parameters
+    $params = getDataTablesParams();
 
 // Define searchable columns
 $searchableColumns = [
@@ -118,5 +121,15 @@ foreach ($outcomes as $row) {
     ];
 }
 
-// Output JSON response
-outputDataTablesJson($params['draw'], $recordsTotal, $recordsFiltered, $data);
+    // Output JSON response
+    outputDataTablesJson($params['draw'], $recordsTotal, $recordsFiltered, $data);
+} catch (\Exception $e) {
+    error_log("Institutional Outcomes DataTables error: " . $e->getMessage());
+    echo json_encode([
+        'draw' => $params['draw'] ?? 1,
+        'recordsTotal' => 0,
+        'recordsFiltered' => 0,
+        'data' => [],
+        'error' => 'Database error: ' . $e->getMessage()
+    ]);
+}

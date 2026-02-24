@@ -3,58 +3,54 @@
 -- Character Set: UTF8MB4
 -- Collation: utf8mb4_unicode_ci
 -- Storage Engine: InnoDB
---
--- All tables prefixed with tbl_ for easy find/replace during setup
--- Setup script will replace tbl_ with configured prefix
---
--- Simplified schema focused on core platform functionality
 
 -- Drop existing tables if they exist (for clean reinstall)
--- Order matters due to foreign key constraints
+SET FOREIGN_KEY_CHECKS = 0;
+
 DROP TABLE IF EXISTS tbl_lti_nonces;
+DROP TABLE IF EXISTS tbl_lti_consumers;
 DROP TABLE IF EXISTS tbl_user_roles;
 DROP TABLE IF EXISTS tbl_roles;
 DROP TABLE IF EXISTS tbl_assessments;
 DROP TABLE IF EXISTS tbl_enrollment;
+DROP TABLE IF EXISTS tbl_students;
 DROP TABLE IF EXISTS tbl_student_learning_outcomes;
 DROP TABLE IF EXISTS tbl_courses;
 DROP TABLE IF EXISTS tbl_program_outcomes;
 DROP TABLE IF EXISTS tbl_programs;
 DROP TABLE IF EXISTS tbl_institutional_outcomes;
-DROP TABLE IF EXISTS tbl_students;
 DROP TABLE IF EXISTS tbl_terms;
 DROP TABLE IF EXISTS tbl_users;
-DROP TABLE IF EXISTS tbl_audit_log;
-DROP TABLE IF EXISTS tbl_error_log;
-DROP TABLE IF EXISTS tbl_security_log;
 
+SET FOREIGN_KEY_CHECKS = 1;
 
--- ====================
--- SYSTEM TABLES
--- ====================
+-- ============================================================================
+-- 1. USER MANAGEMENT (Created First - Referenced by Audit Fields)
+-- ============================================================================
 
 CREATE TABLE tbl_users (
     users_pk INT AUTO_INCREMENT PRIMARY KEY,
-    user_id VARCHAR(100) NOT NULL,
+    user_id VARCHAR(100) NOT NULL UNIQUE,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    email VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_user_id (user_id),
-    UNIQUE KEY uk_email (email)
-);
+    INDEX idx_user_id (user_id),
+    INDEX idx_email (email),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE tbl_roles (
     roles_pk INT AUTO_INCREMENT PRIMARY KEY,
-    role_name VARCHAR(50) NOT NULL,
+    role_name VARCHAR(50) NOT NULL UNIQUE,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_role_name (role_name)
-);
+    INDEX idx_role_name (role_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE tbl_user_roles (
     user_roles_pk INT AUTO_INCREMENT PRIMARY KEY,
@@ -63,13 +59,39 @@ CREATE TABLE tbl_user_roles (
     context_type VARCHAR(50),
     context_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_user_role_context (user_fk, role_fk, context_type, context_id)
-);
+    FOREIGN KEY (user_fk) REFERENCES tbl_users(users_pk) ON DELETE CASCADE,
+    FOREIGN KEY (role_fk) REFERENCES tbl_roles(roles_pk) ON DELETE CASCADE,
+    INDEX idx_user_fk (user_fk),
+    INDEX idx_role_fk (role_fk),
+    INDEX idx_context (context_type, context_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- 2. TERMS (Top-Level Controlling Entity)
+-- ============================================================================
+
+CREATE TABLE tbl_terms (
+    terms_pk INT AUTO_INCREMENT PRIMARY KEY,
+    term_code VARCHAR(50) NOT NULL UNIQUE COMMENT 'Banner term code (e.g., 202630)',
+    term_name VARCHAR(100) NOT NULL,
+    academic_year VARCHAR(20) COMMENT 'Academic year label (e.g., 2022-2023)',
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_term_code (term_code),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- 3. OUTCOMES HIERARCHY
+-- ============================================================================
 
 CREATE TABLE tbl_institutional_outcomes (
     institutional_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
     term_fk INT NOT NULL,
-    outcome_code VARCHAR(50) NOT NULL,
+    outcome_code VARCHAR(50) NOT NULL UNIQUE,
     outcome_description TEXT NOT NULL,
     sequence_num INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
@@ -77,18 +99,23 @@ CREATE TABLE tbl_institutional_outcomes (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    UNIQUE KEY uk_outcome_code (outcome_code)
-);
+    FOREIGN KEY (term_fk) REFERENCES tbl_terms(terms_pk) ON DELETE CASCADE,
+    FOREIGN KEY (created_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    INDEX idx_term_fk (term_fk),
+    INDEX idx_outcome_code (outcome_code),
+    INDEX idx_sequence_num (sequence_num),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ====================
--- ACADEMIC STRUCTURE
--- ====================
+-- ============================================================================
+-- 4. PROGRAMS
+-- ============================================================================
 
 CREATE TABLE tbl_programs (
     programs_pk INT AUTO_INCREMENT PRIMARY KEY,
     term_fk INT NOT NULL,
-    program_code VARCHAR(50) NOT NULL,
+    program_code VARCHAR(50) NOT NULL UNIQUE,
     program_name VARCHAR(255) NOT NULL,
     degree_type VARCHAR(50),
     is_active BOOLEAN DEFAULT TRUE,
@@ -96,14 +123,19 @@ CREATE TABLE tbl_programs (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    UNIQUE KEY uk_program_code (program_code)
-);
+    FOREIGN KEY (term_fk) REFERENCES tbl_terms(terms_pk) ON DELETE CASCADE,
+    FOREIGN KEY (created_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    INDEX idx_term_fk (term_fk),
+    INDEX idx_program_code (program_code),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE tbl_program_outcomes (
     program_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
     program_fk INT NOT NULL,
     institutional_outcomes_fk INT,
-    outcome_code VARCHAR(50) NOT NULL,
+    outcome_code VARCHAR(50) NOT NULL UNIQUE,
     outcome_description TEXT NOT NULL,
     sequence_num INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
@@ -111,55 +143,71 @@ CREATE TABLE tbl_program_outcomes (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    UNIQUE KEY uk_prog_outcome_code (program_fk, outcome_code)
-);
+    FOREIGN KEY (program_fk) REFERENCES tbl_programs(programs_pk) ON DELETE CASCADE,
+    FOREIGN KEY (institutional_outcomes_fk) REFERENCES tbl_institutional_outcomes(institutional_outcomes_pk) ON DELETE SET NULL,
+    FOREIGN KEY (created_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    INDEX idx_outcome_code (outcome_code),
+    INDEX idx_program_fk (program_fk),
+    INDEX idx_institutional_outcomes_fk (institutional_outcomes_fk),
+    INDEX idx_sequence_num (sequence_num),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE tbl_terms (
-    terms_pk INT AUTO_INCREMENT PRIMARY KEY,
-    term_code VARCHAR(50) NOT NULL UNIQUE COMMENT 'Banner term code (e.g., 202630)',
-    term_name VARCHAR(50) NOT NULL COMMENT 'Fall 2025, Spring 2026, Summer 2026',
-    start_date DATE,
-    end_date DATE,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_by_fk INT,
-    updated_by_fk INT,
-    UNIQUE KEY uk_term_name (term_name)
-);
+-- ============================================================================
+-- 5. COURSES & STUDENT LEARNING OUTCOMES
+-- ============================================================================
 
 CREATE TABLE tbl_courses (
     courses_pk INT AUTO_INCREMENT PRIMARY KEY,
     program_fk INT NOT NULL,
     term_fk INT NOT NULL,
-    course_name VARCHAR(255) NOT NULL,
     course_number VARCHAR(50) NOT NULL,
+    course_name VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    UNIQUE KEY uk_program_course_number (program_fk, course_number)
-);
+    FOREIGN KEY (program_fk) REFERENCES tbl_programs(programs_pk) ON DELETE CASCADE,
+    FOREIGN KEY (term_fk) REFERENCES tbl_terms(terms_pk) ON DELETE CASCADE,
+    FOREIGN KEY (created_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    UNIQUE KEY unique_program_course (program_fk, course_number),
+    INDEX idx_program_fk (program_fk),
+    INDEX idx_term_fk (term_fk),
+    INDEX idx_course_number (course_number),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE tbl_student_learning_outcomes (
     student_learning_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
     course_fk INT NOT NULL,
+    program_outcomes_fk INT,
     slo_code VARCHAR(50) NOT NULL,
     slo_description TEXT NOT NULL,
+    assessment_method VARCHAR(255),
     sequence_num INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    UNIQUE KEY uk_course_slo_code (course_fk, slo_code)
-);
+    FOREIGN KEY (course_fk) REFERENCES tbl_courses(courses_pk) ON DELETE CASCADE,
+    FOREIGN KEY (program_outcomes_fk) REFERENCES tbl_program_outcomes(program_outcomes_pk) ON DELETE SET NULL,
+    FOREIGN KEY (created_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    UNIQUE KEY unique_course_slo (course_fk, slo_code),
+    INDEX idx_course_fk (course_fk),
+    INDEX idx_program_outcomes_fk (program_outcomes_fk),
+    INDEX idx_slo_code (slo_code),
+    INDEX idx_sequence_num (sequence_num),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ====================
--- STUDENT DATA (ENCRYPTED)
--- ====================
+-- ============================================================================
+-- 6. STUDENTS & ENROLLMENT
+-- ============================================================================
 
 CREATE TABLE tbl_students (
     students_pk INT AUTO_INCREMENT PRIMARY KEY,
@@ -170,9 +218,10 @@ CREATE TABLE tbl_students (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_by_fk INT,
-    updated_by_fk INT
-);
+    INDEX idx_student_id (student_id),
+    INDEX idx_email (email),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE tbl_enrollment (
     enrollment_pk INT AUTO_INCREMENT PRIMARY KEY,
@@ -183,45 +232,62 @@ CREATE TABLE tbl_enrollment (
     enrollment_date DATE NOT NULL COMMENT 'Registration date from Banner (regdate)',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update from Banner (updated)',
-    UNIQUE KEY uk_enrollment (term_code, crn, student_fk)
-);
+    FOREIGN KEY (student_fk) REFERENCES tbl_students(students_pk) ON DELETE CASCADE,
+    UNIQUE KEY unique_enrollment (term_code, crn, student_fk),
+    INDEX idx_term_code (term_code),
+    INDEX idx_crn (crn),
+    INDEX idx_student_fk (student_fk),
+    INDEX idx_enrollment_status (enrollment_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ====================
--- ASSESSMENTS
--- ====================
+-- ============================================================================
+-- 7. ASSESSMENT DATA
+-- ============================================================================
 
 CREATE TABLE tbl_assessments (
     assessments_pk INT AUTO_INCREMENT PRIMARY KEY,
     enrollment_fk INT NOT NULL,
     student_learning_outcome_fk INT NOT NULL,
     score_value DECIMAL(5,2),
-    achievement_level VARCHAR(20) DEFAULT 'pending',
+    achievement_level ENUM('met', 'partially_met', 'not_met', 'pending') DEFAULT 'pending',
     notes TEXT,
     assessed_date DATE,
     is_finalized BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    assessed_by_fk INT
-);
+    assessed_by_fk INT,
+    FOREIGN KEY (enrollment_fk) REFERENCES tbl_enrollment(enrollment_pk) ON DELETE CASCADE,
+    FOREIGN KEY (student_learning_outcome_fk) REFERENCES tbl_student_learning_outcomes(student_learning_outcomes_pk) ON DELETE CASCADE,
+    FOREIGN KEY (assessed_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    INDEX idx_enrollment_fk (enrollment_fk),
+    INDEX idx_student_learning_outcome_fk (student_learning_outcome_fk),
+    INDEX idx_achievement_level (achievement_level),
+    INDEX idx_assessed_date (assessed_date),
+    INDEX idx_is_finalized (is_finalized)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- ====================
--- LOGGING TABLES
--- ====================
+-- ============================================================================
+-- 8. AUDIT & ERROR LOGGING
+-- ============================================================================
 
 CREATE TABLE tbl_audit_log (
     audit_log_pk INT AUTO_INCREMENT PRIMARY KEY,
     table_name VARCHAR(100) NOT NULL,
     record_pk INT NOT NULL,
-    action VARCHAR(20) NOT NULL,
+    action ENUM('INSERT', 'UPDATE', 'DELETE') NOT NULL,
     changed_by_fk INT,
     changed_data JSON,
     old_data JSON,
     ip_address VARCHAR(45),
     user_agent TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (changed_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    INDEX idx_table_name (table_name),
+    INDEX idx_record_pk (record_pk),
+    INDEX idx_action (action),
+    INDEX idx_changed_by_fk (changed_by_fk),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE tbl_error_log (
     error_log_pk INT AUTO_INCREMENT PRIMARY KEY,
@@ -231,33 +297,53 @@ CREATE TABLE tbl_error_log (
     stack_trace TEXT,
     file_path VARCHAR(255),
     line_number INT,
+    user_fk INT,
     request_uri TEXT,
     request_method VARCHAR(10),
     request_data JSON,
     ip_address VARCHAR(45),
     user_agent TEXT,
-    severity VARCHAR(20) DEFAULT 'error',
+    severity ENUM('debug', 'info', 'warning', 'error', 'critical') DEFAULT 'error',
     is_resolved BOOLEAN DEFAULT FALSE,
     resolved_at TIMESTAMP NULL,
     resolved_by_fk INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    user_fk INT
-);
+    FOREIGN KEY (user_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    FOREIGN KEY (resolved_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    INDEX idx_error_type (error_type),
+    INDEX idx_severity (severity),
+    INDEX idx_is_resolved (is_resolved),
+    INDEX idx_user_fk (user_fk),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE tbl_security_log (
     security_log_pk INT AUTO_INCREMENT PRIMARY KEY,
     event_type VARCHAR(100) NOT NULL,
     event_description TEXT NOT NULL,
+    user_fk INT,
     username VARCHAR(100),
     ip_address VARCHAR(45),
     user_agent TEXT,
     request_uri TEXT,
-    severity VARCHAR(20) DEFAULT 'info',
+    severity ENUM('info', 'warning', 'critical') DEFAULT 'info',
     is_threat BOOLEAN DEFAULT FALSE,
     metadata JSON,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    user_fk INT
-);
+    FOREIGN KEY (user_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    INDEX idx_event_type (event_type),
+    INDEX idx_user_fk (user_fk),
+    INDEX idx_username (username),
+    INDEX idx_ip_address (ip_address),
+    INDEX idx_severity (severity),
+    INDEX idx_is_threat (is_threat),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- 9. LTI INTEGRATION
+-- ============================================================================
+-- Note: LTI consumer keys are stored in config.yaml
 
 CREATE TABLE tbl_lti_nonces (
     lti_nonces_pk INT AUTO_INCREMENT PRIMARY KEY,
@@ -265,8 +351,14 @@ CREATE TABLE tbl_lti_nonces (
     nonce_value VARCHAR(255) NOT NULL,
     timestamp BIGINT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_nonce (consumer_key, nonce_value)
-);
+    UNIQUE KEY unique_nonce (consumer_key, nonce_value, timestamp),
+    INDEX idx_consumer_key (consumer_key),
+    INDEX idx_timestamp (timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- INITIAL DATA: Standard Roles
+-- ============================================================================
 
 INSERT INTO tbl_roles (role_name, description) VALUES
     ('admin', 'System administrator with full access'),
@@ -274,3 +366,7 @@ INSERT INTO tbl_roles (role_name, description) VALUES
     ('program_coordinator', 'Program coordinator with program-level access'),
     ('instructor', 'Course instructor with course-level access'),
     ('assessment_coordinator', 'Assessment coordinator with reporting access');
+
+-- ============================================================================
+-- SCHEMA COMPLETE
+-- ============================================================================

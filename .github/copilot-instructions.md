@@ -99,6 +99,42 @@ require_once __DIR__ . '/system/includes/header.php';
 - Ordering fields: `sequence_num`
 - Soft deletes: `is_active` BOOLEAN
 
+**Database Query Pattern:**
+
+All database queries MUST use the `$dbPrefix` variable for table names. This variable is set by `init.php` based on the configured table prefix in `config.yaml`.
+
+```php
+<?php
+require_once __DIR__ . '/system/includes/init.php';
+
+// CORRECT: Use $dbPrefix variable
+$result = $db->query(
+    "SELECT * FROM {$dbPrefix}users WHERE users_pk = ?",
+    [$userId],
+    'i'
+);
+
+// CORRECT: Multiple tables
+$result = $db->query("
+    SELECT u.*, r.role_name 
+    FROM {$dbPrefix}users u
+    LEFT JOIN {$dbPrefix}user_roles ur ON u.users_pk = ur.user_fk
+    LEFT JOIN {$dbPrefix}roles r ON ur.role_fk = r.roles_pk
+    WHERE u.users_pk = ?
+", [$userId], 'i');
+
+// WRONG: Hardcoded table names will break if prefix is configured
+$result = $db->query("SELECT * FROM users WHERE users_pk = ?", [$userId], 'i');
+$result = $db->query("SELECT * FROM tbl_users WHERE users_pk = ?", [$userId], 'i');
+```
+
+**Key Points:**
+- Always include `init.php` to get `$db` and `$dbPrefix` variables
+- Use string interpolation: `{$dbPrefix}tablename` in all queries
+- Table names in schema are prefixed with `tbl_` which gets replaced during setup
+- Application code uses `$dbPrefix` which reflects the actual configured prefix
+- Never hardcode table names without the prefix variable
+
 ## Authentication & Security
 
 **Three concurrent auth methods:**
@@ -230,18 +266,20 @@ See [docs/concepts/TESTING.md](../docs/concepts/TESTING.md) for comprehensive te
 1. **Determine directory** - `src/dashboard/` for admin pages, `src/lti/` for LTI tools, etc.
 2. **Read [SCHEMA.md](../docs/concepts/SCHEMA.md)** - Understand required tables and relationships
 3. **Review [CODE_GUIDE.md](../docs/implementation/CODE_GUIDE.md)** - Follow page structure patterns
-4. **Include header/footer** - Use `includes/header.php` and `includes/footer.php`
-5. **Database queries** - Use prepared statements directly or via optional Model classes
-6. **Follow security patterns** from [SECURITY.md](../docs/concepts/SECURITY.md) - CSRF tokens, output escaping, prepared statements
+4. **Include init.php** - Always `require_once __DIR__ . '/system/includes/init.php'` to get `$db` and `$dbPrefix`
+5. **Include header/footer** - Use `includes/header.php` and `includes/footer.php`
+6. **Database queries** - Use prepared statements with `{$dbPrefix}tablename` pattern (never hardcode table names)
+7. **Follow security patterns** from [SECURITY.md](../docs/concepts/SECURITY.md) - CSRF tokens, output escaping, prepared statements
 
 ### Adding an Optional Model (When Useful)
 
 1. **Read [SCHEMA.md](../docs/concepts/SCHEMA.md) first** - Verify table structure, relationships, and naming conventions
 2. **Review [CODE_GUIDE.md](../docs/implementation/CODE_GUIDE.md)** - See when models help vs. direct queries
-4. **Extend base Model class** (from `src/system/Core/Model.php`) if shared patterns emerge
-4. **Set `$table` and `$primaryKey`** properties matching schema exactly
-5. **Implement domain-specific methods** - Query, validation, business logic
-6. **Follow security patterns** from [SECURITY.md](../docs/concepts/SECURITY.md) - use prepared statements
+3. **Extend base Model class** (from `src/system/Core/Model.php`) if shared patterns emerge
+4. **Set `$table` and `$primaryKey`** properties - Use base table name without prefix (e.g., `users` not `tbl_users`)
+5. **Use `$dbPrefix` in queries** - Model methods must use `{$this->dbPrefix}tablename` pattern
+6. **Implement domain-specific methods** - Query, validation, business logic
+7. **Follow security patterns** from [SECURITY.md](../docs/concepts/SECURITY.md) - use prepared statements with table prefixes
 
 ### Adding a Demo Page
 
@@ -277,7 +315,7 @@ See [docs/concepts/TESTING.md](../docs/concepts/TESTING.md) for comprehensive te
 2. **Review [PLUGIN_GUIDE.md](../docs/implementation/PLUGIN_GUIDE.md) or [DATA_CONNECTORS.md](../docs/implementation/DATA_CONNECTORS.md)** for step-by-step patterns
 3. **Keep plugins simple** - Direct logic, no framework overhead required
 4. **Follow non-invasive principle** - Never modify core schema
-5. **Database access** - Use Core\Database directly or via Models
+5. **Database access** - Use Core\Database directly or via Models, always use `{$dbPrefix}tablename`
 6. **Follow authorization patterns** from [AUTH.md](../docs/concepts/AUTH.md)
 
 ## Key Dependencies
@@ -296,6 +334,66 @@ See [docs/concepts/TESTING.md](../docs/concepts/TESTING.md) for comprehensive te
 - Font Awesome 6.4.0
 
 **Note:** For external system integration (SIS, LMS), use data connector plugins rather than attempting database substitution. See [docs/concepts/PLUGIN.md](../docs/concepts/PLUGIN.md).
+
+## Database Schema Requirements
+
+**CRITICAL: Two-part table naming pattern:**
+
+1. **Schema file** (`src/system/database/schema.sql`) uses `tbl_` prefix
+2. **Application code** uses `{$dbPrefix}` variable from `init.php`
+
+### Schema File Location
+
+The canonical schema file is **`src/system/database/schema.sql`**. This is the only version setup reads during installation.
+
+The `database/schema.sql` at project root is optional (for version control reference only). All schema changes must be made to `src/system/database/schema.sql`.
+
+### Schema File Pattern
+
+Setup process replaces `tbl_` with configured prefix (or removes it if no prefix configured):
+- User configures table prefix during setup (e.g., `mosaic_`, `slo_`, or empty for no prefix)
+- `src/setup/index.php` reads `database/schema.sql` and replaces all `tbl_` instances
+- This allows flexible deployment without maintaining multiple schema files
+
+**Required naming pattern in schema.sql:**
+
+```sql
+CREATE TABLE tbl_users (
+    users_pk INT AUTO_INCREMENT PRIMARY KEY,
+    ...
+);
+
+CREATE TABLE tbl_roles (
+    roles_pk INT AUTO_INCREMENT PRIMARY KEY,
+    ...
+    FOREIGN KEY (user_fk) REFERENCES tbl_users(users_pk)
+);
+```
+
+**DO NOT write schema tables without the `tbl_` prefix.** Setup will fail to apply configured prefix.
+
+When adding or modifying tables in schema:
+1. Always use `tbl_` prefix in CREATE TABLE statements
+2. Always use `tbl_` prefix in FOREIGN KEY REFERENCES
+3. Always use `tbl_` prefix in DROP TABLE statements
+4. Always use `tbl_` prefix in INSERT INTO statements
+5. Test by running setup with different prefix configurations
+
+### Application Code Pattern
+
+**Never hardcode table names.** Always use `$dbPrefix` variable from `init.php`:
+
+```php
+// CORRECT
+require_once __DIR__ . '/system/includes/init.php';
+$result = $db->query("SELECT * FROM {$dbPrefix}users WHERE users_pk = ?", [$id], 'i');
+
+// WRONG - will break if prefix is configured
+$result = $db->query("SELECT * FROM users WHERE users_pk = ?", [$id], 'i');
+$result = $db->query("SELECT * FROM tbl_users WHERE users_pk = ?", [$id], 'i');
+```
+
+The `$dbPrefix` variable automatically reflects the configured prefix (e.g., `mosaic_`, `slo_`, or empty string).
 
 ## Important Constraints
 

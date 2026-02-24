@@ -8,118 +8,148 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../system/includes/admin_session.php';
 require_once __DIR__ . '/../system/includes/init.php';
 
-use Mosaic\Core\Database;
-
-// Authentication check
-if (!isset($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['error' => 'Unauthorized']);
-    exit;
-}
-
-$db = Database::getInstance()->getConnection();
-
-// ============================================================================
-// DATATABLES SERVER-SIDE PROCESSING
-// ============================================================================
-
-// DataTables parameters
-$draw = (int)($_GET['draw'] ?? 1);
-$start = (int)($_GET['start'] ?? 0);
-$length = (int)($_GET['length'] ?? 10);
-$searchValue = $_GET['search']['value'] ?? '';
-$orderColumn = (int)($_GET['order'][0]['column'] ?? 0);
-$orderDir = strtoupper($_GET['order'][0]['dir'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
-
-// Column mapping
-$columns = [
-    0 => 't.terms_pk',
-    1 => 't.term_code',
-    2 => 't.term_name',
-    3 => 't.start_date',
-    4 => 't.end_date',
-    5 => 't.is_active'
-];
-
-$orderBy = $columns[$orderColumn] ?? 't.term_code';
-
-// Base query
-$baseQuery = "
-    FROM tbl_terms t
-";
-
-// Search filter
-$whereClause = '';
-$searchParam = '';
-if (!empty($searchValue)) {
-    $whereClause = " WHERE t.term_name LIKE ?";
-    $searchParam = '%' . $searchValue . '%';
-}
-
-// Total records
-$totalQuery = "SELECT COUNT(*) as total FROM tbl_terms t";
-$totalRow = $db->query($totalQuery)->fetch();
-$totalRecords = $totalRow['total'];
-
-// Filtered records
-$filteredQuery = "SELECT COUNT(*) as total " . $baseQuery . $whereClause;
-if (!empty($searchValue)) {
-    $stmt = $db->prepare($filteredQuery);
-    $stmt->execute([$searchParam]);
-    $filteredRow = $stmt->fetch();
-    $filteredRecords = $filteredRow['total'];
-} else {
-    $filteredRecords = $totalRecords;
-}
-
-// Main query
-$query = "
-    SELECT 
-        t.terms_pk,
-        t.term_code,
-        t.term_name,
-        t.start_date,
-        t.end_date,
-        t.is_active
-    " . $baseQuery . $whereClause . "
-    ORDER BY " . $orderBy . " " . $orderDir . "
-    LIMIT ? OFFSET ?
-";
-
-$stmt = $db->prepare($query);
-if (!empty($searchValue)) {
-    $stmt->execute([$searchParam, $length, $start]);
-} else {
-    $stmt->execute([$length, $start]);
-}
-
-// Format data
-$data = [];
-while ($row = $stmt->fetch()) {
-    $statusBadge = $row['is_active'] 
-        ? '<span class="badge bg-success">Active</span>' 
-        : '<span class="badge bg-secondary">Inactive</span>';
-    
-    $startDate = $row['start_date'] ? date('M d, Y', strtotime($row['start_date'])) : '-';
-    $endDate = $row['end_date'] ? date('M d, Y', strtotime($row['end_date'])) : '-';
-    
-    $data[] = [
-        htmlspecialchars($row['terms_pk']),
-        htmlspecialchars($row['term_code'] ?? ''),
-        htmlspecialchars($row['term_name']),
-        $startDate,
-        $endDate,
-        $statusBadge
-    ];
-}
-
-// Output DataTables JSON
 header('Content-Type: application/json');
-echo json_encode([
-    'draw' => $draw,
-    'recordsTotal' => $totalRecords,
-    'recordsFiltered' => $filteredRecords,
-    'data' => $data
-]);
+
+try {
+    // DataTables parameters
+    $draw = (int)($_GET['draw'] ?? 1);
+    $start = (int)($_GET['start'] ?? 0);
+    $length = (int)($_GET['length'] ?? 10);
+    $searchValue = $_GET['search']['value'] ?? '';
+    $orderColumn = (int)($_GET['order'][0]['column'] ?? 0);
+    $orderDir = strtoupper($_GET['order'][0]['dir'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
+
+    // Column mapping
+    $columns = [
+        0 => 't.terms_pk',
+        1 => 't.term_code',
+        2 => 't.term_name',
+        3 => 't.academic_year',
+        4 => 't.start_date',
+        5 => 't.end_date',
+        6 => 't.is_active',
+        7 => ''  // Actions column
+    ];
+
+    $orderBy = $columns[$orderColumn] ?? 't.term_code';
+
+    // Total records
+    $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}terms");
+    $totalRow = $totalResult->fetch();
+    $totalRecords = $totalRow['total'];
+
+    // Build WHERE clause
+    $where = [];
+    $params = [];
+    $types = '';
+
+    if (!empty($searchValue)) {
+        $where[] = "(t.term_code LIKE ? OR t.term_name LIKE ? OR t.academic_year LIKE ?)";
+        $params[] = "%{$searchValue}%";
+        $params[] = "%{$searchValue}%";
+        $params[] = "%{$searchValue}%";
+        $types .= 'sss';
+    }
+
+    $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+    // Filtered records
+    if (!empty($where)) {
+        $filteredResult = $db->query(
+            "SELECT COUNT(*) as total FROM {$dbPrefix}terms t {$whereClause}",
+            $params,
+            $types
+        );
+        $filteredRow = $filteredResult->fetch();
+        $filteredRecords = $filteredRow['total'];
+    } else {
+        $filteredRecords = $totalRecords;
+    }
+
+    // Main query
+    $query = "
+        SELECT 
+            t.terms_pk,
+            t.term_code,
+            t.term_name,
+            t.academic_year,
+            t.start_date,
+            t.end_date,
+            t.is_active
+        FROM {$dbPrefix}terms t
+        {$whereClause}
+        ORDER BY {$orderBy} {$orderDir}
+        LIMIT ? OFFSET ?
+    ";
+
+    $params[] = $length;
+    $params[] = $start;
+    $types .= 'ii';
+
+    $result = $db->query($query, $params, $types);
+
+    // Format data
+    $data = [];
+    while ($row = $result->fetch()) {
+        $statusBadge = $row['is_active'] 
+            ? '<span class="badge bg-success">Active</span>' 
+            : '<span class="badge bg-secondary">Inactive</span>';
+        
+        $startDate = $row['start_date'] ? date('M d, Y', strtotime($row['start_date'])) : '-';
+        $endDate = $row['end_date'] ? date('M d, Y', strtotime($row['end_date'])) : '-';
+        
+        // Prepare data for JavaScript functions
+        $termJson = htmlspecialchars(json_encode([
+            'terms_pk' => $row['terms_pk'],
+            'term_code' => $row['term_code'],
+            'term_name' => $row['term_name'],
+            'academic_year' => $row['academic_year'],
+            'start_date' => $row['start_date'],
+            'end_date' => $row['end_date'],
+            'is_active' => $row['is_active']
+        ]), ENT_QUOTES, 'UTF-8');
+        
+        // Action buttons
+        $actions = '
+            <button type="button" class="btn btn-sm btn-primary" onclick=\'editTerm(' . $termJson . ')\' title="Edit">
+                <i class="fas fa-edit"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-warning" onclick="toggleStatus(' . $row['terms_pk'] . ', \'' . htmlspecialchars($row['term_code'], ENT_QUOTES) . '\')" title="Toggle Status">
+                <i class="fas fa-toggle-on"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-danger" onclick="deleteTerm(' . $row['terms_pk'] . ', \'' . htmlspecialchars($row['term_code'], ENT_QUOTES) . '\')" title="Delete">
+                <i class="fas fa-trash"></i>
+            </button>
+        ';
+        
+        $data[] = [
+            $row['terms_pk'],
+            htmlspecialchars($row['term_code'] ?? ''),
+            htmlspecialchars($row['term_name']),
+            htmlspecialchars($row['academic_year'] ?? ''),
+            $startDate,
+            $endDate,
+            $statusBadge,
+            $actions
+        ];
+    }
+
+    echo json_encode([
+        'draw' => $draw,
+        'recordsTotal' => $totalRecords,
+        'recordsFiltered' => $filteredRecords,
+        'data' => $data
+    ]);
+} catch (\Exception $e) {
+    error_log("Terms DataTables error: " . $e->getMessage());
+    echo json_encode([
+        'draw' => $draw ?? 1,
+        'recordsTotal' => 0,
+        'recordsFiltered' => 0,
+        'data' => [],
+        'error' => 'Database error: ' . $e->getMessage()
+    ]);
+}

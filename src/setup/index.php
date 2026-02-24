@@ -161,10 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                 }
                 
                 // Database connected successfully - proceed with schema installation
-                // Use appropriate schema file based on driver
-                $schemaFile = ($db_driver === 'mssql' || $db_driver === 'sqlsrv') 
-                    ? __DIR__ . '/../system/database/schema_mssql.sql'
-                    : __DIR__ . '/../system/database/schema.sql';
+                $schemaFile = __DIR__ . '/../system/database/schema.sql';
                 
                 if (!file_exists($schemaFile)) {
                     $error = 'Schema file not found at: ' . $schemaFile;
