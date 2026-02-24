@@ -337,11 +337,10 @@ $programs = $programsResult->fetchAll();
 
 // Fetch institutional outcomes for dropdown
 $institutionalOutcomesResult = $db->query(
-    "SELECT io.institutional_outcomes_pk, io.outcome_code, io.outcome_description, i.institution_name 
+    "SELECT io.institutional_outcomes_pk, io.outcome_code, io.outcome_description
      FROM {$dbPrefix}institutional_outcomes io
-     LEFT JOIN {$dbPrefix}institution i ON io.institution_fk = i.institution_pk
      WHERE io.is_active = 1 
-     ORDER BY i.institution_name, io.outcome_code"
+     ORDER BY io.outcome_code"
 );
 $institutionalOutcomes = $institutionalOutcomesResult->fetchAll();
 
@@ -537,7 +536,7 @@ $theme->showHeader($context);
                             <option value="">-- No Mapping --</option>
                             <?php foreach ($institutionalOutcomes as $io): ?>
                                 <option value="<?= $io['institutional_outcomes_pk'] ?>">
-                                    <?= htmlspecialchars($io['outcome_code'] . ' - ' . $io['institution_name']) ?>
+                                    <?= htmlspecialchars($io['outcome_code'] . ' - ' . substr($io['outcome_description'], 0, 60)) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -615,7 +614,7 @@ $theme->showHeader($context);
                             <option value="">-- No Mapping --</option>
                             <?php foreach ($institutionalOutcomes as $io): ?>
                                 <option value="<?= $io['institutional_outcomes_pk'] ?>">
-                                    <?= htmlspecialchars($io['outcome_code'] . ' - ' . $io['institution_name']) ?>
+                                    <?= htmlspecialchars($io['outcome_code'] . ' - ' . substr($io['outcome_description'], 0, 60)) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>

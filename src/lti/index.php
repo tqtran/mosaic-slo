@@ -83,7 +83,7 @@ $theme->showHeader($context);
                                 <div class="alert alert-info mt-3">
                                     <i class="bi bi-info-circle me-2"></i>
                                     <strong>Configuration Required:</strong> Set your LTI consumer key/secret in 
-                                    <a href="<?= BASE_URL ?>administration/institution.php">Institution settings</a> 
+                                    <code>config.yaml</code> (lti.consumer_key and lti.consumer_secret)
                                     before connecting to an LMS.
                                 </div>
                             </div>

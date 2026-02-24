@@ -135,10 +135,11 @@
             <a href="<?= BASE_URL ?>administration/" class="<?= ($currentPage ?? '') === 'admin_dashboard' ? 'active' : '' ?>">
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
-            <div class="nav-header">Administration</div>
-            <a href="<?= BASE_URL ?>administration/institution.php" class="<?= ($currentPage ?? '') === 'admin_institution' ? 'active' : '' ?>">
-                <i class="bi bi-building"></i> Institution
+            <div class="nav-header">Terms</div>
+            <a href="<?= BASE_URL ?>administration/terms.php" class="<?= ($currentPage ?? '') === 'admin_terms' ? 'active' : '' ?>">
+                <i class="bi bi-calendar-week"></i> Terms
             </a>
+            <div class="nav-header">Administration</div>
             <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="<?= ($currentPage ?? '') === 'admin_institutional_outcomes' ? 'active' : '' ?>">
                 <i class="bi bi-diagram-3"></i> Outcome Hierarchy
             </a>

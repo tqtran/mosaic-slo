@@ -19,13 +19,12 @@ IF OBJECT_ID('dbo.user_roles', 'U') IS NOT NULL DROP TABLE dbo.user_roles;
 IF OBJECT_ID('dbo.roles', 'U') IS NOT NULL DROP TABLE dbo.roles;
 IF OBJECT_ID('dbo.assessments', 'U') IS NOT NULL DROP TABLE dbo.assessments;
 IF OBJECT_ID('dbo.enrollment', 'U') IS NOT NULL DROP TABLE dbo.enrollment;
-IF OBJECT_ID('dbo.terms', 'U') IS NOT NULL DROP TABLE dbo.terms;
 IF OBJECT_ID('dbo.student_learning_outcomes', 'U') IS NOT NULL DROP TABLE dbo.student_learning_outcomes;
-IF OBJECT_ID('dbo.slo_sets', 'U') IS NOT NULL DROP TABLE dbo.slo_sets;
+IF OBJECT_ID('dbo.courses', 'U') IS NOT NULL DROP TABLE dbo.courses;
 IF OBJECT_ID('dbo.program_outcomes', 'U') IS NOT NULL DROP TABLE dbo.program_outcomes;
 IF OBJECT_ID('dbo.programs', 'U') IS NOT NULL DROP TABLE dbo.programs;
 IF OBJECT_ID('dbo.institutional_outcomes', 'U') IS NOT NULL DROP TABLE dbo.institutional_outcomes;
-IF OBJECT_ID('dbo.institution', 'U') IS NOT NULL DROP TABLE dbo.institution;
+IF OBJECT_ID('dbo.terms', 'U') IS NOT NULL DROP TABLE dbo.terms;
 IF OBJECT_ID('dbo.users', 'U') IS NOT NULL DROP TABLE dbo.users;
 GO
 
@@ -73,31 +72,31 @@ CREATE INDEX idx_context ON user_roles(context_type, context_id);
 GO
 
 -- ============================================================================
--- 2. ROOT ENTITY
+-- 2. TERMS (Top-Level Controlling Entity)
 -- ============================================================================
 
-CREATE TABLE institution (
-    institution_pk INT IDENTITY(1,1) PRIMARY KEY,
-    institution_name NVARCHAR(255) NOT NULL,
-    institution_code NVARCHAR(50) NOT NULL UNIQUE,
-    lti_consumer_key NVARCHAR(255),
-    lti_consumer_secret NVARCHAR(255),
-    lti_consumer_name NVARCHAR(100),
+CREATE TABLE terms (
+    terms_pk INT IDENTITY(1,1) PRIMARY KEY,
+    term_code NVARCHAR(50) NOT NULL UNIQUE,
+    term_name NVARCHAR(100) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
     is_active BIT DEFAULT 1,
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE()
 );
-CREATE INDEX idx_institution_code ON institution(institution_code);
-CREATE UNIQUE INDEX unique_lti_key ON institution(lti_consumer_key) WHERE lti_consumer_key IS NOT NULL;
+CREATE INDEX idx_term_code ON terms(term_code);
+CREATE INDEX idx_is_active_terms ON terms(is_active);
 GO
 
 -- ============================================================================
 -- 3. OUTCOMES HIERARCHY
 -- ============================================================================
+-- Note: LTI consumer credentials configured in config.yaml (lti.consumer_key, lti.consumer_secret)
 
 CREATE TABLE institutional_outcomes (
     institutional_outcomes_pk INT IDENTITY(1,1) PRIMARY KEY,
-    institution_fk INT,
+    term_fk INT NOT NULL,
     code NVARCHAR(50) NOT NULL UNIQUE,
     description NVARCHAR(MAX) NOT NULL,
     sequence_num INT DEFAULT 0,
@@ -105,10 +104,11 @@ CREATE TABLE institutional_outcomes (
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE(),
     created_by_fk INT,
-    updated_by_fk INT
+    updated_by_fk INT,
+    FOREIGN KEY (term_fk) REFERENCES terms(terms_pk) ON DELETE CASCADE
 );
+CREATE INDEX idx_term_fk_io ON institutional_outcomes(term_fk);
 CREATE INDEX idx_code ON institutional_outcomes(code);
-CREATE INDEX idx_institution_fk ON institutional_outcomes(institution_fk);
 CREATE INDEX idx_sequence_num ON institutional_outcomes(sequence_num);
 CREATE INDEX idx_is_active ON institutional_outcomes(is_active);
 GO
@@ -119,6 +119,7 @@ GO
 
 CREATE TABLE programs (
     programs_pk INT IDENTITY(1,1) PRIMARY KEY,
+    term_fk INT NOT NULL,
     program_code NVARCHAR(50) NOT NULL UNIQUE,
     program_name NVARCHAR(255) NOT NULL,
     degree_type NVARCHAR(50),
@@ -126,8 +127,10 @@ CREATE TABLE programs (
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE(),
     created_by_fk INT,
-    updated_by_fk INT
+    updated_by_fk INT,
+    FOREIGN KEY (term_fk) REFERENCES terms(terms_pk) ON DELETE CASCADE
 );
+CREATE INDEX idx_term_fk_prog ON programs(term_fk);
 CREATE INDEX idx_program_code ON programs(program_code);
 CREATE INDEX idx_is_active ON programs(is_active);
 GO
@@ -153,32 +156,33 @@ CREATE INDEX idx_is_active_po ON program_outcomes(is_active);
 GO
 
 -- ============================================================================
--- 5. SLO SETS & OUTCOMES
+-- 5. COURSES & STUDENT LEARNING OUTCOMES
 -- ============================================================================
 
-CREATE TABLE slo_sets (
-    slo_sets_pk INT IDENTITY(1,1) PRIMARY KEY,
-    set_code NVARCHAR(50) NOT NULL UNIQUE,
-    set_name NVARCHAR(255) NOT NULL,
-    set_type NVARCHAR(20) NOT NULL CHECK (set_type IN ('year', 'quarter', 'semester', 'custom')),
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
+CREATE TABLE courses (
+    courses_pk INT IDENTITY(1,1) PRIMARY KEY,
+    program_fk INT NOT NULL,
+    term_fk INT NOT NULL,
+    course_code NVARCHAR(50) NOT NULL,
+    course_name NVARCHAR(255) NOT NULL,
     is_active BIT DEFAULT 1,
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE(),
     created_by_fk INT,
-    updated_by_fk INT
+    updated_by_fk INT,
+    FOREIGN KEY (program_fk) REFERENCES programs(programs_pk) ON DELETE CASCADE,
+    FOREIGN KEY (term_fk) REFERENCES terms(terms_pk) ON DELETE CASCADE,
+    CONSTRAINT unique_program_course UNIQUE (program_fk, course_code)
 );
-CREATE INDEX idx_set_code ON slo_sets(set_code);
-CREATE INDEX idx_set_type ON slo_sets(set_type);
-CREATE INDEX idx_is_active_slosets ON slo_sets(is_active);
-CREATE INDEX idx_start_date ON slo_sets(start_date);
-CREATE INDEX idx_end_date ON slo_sets(end_date);
+CREATE INDEX idx_program_fk_course ON courses(program_fk);
+CREATE INDEX idx_term_fk_course ON courses(term_fk);
+CREATE INDEX idx_course_code ON courses(course_code);
+CREATE INDEX idx_is_active_course ON courses(is_active);
 GO
 
 CREATE TABLE student_learning_outcomes (
     student_learning_outcomes_pk INT IDENTITY(1,1) PRIMARY KEY,
-    slo_set_code NVARCHAR(50),
+    course_fk INT NOT NULL,
     program_outcomes_fk INT,
     slo_code NVARCHAR(50) NOT NULL,
     description NVARCHAR(MAX) NOT NULL,
@@ -189,38 +193,19 @@ CREATE TABLE student_learning_outcomes (
     updated_at DATETIME DEFAULT GETDATE(),
     created_by_fk INT,
     updated_by_fk INT,
-    CONSTRAINT unique_slo_in_set UNIQUE (slo_set_code, slo_code)
+    FOREIGN KEY (course_fk) REFERENCES courses(courses_pk) ON DELETE CASCADE,
+    FOREIGN KEY (program_outcomes_fk) REFERENCES program_outcomes(program_outcomes_pk) ON DELETE SET NULL,
+    CONSTRAINT unique_course_slo UNIQUE (course_fk, slo_code)
 );
-CREATE INDEX idx_slo_set_code ON student_learning_outcomes(slo_set_code);
+CREATE INDEX idx_course_fk ON student_learning_outcomes(course_fk);
 CREATE INDEX idx_program_outcomes_fk ON student_learning_outcomes(program_outcomes_fk);
+CREATE INDEX idx_slo_code ON student_learning_outcomes(slo_code);
 CREATE INDEX idx_sequence_num_slo ON student_learning_outcomes(sequence_num);
 CREATE INDEX idx_is_active_slo ON student_learning_outcomes(is_active);
 GO
 
 -- ============================================================================
--- 6. TERMS
--- ============================================================================
-
-CREATE TABLE terms (
-    terms_pk INT IDENTITY(1,1) PRIMARY KEY,
-    slo_set_code NVARCHAR(50),
-    term_code NVARCHAR(50) NOT NULL UNIQUE,
-    term_name NVARCHAR(100) NOT NULL,
-    term_year INT NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    is_active BIT DEFAULT 1,
-    created_at DATETIME DEFAULT GETDATE(),
-    updated_at DATETIME DEFAULT GETDATE()
-);
-CREATE INDEX idx_term_code ON terms(term_code);
-CREATE INDEX idx_slo_set_code_terms ON terms(slo_set_code);
-CREATE INDEX idx_term_year ON terms(term_year);
-CREATE INDEX idx_is_active_terms ON terms(is_active);
-GO
-
--- ============================================================================
--- 7. ENROLLMENT (Student data denormalized)
+-- 6. ENROLLMENT (Student data denormalized)
 -- ============================================================================
 
 CREATE TABLE enrollment (
@@ -253,7 +238,7 @@ CREATE INDEX idx_enrollment_status ON enrollment(enrollment_status);
 GO
 
 -- ============================================================================
--- 8. ASSESSMENT DATA
+-- 7. ASSESSMENT DATA
 -- ============================================================================
 
 CREATE TABLE assessments (
@@ -277,7 +262,7 @@ CREATE INDEX idx_is_finalized ON assessments(is_finalized);
 GO
 
 -- ============================================================================
--- 9. AUDIT & ERROR LOGGING
+-- 8. AUDIT & ERROR LOGGING
 -- ============================================================================
 
 CREATE TABLE audit_log (
@@ -351,7 +336,7 @@ CREATE INDEX idx_created_at_security ON security_log(created_at);
 GO
 
 -- ============================================================================
--- 10. LTI INTEGRATION
+-- 9. LTI INTEGRATION
 -- ============================================================================
 
 CREATE TABLE lti_nonces (

@@ -14,13 +14,12 @@ DROP TABLE IF EXISTS roles;
 DROP TABLE IF EXISTS assessments;
 DROP TABLE IF EXISTS enrollment;
 DROP TABLE IF EXISTS students;
-DROP TABLE IF EXISTS terms;
 DROP TABLE IF EXISTS student_learning_outcomes;
-DROP TABLE IF EXISTS slo_sets;
+DROP TABLE IF EXISTS courses;
 DROP TABLE IF EXISTS program_outcomes;
 DROP TABLE IF EXISTS programs;
 DROP TABLE IF EXISTS institutional_outcomes;
-DROP TABLE IF EXISTS institution;
+DROP TABLE IF EXISTS terms;
 DROP TABLE IF EXISTS users;
 
 SET FOREIGN_KEY_CHECKS = 1;
@@ -68,22 +67,21 @@ CREATE TABLE user_roles (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- 2. ROOT ENTITY
+-- 2. TERMS (Top-Level Controlling Entity)
 -- ============================================================================
 
-CREATE TABLE institution (
-    institution_pk INT AUTO_INCREMENT PRIMARY KEY,
-    institution_name VARCHAR(255) NOT NULL,
-    institution_code VARCHAR(50) NOT NULL UNIQUE,
-    lti_consumer_key VARCHAR(255),
-    lti_consumer_secret VARCHAR(255),
-    lti_consumer_name VARCHAR(100),
+CREATE TABLE terms (
+    terms_pk INT AUTO_INCREMENT PRIMARY KEY,
+    term_code VARCHAR(50) NOT NULL UNIQUE COMMENT 'Banner term code (e.g., 202630)',
+    term_name VARCHAR(100) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_institution_code (institution_code),
-    UNIQUE KEY unique_lti_key (lti_consumer_key)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Institution root entity with LTI credentials';
+    INDEX idx_term_code (term_code),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
 -- 3. OUTCOMES HIERARCHY
@@ -91,7 +89,7 @@ CREATE TABLE institution (
 
 CREATE TABLE institutional_outcomes (
     institutional_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
-    institution_fk INT NOT NULL,
+    term_fk INT NOT NULL,
     code VARCHAR(50) NOT NULL UNIQUE,
     description TEXT NOT NULL,
     sequence_num INT DEFAULT 0,
@@ -100,11 +98,11 @@ CREATE TABLE institutional_outcomes (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    FOREIGN KEY (institution_fk) REFERENCES institution(institution_pk) ON DELETE CASCADE,
+    FOREIGN KEY (term_fk) REFERENCES terms(terms_pk) ON DELETE CASCADE,
     FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
     FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
+    INDEX idx_term_fk (term_fk),
     INDEX idx_code (code),
-    INDEX idx_institution_fk (institution_fk),
     INDEX idx_sequence_num (sequence_num),
     INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -115,6 +113,7 @@ CREATE TABLE institutional_outcomes (
 
 CREATE TABLE programs (
     programs_pk INT AUTO_INCREMENT PRIMARY KEY,
+    term_fk INT NOT NULL,
     program_code VARCHAR(50) NOT NULL UNIQUE,
     program_name VARCHAR(255) NOT NULL,
     degree_type VARCHAR(50),
@@ -123,8 +122,10 @@ CREATE TABLE programs (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
+    FOREIGN KEY (term_fk) REFERENCES terms(terms_pk) ON DELETE CASCADE,
     FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
     FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
+    INDEX idx_term_fk (term_fk),
     INDEX idx_program_code (program_code),
     INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -153,33 +154,34 @@ CREATE TABLE program_outcomes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- 5. SLO SETS & OUTCOMES
+-- 5. COURSES & STUDENT LEARNING OUTCOMES
 -- ============================================================================
 
-CREATE TABLE slo_sets (
-    slo_sets_pk INT AUTO_INCREMENT PRIMARY KEY,
-    set_code VARCHAR(50) NOT NULL UNIQUE,
-    set_name VARCHAR(255) NOT NULL,
-    set_type ENUM('year', 'quarter', 'semester', 'custom') NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
+CREATE TABLE courses (
+    courses_pk INT AUTO_INCREMENT PRIMARY KEY,
+    program_fk INT NOT NULL,
+    term_fk INT NOT NULL,
+    course_code VARCHAR(50) NOT NULL,
+    course_name VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
+    FOREIGN KEY (program_fk) REFERENCES programs(programs_pk) ON DELETE CASCADE,
+    FOREIGN KEY (term_fk) REFERENCES terms(terms_pk) ON DELETE CASCADE,
     FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
     FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    INDEX idx_set_code (set_code),
-    INDEX idx_set_type (set_type),
-    INDEX idx_is_active (is_active),
-    INDEX idx_start_date (start_date),
-    INDEX idx_end_date (end_date)
+    UNIQUE KEY unique_program_course (program_fk, course_code),
+    INDEX idx_program_fk (program_fk),
+    INDEX idx_term_fk (term_fk),
+    INDEX idx_course_code (course_code),
+    INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE student_learning_outcomes (
     student_learning_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
-    slo_set_fk INT NOT NULL,
+    course_fk INT NOT NULL,
     program_outcomes_fk INT,
     slo_code VARCHAR(50) NOT NULL,
     description TEXT NOT NULL,
@@ -190,41 +192,20 @@ CREATE TABLE student_learning_outcomes (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    FOREIGN KEY (slo_set_fk) REFERENCES slo_sets(slo_sets_pk) ON DELETE CASCADE,
+    FOREIGN KEY (course_fk) REFERENCES courses(courses_pk) ON DELETE CASCADE,
     FOREIGN KEY (program_outcomes_fk) REFERENCES program_outcomes(program_outcomes_pk) ON DELETE SET NULL,
     FOREIGN KEY (created_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
     FOREIGN KEY (updated_by_fk) REFERENCES users(users_pk) ON DELETE SET NULL,
-    UNIQUE KEY unique_slo_in_set (slo_set_fk, slo_code),
-    INDEX idx_slo_set_fk (slo_set_fk),
+    UNIQUE KEY unique_course_slo (course_fk, slo_code),
+    INDEX idx_course_fk (course_fk),
     INDEX idx_program_outcomes_fk (program_outcomes_fk),
+    INDEX idx_slo_code (slo_code),
     INDEX idx_sequence_num (sequence_num),
     INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- 6. TERMS
--- ============================================================================
-
-CREATE TABLE terms (
-    terms_pk INT AUTO_INCREMENT PRIMARY KEY,
-    slo_set_fk INT NOT NULL,
-    term_code VARCHAR(50) NOT NULL UNIQUE COMMENT 'Banner term code (e.g., 202630)',
-    term_name VARCHAR(100) NOT NULL,
-    term_year INT NOT NULL,
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (slo_set_fk) REFERENCES slo_sets(slo_sets_pk) ON DELETE CASCADE,
-    INDEX idx_term_code (term_code),
-    INDEX idx_slo_set_fk (slo_set_fk),
-    INDEX idx_term_year (term_year),
-    INDEX idx_is_active (is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================================
--- 7. STUDENTS & ENROLLMENT
+-- 6. STUDENTS & ENROLLMENT
 -- ============================================================================
 
 CREATE TABLE students (
@@ -261,7 +242,7 @@ CREATE TABLE enrollment (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- 8. ASSESSMENT DATA
+-- 7. ASSESSMENT DATA
 -- ============================================================================
 
 CREATE TABLE assessments (
@@ -287,7 +268,7 @@ CREATE TABLE assessments (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- 9. AUDIT & ERROR LOGGING
+-- 8. AUDIT & ERROR LOGGING
 -- ============================================================================
 
 CREATE TABLE audit_log (
@@ -361,9 +342,9 @@ CREATE TABLE security_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
--- 10. LTI INTEGRATION
+-- 9. LTI INTEGRATION
 -- ============================================================================
--- Note: LTI consumer keys are stored in institution table (one key per instance)
+-- Note: LTI consumer keys are stored in config.yaml
 
 CREATE TABLE lti_nonces (
     lti_nonces_pk INT AUTO_INCREMENT PRIMARY KEY,

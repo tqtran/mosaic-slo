@@ -34,7 +34,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_term') {
     }
     
     $stmt = $db->prepare("
-        SELECT terms_pk, term_year_fk, term_name, start_date, end_date, is_active
+        SELECT terms_pk, term_name, start_date, end_date, is_active
         FROM tbl_terms
         WHERE terms_pk = ?
     ");
@@ -62,32 +62,24 @@ $orderDir = strtoupper($_GET['order'][0]['dir'] ?? 'ASC') === 'DESC' ? 'DESC' : 
 
 // Column mapping
 $columns = [
-    0 => 'ty.term_name',
-    1 => 't.term_name',
-    2 => 't.start_date',
-    3 => 't.end_date',
-    4 => 'sections_count',
-    5 => 't.is_active'
+    0 => 't.term_name',
+    1 => 't.start_date',
+    2 => 't.end_date',
+    3 => 't.is_active'
 ];
 
-$orderBy = $columns[$orderColumn] ?? 'ty.term_name';
+$orderBy = $columns[$orderColumn] ?? 't.term_name';
 
-// Base query with term year join and sections count
+// Base query
 $baseQuery = "
     FROM tbl_terms t
-    LEFT JOIN tbl_term_years ty ON t.term_year_fk = ty.term_years_pk
-    LEFT JOIN (
-        SELECT term_fk, COUNT(*) as sections_count
-        FROM tbl_course_sections
-        GROUP BY term_fk
-    ) cs ON t.terms_pk = cs.term_fk
 ";
 
 // Search filter
 $whereClause = '';
 $searchParam = '';
 if (!empty($searchValue)) {
-    $whereClause = " WHERE (ty.term_name LIKE ? OR t.term_name LIKE ?)";
+    $whereClause = " WHERE t.term_name LIKE ?";
     $searchParam = '%' . $searchValue . '%';
 }
 
@@ -100,7 +92,7 @@ $totalRecords = $totalRow['total'];
 $filteredQuery = "SELECT COUNT(*) as total " . $baseQuery . $whereClause;
 if (!empty($searchValue)) {
     $stmt = $db->prepare($filteredQuery);
-    $stmt->execute([$searchParam, $searchParam]);
+    $stmt->execute([$searchParam]);
     $filteredRow = $stmt->fetch();
     $filteredRecords = $filteredRow['total'];
 } else {
@@ -111,13 +103,10 @@ if (!empty($searchValue)) {
 $query = "
     SELECT 
         t.terms_pk,
-        t.term_year_fk,
-        ty.term_name as term_year_name,
         t.term_name,
         t.start_date,
         t.end_date,
         t.is_active,
-        COALESCE(cs.sections_count, 0) as sections_count,
         t.created_at,
         t.updated_at
     " . $baseQuery . $whereClause . "
@@ -127,7 +116,7 @@ $query = "
 
 $stmt = $db->prepare($query);
 if (!empty($searchValue)) {
-    $stmt->execute([$searchParam, $searchParam, $length, $start]);
+    $stmt->execute([$searchParam, $length, $start]);
 } else {
     $stmt->execute([$length, $start]);
 }
@@ -138,11 +127,6 @@ while ($row = $stmt->fetch()) {
     $statusBadge = $row['is_active'] 
         ? '<span class="badge bg-success">Active</span>' 
         : '<span class="badge bg-secondary">Inactive</span>';
-    
-    $sectionsCount = (int)$row['sections_count'];
-    $sectionsBadge = $sectionsCount > 0 
-        ? '<span class="badge bg-info">' . $sectionsCount . '</span>'
-        : '<span class="badge bg-secondary">0</span>';
     
     $startDate = $row['start_date'] ? date('M d, Y', strtotime($row['start_date'])) : '-';
     $endDate = $row['end_date'] ? date('M d, Y', strtotime($row['end_date'])) : '-';
@@ -162,13 +146,12 @@ while ($row = $stmt->fetch()) {
     ';
     
     $data[] = [
-        'term_year_name' => htmlspecialchars($row['term_year_name'] ?? 'Unknown'),
-        'term_name' => htmlspecialchars($row['term_name']),
-        'start_date' => $startDate,
-        'end_date' => $endDate,
-        'sections_count' => $sectionsBadge,
-        'status' => $statusBadge,
-        'actions' => $actions
+        htmlspecialchars($row['terms_pk']),
+        htmlspecialchars($row['term_name']),
+        $startDate,
+        $endDate,
+        $statusBadge,
+        $actions
     ];
 }
 

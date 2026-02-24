@@ -1,0 +1,27 @@
+{
+    "remotePath": "/mosaic-slo.org/beta",
+    "host": "192.254.226.217",
+    "username": "nanytech",
+    "password": "Create335!",
+    "port": 21,
+    "secure": false,
+    "protocol": "ftp",
+    "uploadOnSave": false,
+    "passive": false,
+    "debug": false,
+    "privateKeyPath": null,
+    "passphrase": null,
+    "agent": null,
+    "allow": [],
+    "ignore": [
+        "\\.vscode",
+        "\\.git",
+        "\\.DS_Store"
+    ],
+    "generatedFiles": {
+        "extensionsToInclude": [
+            ""
+        ],
+        "path": "/src"
+    }
+}

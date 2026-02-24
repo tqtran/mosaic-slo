@@ -4,7 +4,7 @@ declare(strict_types=1);
 /**
  * Terms Administration
  * 
- * Manage academic terms (Fall 2025, Spring 2026, etc.) within term years.
+ * Manage academic terms (Fall 2025, Spring 2026, etc.).
  */
 
 require_once __DIR__ . '/../system/includes/admin_session.php';
@@ -26,35 +26,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         switch ($action) {
             case 'add':
-                $termYearFk = (int)($_POST['term_year_fk'] ?? 0);
                 $termName = trim($_POST['term_name'] ?? '');
                 $startDate = trim($_POST['start_date'] ?? '');
                 $endDate = trim($_POST['end_date'] ?? '');
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 $errors = [];
-                if ($termYearFk <= 0) $errors[] = 'Term year is required';
                 if (empty($termName)) $errors[] = 'Term name is required';
                 
                 // Check for duplicate
-                if (!empty($termName) && $termYearFk > 0) {
+                if (!empty($termName)) {
                     $checkResult = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}terms WHERE term_year_fk = ? AND term_name = ?",
-                        [$termYearFk, $termName],
-                        'is'
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}terms WHERE term_name = ?",
+                        [$termName],
+                        's'
                     );
                     $checkRow = $checkResult->fetch();
                     if ($checkRow['count'] > 0) {
-                        $errors[] = 'Term name already exists for this term year';
+                        $errors[] = 'Term name already exists';
                     }
                 }
                 
                 if (empty($errors)) {
                     $db->query(
-                        "INSERT INTO {$dbPrefix}terms (term_year_fk, term_name, start_date, end_date, is_active, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$termYearFk, $termName, $startDate ?: null, $endDate ?: null, $isActive],
-                        'isssi'
+                        "INSERT INTO {$dbPrefix}terms (term_name, start_date, end_date, is_active, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, NOW(), NOW())",
+                        [$termName, $startDate ?: null, $endDate ?: null, $isActive],
+                        'sssi'
                     );
                     $successMessage = 'Term added successfully';
                 } else {
@@ -64,7 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'edit':
                 $id = (int)($_POST['term_id'] ?? 0);
-                $termYearFk = (int)($_POST['term_year_fk'] ?? 0);
                 $termName = trim($_POST['term_name'] ?? '');
                 $startDate = trim($_POST['start_date'] ?? '');
                 $endDate = trim($_POST['end_date'] ?? '');
@@ -72,29 +69,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $errors = [];
                 if ($id <= 0) $errors[] = 'Invalid term ID';
-                if ($termYearFk <= 0) $errors[] = 'Term year is required';
                 if (empty($termName)) $errors[] = 'Term name is required';
                 
                 // Check for duplicate (excluding current)
-                if (!empty($termName) && $termYearFk > 0 && $id > 0) {
+                if (!empty($termName) && $id > 0) {
                     $checkResult = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}terms WHERE term_year_fk = ? AND term_name = ? AND terms_pk != ?",
-                        [$termYearFk, $termName, $id],
-                        'isi'
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}terms WHERE term_name = ? AND terms_pk != ?",
+                        [$termName, $id],
+                        'si'
                     );
                     $checkRow = $checkResult->fetch();
                     if ($checkRow['count'] > 0) {
-                        $errors[] = 'Term name already exists for this term year';
+                        $errors[] = 'Term name already exists';
                     }
                 }
                 
                 if (empty($errors)) {
                     $db->query(
                         "UPDATE {$dbPrefix}terms 
-                         SET term_year_fk = ?, term_name = ?, start_date = ?, end_date = ?, is_active = ?, updated_at = NOW()
+                         SET term_name = ?, start_date = ?, end_date = ?, is_active = ?, updated_at = NOW()
                          WHERE terms_pk = ?",
-                        [$termYearFk, $termName, $startDate ?: null, $endDate ?: null, $isActive, $id],
-                        'issiii'
+                        [$termName, $startDate ?: null, $endDate ?: null, $isActive, $id],
+                        'sssii'
                     );
                     $successMessage = 'Term updated successfully';
                 } else {
@@ -117,24 +113,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'delete':
                 $id = (int)($_POST['term_id'] ?? 0);
                 if ($id > 0) {
-                    // Check if term has course sections
-                    $checkResult = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}course_sections WHERE term_fk = ?",
+                    $db->query(
+                        "DELETE FROM {$dbPrefix}terms WHERE terms_pk = ?",
                         [$id],
                         'i'
                     );
-                    $checkRow = $checkResult->fetch();
-                    
-                    if ($checkRow['count'] > 0) {
-                        $errorMessage = "Cannot delete term: {$checkRow['count']} course section(s) assigned";
-                    } else {
-                        $db->query(
-                            "DELETE FROM {$dbPrefix}terms WHERE terms_pk = ?",
-                            [$id],
-                            'i'
-                        );
-                        $successMessage = 'Term deleted successfully';
-                    }
+                    $successMessage = 'Term deleted successfully';
                 }
                 break;
                 
@@ -150,38 +134,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $skipped = 0;
                         
                         while (($row = fgetcsv($handle)) !== false) {
-                            if (count($row) >= 2) {
-                                $termYearName = trim($row[0]);
-                                $termName = trim($row[1]);
-                                $startDate = isset($row[2]) && !empty(trim($row[2])) ? trim($row[2]) : null;
-                                $endDate = isset($row[3]) && !empty(trim($row[3])) ? trim($row[3]) : null;
-                                $isActive = isset($row[4]) && strtolower(trim($row[4])) === 'active' ? 1 : 0;
+                            if (count($row) >= 1) {
+                                $termName = trim($row[0]);
+                                $startDate = isset($row[1]) && !empty(trim($row[1])) ? trim($row[1]) : null;
+                                $endDate = isset($row[2]) && !empty(trim($row[2])) ? trim($row[2]) : null;
+                                $isActive = isset($row[3]) && strtolower(trim($row[3])) === 'active' ? 1 : 0;
                                 
-                                if (!empty($termYearName) && !empty($termName)) {
-                                    // Find or create term year
-                                    $tyResult = $db->query(
-                                        "SELECT term_years_pk FROM {$dbPrefix}term_years WHERE term_name = ?",
-                                        [$termYearName],
-                                        's'
-                                    );
-                                    $tyRow = $tyResult->fetch();
-                                    
-                                    if ($tyRow) {
-                                        $termYearFk = $tyRow['term_years_pk'];
-                                    } else {
-                                        $db->query(
-                                            "INSERT INTO {$dbPrefix}term_years (term_name, is_active, created_at, updated_at) VALUES (?, 1, NOW(), NOW())",
-                                            [$termYearName],
-                                            's'
-                                        );
-                                        $termYearFk = (int)$db->getLastInsertId();
-                                    }
-                                    
+                                if (!empty($termName)) {
                                     // Check if term exists
                                     $checkResult = $db->query(
-                                        "SELECT terms_pk FROM {$dbPrefix}terms WHERE term_year_fk = ? AND term_name = ?",
-                                        [$termYearFk, $termName],
-                                        'is'
+                                        "SELECT terms_pk FROM {$dbPrefix}terms WHERE term_name = ?",
+                                        [$termName],
+                                        's'
                                     );
                                     $termRow = $checkResult->fetch();
                                     
@@ -195,10 +159,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     } else {
                                         // Insert new
                                         $db->query(
-                                            "INSERT INTO {$dbPrefix}terms (term_year_fk, term_name, start_date, end_date, is_active, created_at, updated_at)
-                                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                                            [$termYearFk, $termName, $startDate, $endDate, $isActive],
-                                            'isssi'
+                                            "INSERT INTO {$dbPrefix}terms (term_name, start_date, end_date, is_active, created_at, updated_at)
+                                             VALUES (?, ?, ?, ?, NOW(), NOW())",
+                                            [$termName, $startDate, $endDate, $isActive],
+                                            'sssi'
                                         );
                                     }
                                     $imported++;
@@ -222,29 +186,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errorMessage = 'Error: ' . $e->getMessage();
     }
 }
-
-// Fetch term years for dropdown
-$termYearsResult = $db->query(
-    "SELECT term_years_pk, term_name FROM {$dbPrefix}term_years WHERE is_active = 1 ORDER BY term_name DESC"
-);
-$termYears = $termYearsResult->fetchAll();
-
-// Fetch all term years for operations
-$allTermYearsResult = $db->query("SELECT * FROM {$dbPrefix}term_years ORDER BY start_date DESC");
-$allTermYears = $allTermYearsResult->fetchAll();
-
-// Calculate statistics
-$statsResult = $db->query("
-    SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN EXISTS(SELECT 1 FROM {$dbPrefix}course_sections cs WHERE cs.term_fk = t.terms_pk) THEN 1 ELSE 0 END) as with_sections
-    FROM {$dbPrefix}terms t
-");
-$stats = $statsResult->fetch();
-$totalTerms = $stats['total'];
-$activeTerms = $stats['active'];
-$termsWithSections = $stats['with_sections'];
 
 // Load theme system
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
@@ -352,11 +293,9 @@ $theme->showHeader($context);
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Term Year</th>
                             <th>Term Name</th>
                             <th>Start Date</th>
                             <th>End Date</th>
-                            <th>Sections</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -364,11 +303,9 @@ $theme->showHeader($context);
                     <tfoot>
                         <tr>
                             <th><input type="text" class="form-control form-control-sm" placeholder="Search ID"></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Search Term Year"></th>
                             <th><input type="text" class="form-control form-control-sm" placeholder="Search Term"></th>
                             <th><input type="text" class="form-control form-control-sm" placeholder="Search Start"></th>
                             <th><input type="text" class="form-control form-control-sm" placeholder="Search End"></th>
-                            <th><input type="text" class="form-control form-control-sm" placeholder="Search Sections"></th>
                             <th><input type="text" class="form-control form-control-sm" placeholder="Search Status"></th>
                             <th></th>
                         </tr>
@@ -391,16 +328,6 @@ $theme->showHeader($context);
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="termYearFk" class="form-label">Term Year <span class="text-danger">*</span></label>
-                        <select class="form-select" id="termYearFk" name="term_year_fk" required>
-                            <option value="">-- Select Term Year --</option>
-                            <?php foreach ($termYears as $ty): ?>
-                                <option value="<?= $ty['term_years_pk'] ?>"><?= htmlspecialchars($ty['term_name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    
                     <div class="mb-3">
                         <label for="termName" class="form-label">Term Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="termName" name="term_name" 
@@ -445,16 +372,6 @@ $theme->showHeader($context);
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="editTermYearFk" class="form-label">Term Year <span class="text-danger">*</span></label>
-                        <select class="form-select" id="editTermYearFk" name="term_year_fk" required>
-                            <option value="">-- Select Term Year --</option>
-                            <?php foreach ($termYears as $ty): ?>
-                                <option value="<?= $ty['term_years_pk'] ?>"><?= htmlspecialchars($ty['term_name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    
                     <div class="mb-3">
                         <label for="editTermName" class="form-label">Term Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="editTermName" name="term_name" required>
@@ -543,10 +460,10 @@ $(document).ready(function() {
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
-        order: [[1, 'desc'], [2, 'asc']],
+        order: [[1, 'asc']],
         pageLength: 25,
         columnDefs: [
-            { targets: [7], orderable: false },
+            { targets: [5], orderable: false },
             { targets: [0], visible: false }
         ],
         language: {
@@ -554,7 +471,7 @@ $(document).ready(function() {
             searchPlaceholder: "Search terms..."
         },
         initComplete: function() {
-            this.api().columns([1, 2, 3, 4, 5, 6]).every(function() {
+            this.api().columns([1, 2, 3, 4]).every(function() {
                 var column = this;
                 var footer = $('input', this.footer());
                 
@@ -570,7 +487,6 @@ $(document).ready(function() {
 
 function editTerm(term) {
     $('#editTermId').val(term.terms_pk);
-    $('#editTermYearFk').val(term.term_year_fk);
     $('#editTermName').val(term.term_name);
     $('#editStartDate').val(term.start_date || '');
     $('#editEndDate').val(term.end_date || '');

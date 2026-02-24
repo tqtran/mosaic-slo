@@ -18,7 +18,6 @@ require_once __DIR__ . '/../system/includes/init.php';
 
 // Fetch basic metrics (TODO: optimize with proper queries)
 $metrics = [
-    'institutions' => 0,
     'programs' => 0,
     'outcomes' => 0,
     'assessments' => 0
@@ -26,12 +25,6 @@ $metrics = [
 
 try {
     $conn = $db->getConnection();
-    
-    // Count institutions
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM {$dbPrefix}institution WHERE is_active = 1");
-    $stmt->execute();
-    $row = $stmt->fetch();
-    $metrics['institutions'] = $row['count'] ?? 0;
     
     // Count programs
     $stmt = $conn->prepare("SELECT COUNT(*) as count FROM {$dbPrefix}programs WHERE is_active = 1");
@@ -77,17 +70,6 @@ $theme->showHeader($context);
 
 <!-- Metrics Row -->
 <div class="row">
-    <!-- Institutions -->
-    <div class="col-12 col-sm-6 col-md-3">
-        <div class="info-box shadow-sm">
-            <span class="info-box-icon bg-info"><i class="fas fa-university"></i></span>
-            <div class="info-box-content">
-                <span class="info-box-text">Institutions</span>
-                <span class="info-box-number"><?= $metrics['institutions'] ?></span>
-            </div>
-        </div>
-    </div>
-    
     <!-- Programs -->
     <div class="col-12 col-sm-6 col-md-3">
         <div class="info-box shadow-sm">
@@ -134,11 +116,6 @@ $theme->showHeader($context);
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-3">
-                        <a href="<?= BASE_URL ?>administration/institutions.php" class="btn btn-app">
-                            <i class="fas fa-university"></i> Institutions
-                        </a>
-                    </div>
-                    <div class="col-md-3">
                         <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="btn btn-app">
                             <i class="fas fa-flag"></i> Institutional Outcomes
                         </a>
@@ -161,11 +138,6 @@ $theme->showHeader($context);
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="<?= BASE_URL ?>administration/course_sections.php" class="btn btn-app">
-                            <i class="fas fa-chalkboard-teacher"></i> Course Sections
-                        </a>
-                    </div>
-                    <div class="col-md-3">
                         <a href="<?= BASE_URL ?>administration/student_learning_outcomes.php" class="btn btn-app">
                             <i class="fas fa-tasks"></i> SLOs
                         </a>
@@ -185,11 +157,6 @@ $theme->showHeader($context);
                     <div class="col-md-3">
                         <a href="<?= BASE_URL ?>administration/config.php" class="btn btn-app">
                             <i class="fas fa-cog"></i> System Config
-                        </a>
-                    </div>
-                    <div class="col-md-3">
-                        <a href="<?= BASE_URL ?>administration/institution.php" class="btn btn-app">
-                            <i class="fas fa-building"></i> Institution Setup
                         </a>
                     </div>
                     <div class="col-md-3">
@@ -268,12 +235,10 @@ $theme->showHeader($context);
             </div>
             <div class="card-body">
                 <ol>
-                    <li><a href="<?= BASE_URL ?>administration/institutions.php">Configure institution details</a></li>
                     <li><a href="<?= BASE_URL ?>administration/institutional_outcomes.php">Set up institutional outcomes</a></li>
                     <li><a href="<?= BASE_URL ?>administration/programs.php">Create academic programs</a></li>
                     <li><a href="<?= BASE_URL ?>administration/program_outcomes.php">Define program outcomes</a></li>
                     <li><a href="<?= BASE_URL ?>administration/courses.php">Add courses to the catalog</a></li>
-                    <li><a href="<?= BASE_URL ?>administration/course_sections.php">Create course sections (CRNs)</a></li>
                     <li><a href="<?= BASE_URL ?>administration/student_learning_outcomes.php">Define SLOs for courses</a></li>
                     <li><a href="<?= BASE_URL ?>administration/students.php">Add student records</a></li>
                     <li><a href="<?= BASE_URL ?>administration/assessments.php">Record assessment data</a></li>

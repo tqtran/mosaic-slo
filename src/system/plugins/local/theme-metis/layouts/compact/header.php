@@ -115,8 +115,8 @@
             <a href="<?= BASE_URL ?>administration/" class="<?= ($currentPage ?? '') === 'admin_dashboard' ? 'active' : '' ?>" title="Dashboard">
                 <i class="bi bi-speedometer2"></i>
             </a>
-            <a href="<?= BASE_URL ?>administration/institution.php" class="<?= ($currentPage ?? '') === 'admin_institution' ? 'active' : '' ?>" title="Institution">
-                <i class="bi bi-building"></i>
+            <a href="<?= BASE_URL ?>administration/terms.php" class="<?= ($currentPage ?? '') === 'admin_terms' ? 'active' : '' ?>" title="Terms">
+                <i class="bi bi-calendar-week"></i>
             </a>
             <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="<?= ($currentPage ?? '') === 'admin_institutional_outcomes' ? 'active' : '' ?>" title="Outcomes">
                 <i class="bi bi-diagram-3"></i>
