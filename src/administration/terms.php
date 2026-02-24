@@ -989,6 +989,7 @@ $(document).ready(function() {
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
         order: [[1, 'desc']],
         pageLength: 25,
+        orderCellsTop: true, // Use the top row for sorting
         columnDefs: [
             { targets: [0], visible: false },
             { targets: [7], orderable: false, searchable: false }

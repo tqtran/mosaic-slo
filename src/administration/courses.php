@@ -712,6 +712,7 @@ $(document).ready(function() {
     });
     
     var table = $('#coursesTable').DataTable({
+        orderCellsTop: true,
         processing: true,
         serverSide: true,
         ajax: '<?= BASE_URL ?>administration/courses_data.php',

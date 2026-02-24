@@ -701,6 +701,7 @@ $(document).ready(function() {
     });
     
     var table = $('#assessmentsTable').DataTable({
+        orderCellsTop: true,
         processing: true,
         serverSide: true,
         ajax: '<?= BASE_URL ?>administration/assessments_data.php',

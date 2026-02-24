@@ -643,6 +643,7 @@ $(document).ready(function() {
     });
     
     var table = $('#outcomesTable').DataTable({
+        orderCellsTop: true,
         processing: true,
         serverSide: true,
         ajax: {

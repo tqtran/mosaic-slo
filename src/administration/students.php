@@ -547,6 +547,7 @@ $(document).ready(function() {
     });
     
     var table = $('#studentsTable').DataTable({
+        orderCellsTop: true,
         processing: true,
         serverSide: true,
         ajax: '<?= BASE_URL ?>administration/students_data.php',

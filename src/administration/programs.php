@@ -682,6 +682,7 @@ $(document).ready(function() {
     });
     
     var table = $('#programsTable').DataTable({
+        orderCellsTop: true,
         processing: true,
         serverSide: true,
         ajax: {

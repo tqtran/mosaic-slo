@@ -810,6 +810,7 @@ $(document).ready(function() {
     
     // Initialize DataTable
     var table = $('#outcomesTable').DataTable({
+        orderCellsTop: true,
         processing: true,
         serverSide: true,
         ajax: {

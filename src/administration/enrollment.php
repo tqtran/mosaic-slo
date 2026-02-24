@@ -669,6 +669,7 @@ $(document).ready(function() {
     });
     
     var table = $('#enrollmentTable').DataTable({
+        orderCellsTop: true,
         processing: true,
         serverSide: true,
         ajax: '<?= BASE_URL ?>administration/enrollment_data.php',

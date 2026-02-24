@@ -654,6 +654,7 @@ $(document).ready(function() {
     });
     
     var table = $('#slosTable').DataTable({
+        orderCellsTop: true,
         processing: true,
         serverSide: true,
         ajax: '<?= BASE_URL ?>administration/student_learning_outcomes_data.php',
