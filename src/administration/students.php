@@ -24,7 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         switch ($action) {
             case 'add':
-                $cNumber = trim($_POST['c_number'] ?? '');
                 $studentId = trim($_POST['student_id'] ?? '');
                 $firstName = trim($_POST['student_first_name'] ?? '');
                 $lastName = trim($_POST['student_last_name'] ?? '');
@@ -32,9 +31,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 $errors = [];
-                if (empty($cNumber)) {
-                    $errors[] = 'C-Number is required';
-                }
                 if (empty($studentId)) {
                     $errors[] = 'Student ID is required';
                 }
@@ -45,25 +41,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $errors[] = 'Last name is required';
                 }
                 
-                // Check c_number uniqueness
-                if (!empty($cNumber)) {
+                // Check student_id uniqueness
+                if (!empty($studentId)) {
                     $checkResult = $db->query(
-                        "SELECT students_pk FROM {$dbPrefix}students WHERE c_number = ?",
-                        [$cNumber],
+                        "SELECT students_pk FROM {$dbPrefix}students WHERE student_id = ?",
+                        [$studentId],
                         's'
                     );
                     if ($checkResult->fetch()) {
-                        $errors[] = 'C-Number already exists';
+                        $errors[] = 'Student ID already exists';
                     }
                 }
                 
                 if (empty($errors)) {
                     // Note: In production, these fields should be encrypted
                     $db->query(
-                        "INSERT INTO {$dbPrefix}students (c_number, student_id, student_first_name, student_last_name, email, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$cNumber, $studentId, $firstName, $lastName, $email, $isActive],
-                        'sssssi'
+                        "INSERT INTO {$dbPrefix}students (student_id, first_name, last_name, email, is_active, created_at, updated_at) 
+                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                        [$studentId, $firstName, $lastName, $email, $isActive],
+                        'ssssi'
                     );
                     $successMessage = 'Student added successfully';
                 } else {
@@ -73,7 +69,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'edit':
                 $id = (int)($_POST['student_pk'] ?? 0);
-                $cNumber = trim($_POST['c_number'] ?? '');
                 $studentId = trim($_POST['student_id'] ?? '');
                 $firstName = trim($_POST['student_first_name'] ?? '');
                 $lastName = trim($_POST['student_last_name'] ?? '');
@@ -84,9 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($id <= 0) {
                     $errors[] = 'Invalid student PK';
                 }
-                if (empty($cNumber)) {
-                    $errors[] = 'C-Number is required';
-                }
                 if (empty($studentId)) {
                     $errors[] = 'Student ID is required';
                 }
@@ -97,25 +89,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $errors[] = 'Last name is required';
                 }
                 
-                // Check c_number uniqueness (exclude current record)
-                if (!empty($cNumber)) {
+                // Check student_id uniqueness (exclude current record)
+                if (!empty($studentId)) {
                     $checkResult = $db->query(
-                        "SELECT students_pk FROM {$dbPrefix}students WHERE c_number = ? AND students_pk != ?",
-                        [$cNumber, $id],
+                        "SELECT students_pk FROM {$dbPrefix}students WHERE student_id = ? AND students_pk != ?",
+                        [$studentId, $id],
                         'si'
                     );
                     if ($checkResult->fetch()) {
-                        $errors[] = 'C-Number already exists';
+                        $errors[] = 'Student ID already exists';
                     }
                 }
                 
                 if (empty($errors)) {
                     $db->query(
                         "UPDATE {$dbPrefix}students 
-                         SET c_number = ?, student_id = ?, student_first_name = ?, student_last_name = ?, email = ?, is_active = ?, updated_at = NOW()
+                         SET student_id = ?, first_name = ?, last_name = ?, email = ?, is_active = ?, updated_at = NOW()
                          WHERE students_pk = ?",
-                        [$cNumber, $studentId, $firstName, $lastName, $email, $isActive, $id],
-                        'sssssii'
+                        [$studentId, $firstName, $lastName, $email, $isActive, $id],
+                        'ssssii'
                     );
                     $successMessage = 'Student updated successfully';
                 } else {
@@ -181,33 +173,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $headers[0] = preg_replace('/^\x{FEFF}/u', '', $headers[0]);
                 }
                 
-                // Expected columns: c_number, student_id, student_first_name, student_last_name, email, is_active
+                // Expected columns: student_id, student_first_name, student_last_name, email, is_active
                 $imported = 0;
                 $updated = 0;
                 $errors = [];
                 
                 while (($row = fgetcsv($handle)) !== false) {
-                    if (count($row) < 4) continue; // Need at least c_number, student_id, first_name, last_name
+                    if (count($row) < 3) continue; // Need at least student_id, first_name, last_name
                     
                     $data = array_combine($headers, $row);
                     if ($data === false) continue;
                     
-                    $cNumber = trim($data['c_number'] ?? '');
                     $studentId = trim($data['student_id'] ?? '');
                     $firstName = trim($data['student_first_name'] ?? '');
                     $lastName = trim($data['student_last_name'] ?? '');
                     $email = trim($data['email'] ?? '');
                     $isActive = isset($data['is_active']) ? ((int)$data['is_active'] === 1 || strtolower($data['is_active']) === 'true') : true;
                     
-                    if (empty($cNumber) || empty($studentId) || empty($firstName) || empty($lastName)) {
-                        $errors[] = "Skipped row: missing required fields (c_number, student_id, first_name, or last_name)";
+                    if (empty($studentId) || empty($firstName) || empty($lastName)) {
+                        $errors[] = "Skipped row: missing required fields (student_id, first_name, or last_name)";
                         continue;
                     }
                     
-                    // Check if student exists (based on unique c_number)
+                    // Check if student exists (based on unique student_id)
                     $result = $db->query(
-                        "SELECT students_pk FROM {$dbPrefix}students WHERE c_number = ?",
-                        [$cNumber],
+                        "SELECT students_pk FROM {$dbPrefix}students WHERE student_id = ?",
+                        [$studentId],
                         's'
                     );
                     $existing = $result->fetch();
@@ -216,19 +207,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Update existing
                         $db->query(
                             "UPDATE {$dbPrefix}students 
-                             SET student_id = ?, student_first_name = ?, student_last_name = ?, email = ?, is_active = ?, updated_at = NOW() 
+                             SET first_name = ?, last_name = ?, email = ?, is_active = ?, updated_at = NOW() 
                              WHERE students_pk = ?",
-                            [$studentId, $firstName, $lastName, $email, $isActive, $existing['students_pk']],
+                            [$firstName, $lastName, $email, $isActive, $existing['students_pk']],
                             'sssii'
                         );
                         $updated++;
                     } else {
                         // Insert new
                         $db->query(
-                            "INSERT INTO {$dbPrefix}students (c_number, student_id, student_first_name, student_last_name, email, is_active, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                            [$cNumber, $studentId, $firstName, $lastName, $email, $isActive],
-                            'sssssi'
+                            "INSERT INTO {$dbPrefix}students (student_id, first_name, last_name, email, is_active, created_at, updated_at) 
+                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                            [$studentId, $firstName, $lastName, $email, $isActive],
+                            'ssssi'
                         );
                         $imported++;
                     }
@@ -358,7 +349,6 @@ $theme->showHeader($context);
                     <thead>
                         <tr>
                             <th>PK</th>
-                            <th>C-Number</th>
                             <th>Student ID</th>
                             <th>First Name</th>
                             <th>Last Name</th>
@@ -367,7 +357,6 @@ $theme->showHeader($context);
                             <th>Actions</th>
                         </tr>
                         <tr>
-                            <th></th>
                             <th></th>
                             <th></th>
                             <th></th>
@@ -398,14 +387,9 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="add">
                     
                     <div class="mb-3">
-                        <label for="cNumber" class="form-label">C-Number <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="cNumber" name="c_number" maxlength="50" required>
-                        <small class="form-text text-muted">Banner student C-Number (unique identifier)</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="studentId" class="form-label">Student ID</label>
+                        <label for="studentId" class="form-label">Student ID <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="studentId" name="student_id" maxlength="255" required>
+                        <small class="form-text text-muted">Unique student identifier</small>
                     </div>
                     
                     <div class="row">
@@ -453,14 +437,9 @@ $theme->showHeader($context);
                     <input type="hidden" name="student_pk" id="editStudentPk">
                     
                     <div class="mb-3">
-                        <label for="editCNumber" class="form-label">C-Number <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="editCNumber" name="c_number" maxlength="50" required>
-                        <small class="form-text text-muted">Banner student C-Number (unique identifier)</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="editStudentId" class="form-label">Student ID</label>
+                        <label for="editStudentId" class="form-label">Student ID <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="editStudentId" name="student_id" maxlength="255" required>
+                        <small class="form-text text-muted">Unique student identifier</small>
                     </div>
                     
                     <div class="row">
@@ -513,8 +492,8 @@ $theme->showHeader($context);
                     
                     <div class="alert alert-info mb-0">
                         <strong>CSV Format:</strong><br>
-                        <code>c_number,student_id,student_first_name,student_last_name,email,is_active</code><br>
-                        <small class="text-muted">c_number is required (Banner C-Number). is_active should be 1/0 or true/false (default: true)</small>
+                        <code>student_id,student_first_name,student_last_name,email,is_active</code><br>
+                        <small class="text-muted">student_id is required (unique identifier). is_active should be 1/0 or true/false (default: true)</small>
                     </div>
                     
                     <div class="alert alert-warning mt-3 mb-0">
@@ -575,13 +554,12 @@ $(document).ready(function() {
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
         columns: [
             { data: 0, name: 'students_pk' },
-            { data: 1, name: 'c_number' },
-            { data: 2, name: 'student_id' },
-            { data: 3, name: 'student_first_name' },
-            { data: 4, name: 'student_last_name' },
-            { data: 5, name: 'email' },
-            { data: 6, name: 'is_active' },
-            { data: 7, name: 'actions', orderable: false, searchable: false }
+            { data: 1, name: 'student_id' },
+            { data: 2, name: 'student_first_name' },
+            { data: 3, name: 'student_last_name' },
+            { data: 4, name: 'email' },
+            { data: 5, name: 'is_active' },
+            { data: 6, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             this.api().columns().every(function() {
@@ -598,10 +576,9 @@ $(document).ready(function() {
 
 function editStudent(student) {
     $('#editStudentPk').val(student.students_pk);
-    $('#editCNumber').val(student.c_number);
     $('#editStudentId').val(student.student_id);
-    $('#editFirstName').val(student.student_first_name);
-    $('#editLastName').val(student.student_last_name);
+    $('#editFirstName').val(student.first_name);
+    $('#editLastName').val(student.last_name);
     $('#editEmail').val(student.email);
     $('#editIsActive').prop('checked', student.is_active == 1);
     new bootstrap.Modal(document.getElementById('editStudentModal')).show();

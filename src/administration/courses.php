@@ -30,9 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'add':
                 $courseName = trim($_POST['course_name'] ?? '');
                 $courseNumber = trim($_POST['course_number'] ?? '');
-                $departmentFk = (int)($_POST['department_fk'] ?? 0);
-                $description = trim($_POST['description'] ?? '');
-                $creditHours = !empty($_POST['credit_hours']) ? (int)$_POST['credit_hours'] : null;
+                $programFk = (int)($_POST['program_fk'] ?? 0);
+                $termFk = (int)($_POST['term_fk'] ?? 0);
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 // Validation
@@ -43,27 +42,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($courseNumber)) {
                     $errors[] = 'Course number is required';
                 }
-                if ($departmentFk <= 0) {
-                    $errors[] = 'Department is required';
+                if ($programFk <= 0) {
+                    $errors[] = 'Program is required';
                 } else {
-                    // Validate department exists
-                    $deptCheck = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}departments WHERE departments_pk = ? AND is_active = 1",
-                        [$departmentFk],
+                    // Validate program exists
+                    $progCheck = $db->query(
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}programs WHERE programs_pk = ? AND is_active = 1",
+                        [$programFk],
                         'i'
                     );
-                    $deptRow = $deptCheck->fetch();
-                    if ($deptRow['count'] == 0) {
-                        $errors[] = 'Invalid department selected';
+                    $progRow = $progCheck->fetch();
+                    if ($progRow['count'] == 0) {
+                        $errors[] = 'Invalid program selected';
+                    }
+                }
+                if ($termFk <= 0) {
+                    $errors[] = 'Term is required';
+                } else {
+                    // Validate term exists
+                    $termCheck = $db->query(
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}terms WHERE terms_pk = ? AND is_active = 1",
+                        [$termFk],
+                        'i'
+                    );
+                    $termRow = $termCheck->fetch();
+                    if ($termRow['count'] == 0) {
+                        $errors[] = 'Invalid term selected';
                     }
                 }
                 
                 if (empty($errors)) {
                     $db->query(
-                        "INSERT INTO {$dbPrefix}courses (course_name, course_number, department_fk, description, credit_hours, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$courseName, $courseNumber, $departmentFk, $description, $creditHours, $isActive],
-                        'sssiii'
+                        "INSERT INTO {$dbPrefix}courses (course_name, course_number, program_fk, term_fk, is_active, created_at, updated_at) 
+                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                        [$courseName, $courseNumber, $programFk, $termFk, $isActive],
+                        'ssiii'
                     );
                     $successMessage = 'Course added successfully';
                 } else {
@@ -75,9 +88,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id = (int)($_POST['course_id'] ?? 0);
                 $courseName = trim($_POST['course_name'] ?? '');
                 $courseNumber = trim($_POST['course_number'] ?? '');
-                $departmentFk = (int)($_POST['department_fk'] ?? 0);
-                $description = trim($_POST['description'] ?? '');
-                $creditHours = !empty($_POST['credit_hours']) ? (int)$_POST['credit_hours'] : null;
+                $programFk = (int)($_POST['program_fk'] ?? 0);
+                $termFk = (int)($_POST['term_fk'] ?? 0);
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 // Validation
@@ -91,28 +103,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($courseNumber)) {
                     $errors[] = 'Course number is required';
                 }
-                if ($departmentFk <= 0) {
-                    $errors[] = 'Department is required';
+                if ($programFk <= 0) {
+                    $errors[] = 'Program is required';
                 } else {
-                    // Validate department exists
-                    $deptCheck = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}departments WHERE departments_pk = ? AND is_active = 1",
-                        [$departmentFk],
+                    // Validate program exists
+                    $progCheck = $db->query(
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}programs WHERE programs_pk = ? AND is_active = 1",
+                        [$programFk],
                         'i'
                     );
-                    $deptRow = $deptCheck->fetch();
-                    if ($deptRow['count'] == 0) {
-                        $errors[] = 'Invalid department selected';
+                    $progRow = $progCheck->fetch();
+                    if ($progRow['count'] == 0) {
+                        $errors[] = 'Invalid program selected';
+                    }
+                }
+                if ($termFk <= 0) {
+                    $errors[] = 'Term is required';
+                } else {
+                    // Validate term exists
+                    $termCheck = $db->query(
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}terms WHERE terms_pk = ? AND is_active = 1",
+                        [$termFk],
+                        'i'
+                    );
+                    $termRow = $termCheck->fetch();
+                    if ($termRow['count'] == 0) {
+                        $errors[] = 'Invalid term selected';
                     }
                 }
                 
                 if (empty($errors)) {
                     $db->query(
                         "UPDATE {$dbPrefix}courses 
-                         SET course_name = ?, course_number = ?, department_fk = ?, description = ?, credit_hours = ?, is_active = ?, updated_at = NOW()
+                         SET course_name = ?, course_number = ?, program_fk = ?, term_fk = ?, is_active = ?, updated_at = NOW()
                          WHERE courses_pk = ?",
-                        [$courseName, $courseNumber, $departmentFk, $description, $creditHours, $isActive, $id],
-                        'sssiiii'
+                        [$courseName, $courseNumber, $programFk, $termFk, $isActive, $id],
+                        'ssiiii'
                     );
                     $successMessage = 'Course updated successfully';
                 } else {
@@ -198,9 +224,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     $courseName = trim($data['course_name'] ?? '');
                     $courseNumber = trim($data['course_number'] ?? '');
-                    $departmentCode = trim($data['department_code'] ?? '');
-                    $description = trim($data['description'] ?? '');
-                    $creditHours = !empty($data['credit_hours']) ? (int)$data['credit_hours'] : null;
+                    $programCode = trim($data['program_code'] ?? '');
+                    $termCode = trim($data['term_code'] ?? '');
                     $isActive = isset($data['is_active']) ? ((int)$data['is_active'] === 1 || strtolower($data['is_active']) === 'true') : true;
                     
                     if (empty($courseName) || empty($courseNumber)) {
@@ -208,30 +233,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         continue;
                     }
                     
-                    // Lookup department by code
-                    $departmentFk = null;
-                    if (!empty($departmentCode)) {
-                        $deptLookup = $db->query(
-                            "SELECT departments_pk FROM {$dbPrefix}departments WHERE department_code = ? AND is_active = 1",
-                            [$departmentCode],
+                    // Lookup program by code
+                    $programFk = null;
+                    if (!empty($programCode)) {
+                        $progLookup = $db->query(
+                            "SELECT programs_pk FROM {$dbPrefix}programs WHERE program_code = ? AND is_active = 1",
+                            [$programCode],
                             's'
                         );
-                        if ($deptLookup->rowCount() > 0) {
-                            $deptRow = $deptLookup->fetch();
-                            $departmentFk = $deptRow['departments_pk'];
+                        if ($progLookup->rowCount() > 0) {
+                            $progRow = $progLookup->fetch();
+                            $programFk = $progRow['programs_pk'];
                         }
                     }
                     
-                    if ($departmentFk === null) {
-                        $errors[] = "Skipped row for {$courseName}: invalid or missing department code";
+                    // Lookup term by code
+                    $termFk = null;
+                    if (!empty($termCode)) {
+                        $termLookup = $db->query(
+                            "SELECT terms_pk FROM {$dbPrefix}terms WHERE term_code = ? AND is_active = 1",
+                            [$termCode],
+                            's'
+                        );
+                        if ($termLookup->rowCount() > 0) {
+                            $termRow = $termLookup->fetch();
+                            $termFk = $termRow['terms_pk'];
+                        }
+                    }
+                    
+                    if ($programFk === null) {
+                        $errors[] = "Skipped row for {$courseName}: invalid or missing program code";
                         continue;
                     }
                     
-                    // Check if course exists (based on unique key: course_name + course_number)
+                    if ($termFk === null) {
+                        $errors[] = "Skipped row for {$courseName}: invalid or missing term code";
+                        continue;
+                    }
+                    
+                    // Check if course exists (based on unique key: program_fk + course_number)
                     $result = $db->query(
-                        "SELECT courses_pk FROM {$dbPrefix}courses WHERE course_name = ? AND course_number = ?",
-                        [$courseName, $courseNumber],
-                        'ss'
+                        "SELECT courses_pk FROM {$dbPrefix}courses WHERE program_fk = ? AND course_number = ?",
+                        [$programFk, $courseNumber],
+                        'is'
                     );
                     $existing = $result->fetch();
                     
@@ -239,19 +283,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Update existing
                         $db->query(
                             "UPDATE {$dbPrefix}courses 
-                             SET department_fk = ?, description = ?, credit_hours = ?, is_active = ?, updated_at = NOW() 
+                             SET course_name = ?, term_fk = ?, is_active = ?, updated_at = NOW() 
                              WHERE courses_pk = ?",
-                            [$departmentFk, $description, $creditHours, $isActive, $existing['courses_pk']],
-                            'isiii'
+                            [$courseName, $termFk, $isActive, $existing['courses_pk']],
+                            'siii'
                         );
                         $updated++;
                     } else {
                         // Insert new
                         $db->query(
-                            "INSERT INTO {$dbPrefix}courses (course_name, course_number, department_fk, description, credit_hours, is_active, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                            [$courseName, $courseNumber, $departmentFk, $description, $creditHours, $isActive],
-                            'sssiii'
+                            "INSERT INTO {$dbPrefix}courses (course_name, course_number, program_fk, term_fk, is_active, created_at, updated_at) 
+                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                            [$courseName, $courseNumber, $programFk, $termFk, $isActive],
+                            'ssiii'
                         );
                         $imported++;
                     }
@@ -285,14 +329,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch departments for dropdown
-$deptResult = $db->query("
-    SELECT departments_pk, department_code, department_name 
-    FROM {$dbPrefix}departments 
+// Fetch programs for dropdown
+$progResult = $db->query("
+    SELECT programs_pk, program_code, program_name 
+    FROM {$dbPrefix}programs 
     WHERE is_active = 1 
-    ORDER BY department_name
+    ORDER BY program_name
 ");
-$departments = $deptResult->fetchAll();
+$programs = $progResult->fetchAll();
+
+// Fetch terms for dropdown
+$termResult = $db->query("
+    SELECT terms_pk, term_code, term_name 
+    FROM {$dbPrefix}terms 
+    WHERE is_active = 1 
+    ORDER BY term_name DESC
+");
+$terms = $termResult->fetchAll();
 
 // Calculate statistics
 $statsResult = $db->query("
@@ -472,21 +525,22 @@ $theme->showHeader($context);
                         <input type="text" class="form-control" id="courseNumber" name="course_number" maxlength="50" required>
                     </div>
                     <div class="mb-3">
-                        <label for="departmentFk" class="form-label">Department</label>
-                        <select class="form-select" id="departmentFk" name="department_fk" required>
-                            <option value="">Select Department</option>
-                            <?php foreach ($departments as $dept): ?>
-                            <option value="<?= $dept['departments_pk'] ?>"><?= htmlspecialchars($dept['department_name']) ?> (<?= htmlspecialchars($dept['department_code']) ?>)</option>
+                        <label for="programFk" class="form-label">Program</label>
+                        <select class="form-select" id="programFk" name="program_fk" required>
+                            <option value="">Select Program</option>
+                            <?php foreach ($programs as $prog): ?>
+                            <option value="<?= $prog['programs_pk'] ?>"><?= htmlspecialchars($prog['program_name']) ?> (<?= htmlspecialchars($prog['program_code']) ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="description" class="form-label">Description <small class="text-muted">(Optional)</small></label>
-                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="creditHours" class="form-label">Credit Hours <small class="text-muted">(Optional)</small></label>
-                        <input type="number" class="form-control" id="creditHours" name="credit_hours" min="0" max="20" step="1">
+                        <label for="termFk" class="form-label">Term</label>
+                        <select class="form-select" id="termFk" name="term_fk" required>
+                            <option value="">Select Term</option>
+                            <?php foreach ($terms as $term): ?>
+                            <option value="<?= $term['terms_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?> (<?= htmlspecialchars($term['term_code']) ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
@@ -524,21 +578,22 @@ $theme->showHeader($context);
                         <input type="text" class="form-control" id="editCourseNumber" name="course_number" maxlength="50" required>
                     </div>
                     <div class="mb-3">
-                        <label for="editDepartmentFk" class="form-label">Department</label>
-                        <select class="form-select" id="editDepartmentFk" name="department_fk" required>
-                            <option value="">Select Department</option>
-                            <?php foreach ($departments as $dept): ?>
-                            <option value="<?= $dept['departments_pk'] ?>"><?= htmlspecialchars($dept['department_name']) ?> (<?= htmlspecialchars($dept['department_code']) ?>)</option>
+                        <label for="editProgramFk" class="form-label">Program</label>
+                        <select class="form-select" id="editProgramFk" name="program_fk" required>
+                            <option value="">Select Program</option>
+                            <?php foreach ($programs as $prog): ?>
+                            <option value="<?= $prog['programs_pk'] ?>"><?= htmlspecialchars($prog['program_name']) ?> (<?= htmlspecialchars($prog['program_code']) ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="editDescription" class="form-label">Description <small class="text-muted">(Optional)</small></label>
-                        <textarea class="form-control" id="editDescription" name="description" rows="3"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editCreditHours" class="form-label">Credit Hours <small class="text-muted">(Optional)</small></label>
-                        <input type="number" class="form-control" id="editCreditHours" name="credit_hours" min="0" max="20" step="1">
+                        <label for="editTermFk" class="form-label">Term</label>
+                        <select class="form-select" id="editTermFk" name="term_fk" required>
+                            <option value="">Select Term</option>
+                            <?php foreach ($terms as $term): ?>
+                            <option value="<?= $term['terms_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?> (<?= htmlspecialchars($term['term_code']) ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
@@ -678,9 +733,8 @@ function editCourse(course) {
     $('#editCourseId').val(course.courses_pk);
     $('#editCourseName').val(course.course_name);
     $('#editCourseNumber').val(course.course_number);
-    $('#editDepartmentFk').val(course.department_fk);
-    $('#editDescription').val(course.description || '');
-    $('#editCreditHours').val(course.credit_hours || '');
+    $('#editProgramFk').val(course.program_fk);
+    $('#editTermFk').val(course.term_fk);
     $('#editIsActive').prop('checked', course.is_active == 1);
     new bootstrap.Modal(document.getElementById('editCourseModal')).show();
 }

@@ -210,15 +210,13 @@ CREATE TABLE student_learning_outcomes (
 
 CREATE TABLE students (
     students_pk INT AUTO_INCREMENT PRIMARY KEY,
-    c_number VARCHAR(50) NOT NULL UNIQUE COMMENT 'Student C-Number from Banner SIS (cnum)',
-    first_name VARCHAR(100) COMMENT 'First name (FN)',
-    last_name VARCHAR(100) COMMENT 'Last name (LN)',
-    student_id VARCHAR(50) COMMENT 'Alternative student ID if needed',
+    student_id VARCHAR(50) NOT NULL UNIQUE COMMENT 'Student ID from Banner SIS',
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
     email VARCHAR(255),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_c_number (c_number),
     INDEX idx_student_id (student_id),
     INDEX idx_email (email),
     INDEX idx_is_active (is_active)

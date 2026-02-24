@@ -22,33 +22,6 @@ if (!isset($_SESSION['user_id'])) {
 $db = Database::getInstance()->getConnection();
 
 // ============================================================================
-// HANDLE GET TERM FOR EDITING
-// ============================================================================
-
-if (isset($_GET['action']) && $_GET['action'] === 'get_term') {
-    $termId = (int)($_GET['id'] ?? 0);
-    
-    if (empty($termId)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid term ID']);
-        exit;
-    }
-    
-    $stmt = $db->prepare("
-        SELECT terms_pk, term_name, start_date, end_date, is_active
-        FROM tbl_terms
-        WHERE terms_pk = ?
-    ");
-    $stmt->execute([$termId]);
-    
-    if ($row = $stmt->fetch()) {
-        echo json_encode(['success' => true, 'term' => $row]);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Term not found']);
-    }
-    exit;
-}
-
-// ============================================================================
 // DATATABLES SERVER-SIDE PROCESSING
 // ============================================================================
 
@@ -62,13 +35,15 @@ $orderDir = strtoupper($_GET['order'][0]['dir'] ?? 'ASC') === 'DESC' ? 'DESC' : 
 
 // Column mapping
 $columns = [
-    0 => 't.term_name',
-    1 => 't.start_date',
-    2 => 't.end_date',
-    3 => 't.is_active'
+    0 => 't.terms_pk',
+    1 => 't.term_code',
+    2 => 't.term_name',
+    3 => 't.start_date',
+    4 => 't.end_date',
+    5 => 't.is_active'
 ];
 
-$orderBy = $columns[$orderColumn] ?? 't.term_name';
+$orderBy = $columns[$orderColumn] ?? 't.term_code';
 
 // Base query
 $baseQuery = "
@@ -103,12 +78,11 @@ if (!empty($searchValue)) {
 $query = "
     SELECT 
         t.terms_pk,
+        t.term_code,
         t.term_name,
         t.start_date,
         t.end_date,
-        t.is_active,
-        t.created_at,
-        t.updated_at
+        t.is_active
     " . $baseQuery . $whereClause . "
     ORDER BY " . $orderBy . " " . $orderDir . "
     LIMIT ? OFFSET ?
@@ -131,27 +105,13 @@ while ($row = $stmt->fetch()) {
     $startDate = $row['start_date'] ? date('M d, Y', strtotime($row['start_date'])) : '-';
     $endDate = $row['end_date'] ? date('M d, Y', strtotime($row['end_date'])) : '-';
     
-    $actions = '
-        <div class="btn-group btn-group-sm" role="group">
-            <button type="button" class="btn btn-info btn-edit" data-id="' . $row['terms_pk'] . '" title="Edit">
-                <i class="bi bi-pencil"></i>
-            </button>
-            <button type="button" class="btn btn-warning btn-toggle" data-id="' . $row['terms_pk'] . '" title="Toggle Status">
-                <i class="bi bi-toggle-on"></i>
-            </button>
-            <button type="button" class="btn btn-danger btn-delete" data-id="' . $row['terms_pk'] . '" title="Delete">
-                <i class="bi bi-trash"></i>
-            </button>
-        </div>
-    ';
-    
     $data[] = [
         htmlspecialchars($row['terms_pk']),
+        htmlspecialchars($row['term_code'] ?? ''),
         htmlspecialchars($row['term_name']),
         $startDate,
         $endDate,
-        $statusBadge,
-        $actions
+        $statusBadge
     ];
 }
 

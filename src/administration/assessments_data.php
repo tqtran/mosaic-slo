@@ -12,22 +12,23 @@ require_once __DIR__ . '/../system/includes/init.php';
 
 header('Content-Type: application/json');
 
-$draw = (int)($_GET['draw'] ?? 1);
-$start = (int)($_GET['start'] ?? 0);
-$length = (int)($_GET['length'] ?? 10);
-$searchValue = $_GET['search']['value'] ?? '';
+try {
+    $draw = (int)($_GET['draw'] ?? 1);
+    $start = (int)($_GET['start'] ?? 0);
+    $length = (int)($_GET['length'] ?? 10);
+    $searchValue = $_GET['search']['value'] ?? '';
 
-$orderColumnIndex = (int)($_GET['order'][0]['column'] ?? 0);
-$orderDirection = strtoupper($_GET['order'][0]['dir'] ?? 'DESC');
-if (!in_array($orderDirection, ['ASC', 'DESC'])) {
-    $orderDirection = 'DESC';
-}
+    $orderColumnIndex = (int)($_GET['order'][0]['column'] ?? 0);
+    $orderDirection = strtoupper($_GET['order'][0]['dir'] ?? 'DESC');
+    if (!in_array($orderDirection, ['ASC', 'DESC'])) {
+        $orderDirection = 'DESC';
+    }
 
 $columns = [
     'a.assessments_pk', 
     'e.term_code', 
     'e.crn', 
-    'CONCAT(s.student_last_name, ", ", s.student_first_name)', 
+    'CONCAT(s.last_name, ", ", s.first_name)', 
     'slo.slo_code', 
     'a.score_value', 
     'a.achievement_level', 
@@ -53,9 +54,9 @@ if ($searchValue !== '') {
     $searchConditions = [];
     $searchConditions[] = "e.term_code LIKE ?";
     $searchConditions[] = "e.crn LIKE ?";
-    $searchConditions[] = "s.c_number LIKE ?";
-    $searchConditions[] = "s.student_first_name LIKE ?";
-    $searchConditions[] = "s.student_last_name LIKE ?";
+    $searchConditions[] = "s.student_id LIKE ?";
+    $searchConditions[] = "s.first_name LIKE ?";
+    $searchConditions[] = "s.last_name LIKE ?";
     $searchConditions[] = "slo.slo_code LIKE ?";
     $searchConditions[] = "a.achievement_level LIKE ?";
     foreach ($searchConditions as $condition) {
@@ -80,7 +81,7 @@ foreach ($columnSearch as $column => $value) {
         $params[] = "%{$value}%";
         $types .= 's';
     } else if ($column === 'student_name') {
-        $where[] = "(s.student_first_name LIKE ? OR s.student_last_name LIKE ? OR s.c_number LIKE ?)";
+        $where[] = "(s.first_name LIKE ? OR s.last_name LIKE ? OR s.student_id LIKE ?)";
         $params[] = "%{$value}%";
         $params[] = "%{$value}%";
         $params[] = "%{$value}%";
@@ -122,7 +123,7 @@ if ($whereClause) {
 $sql = "SELECT a.assessments_pk, a.enrollment_fk, a.student_learning_outcome_fk,
                a.score_value, a.achievement_level, a.assessment_method, a.notes, a.assessed_date, a.is_finalized,
                e.term_code, e.crn,
-               s.c_number, s.student_first_name, s.student_last_name,
+               s.student_id, s.first_name, s.last_name,
                slo.slo_code, slo.slo_description
         {$fromClause}
         {$whereClause}
@@ -141,7 +142,7 @@ while ($row = $result->fetch()) {
         '<span class="badge bg-success">Finalized</span>' : 
         '<span class="badge bg-secondary">Draft</span>';
     
-    $studentName = htmlspecialchars($row['student_last_name']) . ', ' . htmlspecialchars($row['student_first_name']);
+    $studentName = htmlspecialchars($row['last_name']) . ', ' . htmlspecialchars($row['first_name']);
     $sloDisplay = htmlspecialchars($row['slo_code']);
     $dateDisplay = $row['assessed_date'] ? date('Y-m-d', strtotime($row['assessed_date'])) : '';
     
@@ -184,8 +185,19 @@ while ($row = $result->fetch()) {
 }
 
 echo json_encode([
-    'draw' => $draw,
-    'recordsTotal' => $totalRecords,
-    'recordsFiltered' => $totalFiltered,
-    'data' => $data
-]);
+        'draw' => $draw,
+        'recordsTotal' => $totalRecords,
+        'recordsFiltered' => $totalFiltered,
+        'data' => $data
+    ]);
+
+} catch (Exception $e) {
+    error_log("Assessments DataTables Error: " . $e->getMessage());
+    echo json_encode([
+        'draw' => $_GET['draw'] ?? 1,
+        'recordsTotal' => 0,
+        'recordsFiltered' => 0,
+        'data' => [],
+        'error' => 'Database error: ' . $e->getMessage()
+    ]);
+}

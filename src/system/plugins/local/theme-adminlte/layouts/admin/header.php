@@ -80,25 +80,19 @@
                     </a>
                 </li>
                 
-                <li class="nav-header">INSTITUTION</li>
-                <li class="nav-item">
-                    <a href="<?= BASE_URL ?>administration/institutions.php" class="nav-link <?= ($currentPage ?? '') === 'admin_institutions' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-building"></i>
-                        <p>Institutions</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_institutional_outcomes' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-flag"></i>
-                        <p>Institutional Outcomes</p>
-                    </a>
-                </li>
-                
-                <li class="nav-header">ACADEMIC CALENDAR</li>
+                <li class="nav-header">TERMS</li>
                 <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/terms.php" class="nav-link <?= ($currentPage ?? '') === 'admin_terms' ? 'active' : '' ?>">
                         <i class="nav-icon bi bi-calendar-week"></i>
                         <p>Terms</p>
+                    </a>
+                </li>
+                
+                <li class="nav-header">OUTCOMES</li>
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_institutional_outcomes' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-flag"></i>
+                        <p>Institutional Outcomes</p>
                     </a>
                 </li>
                 
@@ -116,17 +110,11 @@
                     </a>
                 </li>
                 
-                <li class="nav-header">COURSES & SECTIONS</li>
+                <li class="nav-header">COURSES</li>
                 <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/courses.php" class="nav-link <?= ($currentPage ?? '') === 'admin_courses' ? 'active' : '' ?>">
                         <i class="nav-icon bi bi-book"></i>
                         <p>Courses</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="<?= BASE_URL ?>administration/course_sections.php" class="nav-link <?= ($currentPage ?? '') === 'admin_course_sections' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-calendar3"></i>
-                        <p>Course Sections (CRN)</p>
                     </a>
                 </li>
                 <li class="nav-item">

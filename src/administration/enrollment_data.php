@@ -38,7 +38,7 @@ $columns = [
     'e.enrollment_pk',
     'e.term_code',
     'e.crn',
-    's.c_number',
+    's.student_id',
     'e.enrollment_status',
     'e.enrollment_date',
     'e.drop_date',
@@ -65,7 +65,7 @@ if (!empty($searchValue)) {
         'e.enrollment_pk LIKE ?',
         'e.term_code LIKE ?',
         'e.crn LIKE ?',
-        's.c_number LIKE ?',
+        's.student_id LIKE ?',
         'e.enrollment_status LIKE ?',
         'e.enrollment_date LIKE ?',
         'e.drop_date LIKE ?'
@@ -115,23 +115,16 @@ $dataQuery = "
         e.enrollment_pk,
         e.term_code,
         e.crn,
-        e.student_id,
-        e.student_first_name,
-        e.student_last_name,
-        e.academic_year,
-        e.semester,
-        e.course_code,
-        e.course_title,
-        e.course_modality,
-        e.program_name,
-        e.subject_code,
-        e.subject_name,
+        s.student_id,
+        s.first_name,
+        s.last_name,
         e.enrollment_status,
         e.enrollment_date,
         e.drop_date,
         e.created_at,
         e.updated_at
     FROM {$dbPrefix}enrollment e
+    LEFT JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
     {$whereClause}
     ORDER BY {$orderColumn} {$orderDir}
     LIMIT ? OFFSET ?

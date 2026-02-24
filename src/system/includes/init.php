@@ -62,6 +62,17 @@ $dbPrefix = $config->get('database.prefix', '');
 $debugMode = $config->get('app.debug_mode', false) === true || $config->get('app.debug_mode', 'false') === 'true';
 $appVersion = trim(file_get_contents(__DIR__ . '/../../VERSION'));
 
+// Configure error display based on debug mode
+if ($debugMode) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', '1');
+    ini_set('display_startup_errors', '1');
+} else {
+    error_reporting(E_ALL & ~E_NOTICE & ~E_STRICT & ~E_DEPRECATED);
+    ini_set('display_errors', '0');
+    ini_set('display_startup_errors', '0');
+}
+
 // Define constants for template convenience
 if (!defined('BASE_URL')) define('BASE_URL', $baseUrl);
 if (!defined('BASE_PATH')) define('BASE_PATH', $basePath);

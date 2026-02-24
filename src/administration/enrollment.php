@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Find or create student
                 if (empty($errors)) {
                     $studentResult = $db->query(
-                        "SELECT students_pk FROM {$dbPrefix}students WHERE c_number = ?",
+                        "SELECT students_pk FROM {$dbPrefix}students WHERE student_id = ?",
                         [$studentCNum],
                         's'
                     );
@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($studentResult->rowCount() === 0) {
                         // Auto-create student with minimal data
                         $db->query(
-                            "INSERT INTO {$dbPrefix}students (c_number, created_at, updated_at) 
+                            "INSERT INTO {$dbPrefix}students (student_id, created_at, updated_at) 
                              VALUES (?, NOW(), NOW())",
                             [$studentCNum],
                             's'
@@ -184,9 +184,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     continue;
                                 }
                                 
-                                // Find or create student by C-number
+                                // Find or create student by student_id
                                 $studentResult = $db->query(
-                                    "SELECT students_pk FROM {$dbPrefix}students WHERE c_number = ?",
+                                    "SELECT students_pk FROM {$dbPrefix}students WHERE student_id = ?",
                                     [$studentCNum],
                                     's'
                                 );
@@ -195,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 if ($studentResult->rowCount() === 0) {
                                     // Create student with name data from Banner
                                     $db->query(
-                                        "INSERT INTO {$dbPrefix}students (c_number, first_name, last_name, created_at, updated_at) 
+                                        "INSERT INTO {$dbPrefix}students (student_id, first_name, last_name, created_at, updated_at) 
                                          VALUES (?, ?, ?, NOW(), NOW())",
                                         [$studentCNum, $firstName, $lastName],
                                         'sss'
@@ -697,7 +697,7 @@ $(document).ready(function() {
             { data: 0, name: 'enrollment_pk' },
             { data: 1, name: 'term_code' },
             { data: 2, name: 'crn' },
-            { data: 3, name: 'c_number' },
+            { data: 3, name: 'student_id' },
             { data: 4, name: 'enrollment_status' },
             { data: 5, name: 'enrollment_date' },
             { data: 6, name: 'drop_date' },
@@ -722,7 +722,7 @@ $(document).ready(function() {
 function viewEnrollment(enroll) {
     $('#viewTermCode').text(enroll.term_code);
     $('#viewCrn').text(enroll.crn);
-    $('#viewStudentCNumber').text(enroll.c_number);
+    $('#viewStudentCNumber').text(enroll.student_id);
     $('#viewEnrollmentStatus').html('<span class="badge bg-' + getStatusClass(enroll.enrollment_status) + '">' + enroll.enrollment_status + '</span>');
     $('#viewEnrollmentDate').text(enroll.enrollment_date);
     $('#viewDropDate').text(enroll.drop_date || '-');
@@ -736,7 +736,7 @@ function editEnrollment(enroll) {
     $('#editEnrollmentId').val(enroll.enrollment_pk);
     $('#editTermCode').text(enroll.term_code);
     $('#editCrn').text(enroll.crn);
-    $('#editStudentCNumber').text(enroll.c_number);
+    $('#editStudentCNumber').text(enroll.student_id);
     $('#editEnrollmentStatus').val(enroll.enrollment_status);
     $('#editEnrollmentDate').val(enroll.enrollment_date);
     $('#editDropDate').val(enroll.drop_date || '');

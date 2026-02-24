@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $code = trim($_POST['program_code'] ?? '');
                 $name = trim($_POST['program_name'] ?? '');
                 $degreeType = trim($_POST['degree_type'] ?? '');
-                $departmentFk = (int)($_POST['department_fk'] ?? 0);
+                $termFk = (int)($_POST['term_fk'] ?? 0);
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 // Validation
@@ -55,26 +55,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($name)) {
                     $errors[] = 'Program name is required';
                 }
-                if ($departmentFk <= 0) {
-                    $errors[] = 'Department is required';
+                if ($termFk <= 0) {
+                    $errors[] = 'Term is required';
                 } else {
-                    // Validate department exists
-                    $deptCheck = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}departments WHERE departments_pk = ? AND is_active = 1",
-                        [$departmentFk],
+                    // Validate term exists
+                    $termCheck = $db->query(
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}terms WHERE terms_pk = ? AND is_active = 1",
+                        [$termFk],
                         'i'
                     );
-                    $deptRow = $deptCheck->fetch();
-                    if ($deptRow['count'] == 0) {
-                        $errors[] = 'Invalid department selected';
+                    $termRow = $termCheck->fetch();
+                    if ($termRow['count'] == 0) {
+                        $errors[] = 'Invalid term selected';
                     }
                 }
                 
                 if (empty($errors)) {
                     $db->query(
-                        "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, department_fk, is_active, created_at, updated_at) 
+                        "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, term_fk, is_active, created_at, updated_at) 
                          VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$code, $name, $degreeType, $departmentFk, $isActive],
+                        [$code, $name, $degreeType, $termFk, $isActive],
                         'sssii'
                     );
                     $successMessage = 'Program added successfully';
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $code = trim($_POST['program_code'] ?? '');
                 $name = trim($_POST['program_name'] ?? '');
                 $degreeType = trim($_POST['degree_type'] ?? '');
-                $departmentFk = (int)($_POST['department_fk'] ?? 0);
+                $termFk = (int)($_POST['term_fk'] ?? 0);
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
                 // Validation
@@ -115,28 +115,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($name)) {
                     $errors[] = 'Program name is required';
                 }
-                if ($departmentFk <= 0) {
-                    $errors[] = 'Department is required';
+                if ($termFk <= 0) {
+                    $errors[] = 'Term is required';
                 } else {
-                    // Validate department exists
-                    $deptCheck = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}departments WHERE departments_pk = ? AND is_active = 1",
-                        [$departmentFk],
+                    // Validate term exists
+                    $termCheck = $db->query(
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}terms WHERE terms_pk = ? AND is_active = 1",
+                        [$termFk],
                         'i'
                     );
-                    $deptRow = $deptCheck->fetch();
-                    if ($deptRow['count'] == 0) {
-                        $errors[] = 'Invalid department selected';
+                    $termRow = $termCheck->fetch();
+                    if ($termRow['count'] == 0) {
+                        $errors[] = 'Invalid term selected';
                     }
                 }
                 
                 if (empty($errors)) {
                     $db->query(
                         "UPDATE {$dbPrefix}programs 
-                         SET program_code = ?, program_name = ?, degree_type = ?, department_fk = ?, is_active = ?, updated_at = NOW()
+                         SET program_code = ?, program_name = ?, degree_type = ?, term_fk = ?, is_active = ?, updated_at = NOW()
                          WHERE programs_pk = ?",
-                        [$code, $name, $degreeType, $departmentFk, $isActive, $id],
-                        'ssssii'
+                        [$code, $name, $degreeType, $termFk, $isActive, $id],
+                        'sssiii'
                     );
                     $successMessage = 'Program updated successfully';
                 } else {
@@ -197,24 +197,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $code = trim($row[0]);
                                 $name = trim($row[1]);
                                 $degreeType = isset($row[2]) ? trim($row[2]) : '';
-                                $departmentCode = isset($row[3]) ? trim($row[3]) : '';
+                                $termCode = isset($row[3]) ? trim($row[3]) : '';
                                 $isActive = isset($row[4]) && strtolower(trim($row[4])) === 'active' ? 1 : 0;
                                 
-                                // Lookup department by code
-                                $departmentFk = null;
-                                if (!empty($departmentCode)) {
-                                    $deptLookup = $db->query(
-                                        "SELECT departments_pk FROM {$dbPrefix}departments WHERE department_code = ? AND is_active = 1",
-                                        [$departmentCode],
+                                // Lookup term by code
+                                $termFk = null;
+                                if (!empty($termCode)) {
+                                    $termLookup = $db->query(
+                                        "SELECT terms_pk FROM {$dbPrefix}terms WHERE term_code = ? AND is_active = 1",
+                                        [$termCode],
                                         's'
                                     );
-                                    if ($deptLookup->rowCount() > 0) {
-                                        $deptRow = $deptLookup->fetch();
-                                        $departmentFk = $deptRow['departments_pk'];
+                                    if ($termLookup->rowCount() > 0) {
+                                        $termRow = $termLookup->fetch();
+                                        $termFk = $termRow['terms_pk'];
                                     }
                                 }
                                 
-                                if (!empty($code) && !empty($name) && preg_match('/^[A-Z0-9_-]+$/i', $code) && $departmentFk !== null) {
+                                if (!empty($code) && !empty($name) && preg_match('/^[A-Z0-9_-]+$/i', $code) && $termFk !== null) {
                                     // Check if exists
                                     $result = $db->query(
                                         "SELECT programs_pk FROM {$dbPrefix}programs WHERE program_code = ?",
@@ -227,17 +227,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         $existing = $result->fetch();
                                         $db->query(
                                             "UPDATE {$dbPrefix}programs 
-                                             SET program_name = ?, degree_type = ?, department_fk = ?, is_active = ?, updated_at = NOW()
+                                             SET program_name = ?, degree_type = ?, term_fk = ?, is_active = ?, updated_at = NOW()
                                              WHERE programs_pk = ?",
-                                            [$name, $degreeType, $departmentFk, $isActive, $existing['programs_pk']],
+                                            [$name, $degreeType, $termFk, $isActive, $existing['programs_pk']],
                                             'ssiii'
                                         );
                                     } else {
                                         // Insert new
                                         $db->query(
-                                            "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, department_fk, is_active, created_at, updated_at) 
+                                            "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, term_fk, is_active, created_at, updated_at) 
                                              VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                                            [$code, $name, $degreeType, $departmentFk, $isActive],
+                                            [$code, $name, $degreeType, $termFk, $isActive],
                                             'sssii'
                                         );
                                     }
@@ -271,14 +271,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch departments for dropdown
-$deptResult = $db->query("
-    SELECT departments_pk, department_code, department_name 
-    FROM {$dbPrefix}departments 
+// Fetch terms for dropdown
+$termResult = $db->query("
+    SELECT terms_pk, term_code, term_name 
+    FROM {$dbPrefix}terms 
     WHERE is_active = 1 
-    ORDER BY department_name
+    ORDER BY term_name DESC
 ");
-$departments = $deptResult->fetchAll();
+$terms = $termResult->fetchAll();
 
 // Calculate statistics
 $statsResult = $db->query("
@@ -465,11 +465,11 @@ $theme->showHeader($context);
                         <input type="text" class="form-control" id="programName" name="program_name" maxlength="255" required>
                     </div>
                     <div class="mb-3">
-                        <label for="departmentFk" class="form-label">Department</label>
-                        <select class="form-select" id="departmentFk" name="department_fk" required>
-                            <option value="">Select Department</option>
-                            <?php foreach ($departments as $dept): ?>
-                            <option value="<?= $dept['departments_pk'] ?>"><?= htmlspecialchars($dept['department_name']) ?> (<?= htmlspecialchars($dept['department_code']) ?>)</option>
+                        <label for="termFk" class="form-label">Term</label>
+                        <select class="form-select" id="termFk" name="term_fk" required>
+                            <option value="">Select Term</option>
+                            <?php foreach ($terms as $term): ?>
+                            <option value="<?= $term['terms_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?> (<?= htmlspecialchars($term['term_code']) ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -515,11 +515,11 @@ $theme->showHeader($context);
                         <input type="text" class="form-control" id="editProgramName" name="program_name" maxlength="255" required>
                     </div>
                     <div class="mb-3">
-                        <label for="editDepartmentFk" class="form-label">Department</label>
-                        <select class="form-select" id="editDepartmentFk" name="department_fk" required>
-                            <option value="">Select Department</option>
-                            <?php foreach ($departments as $dept): ?>
-                            <option value="<?= $dept['departments_pk'] ?>"><?= htmlspecialchars($dept['department_name']) ?> (<?= htmlspecialchars($dept['department_code']) ?>)</option>
+                        <label for="editTermFk" class="form-label">Term</label>
+                        <select class="form-select" id="editTermFk" name="term_fk" required>
+                            <option value="">Select Term</option>
+                            <?php foreach ($terms as $term): ?>
+                            <option value="<?= $term['terms_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?> (<?= htmlspecialchars($term['term_code']) ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -731,7 +731,7 @@ function editProgram(prog) {
     $('#editProgramCode').val(prog.program_code);
     $('#editProgramName').val(prog.program_name);
     $('#editDegreeType').val(prog.degree_type);
-    $('#editDepartmentFk').val(prog.department_fk);
+    $('#editTermFk').val(prog.term_fk);
     $('#editIsActive').prop('checked', prog.is_active == 1);
     new bootstrap.Modal(document.getElementById('editProgramModal')).show();
 }

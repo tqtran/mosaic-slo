@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS tbl_lti_nonces;
 DROP TABLE IF EXISTS tbl_user_roles;
 DROP TABLE IF EXISTS tbl_roles;
 DROP TABLE IF EXISTS tbl_assessments;
+DROP TABLE IF EXISTS tbl_enrollment;
 DROP TABLE IF EXISTS tbl_student_learning_outcomes;
 DROP TABLE IF EXISTS tbl_courses;
 DROP TABLE IF EXISTS tbl_program_outcomes;
@@ -162,16 +163,27 @@ CREATE TABLE tbl_student_learning_outcomes (
 
 CREATE TABLE tbl_students (
     students_pk INT AUTO_INCREMENT PRIMARY KEY,
-    student_id VARCHAR(255) NOT NULL COMMENT 'Encrypted student ID',
-    student_first_name VARCHAR(255) COMMENT 'Encrypted first name',
-    student_last_name VARCHAR(255) COMMENT 'Encrypted last name',
-    email VARCHAR(255) COMMENT 'Encrypted email',
+    student_id VARCHAR(50) NOT NULL UNIQUE COMMENT 'Student ID from Banner SIS',
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    email VARCHAR(255),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
-    updated_by_fk INT,
-    UNIQUE KEY uk_student_id (student_id)
+    updated_by_fk INT
+);
+
+CREATE TABLE tbl_enrollment (
+    enrollment_pk INT AUTO_INCREMENT PRIMARY KEY,
+    term_code VARCHAR(20) NOT NULL COMMENT 'Term code from Banner (term)',
+    crn VARCHAR(20) NOT NULL COMMENT 'Course Reference Number from Banner (crn)',
+    student_fk INT NOT NULL,
+    enrollment_status VARCHAR(10) NOT NULL DEFAULT '1' COMMENT 'Status from Banner (status): 1=enrolled, 2=completed, 7=dropped',
+    enrollment_date DATE NOT NULL COMMENT 'Registration date from Banner (regdate)',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update from Banner (updated)',
+    UNIQUE KEY uk_enrollment (term_code, crn, student_fk)
 );
 
 
@@ -181,19 +193,16 @@ CREATE TABLE tbl_students (
 
 CREATE TABLE tbl_assessments (
     assessments_pk INT AUTO_INCREMENT PRIMARY KEY,
-    students_fk INT NOT NULL,
+    enrollment_fk INT NOT NULL,
     student_learning_outcome_fk INT NOT NULL,
-    term_fk INT NOT NULL,
     score_value DECIMAL(5,2),
     achievement_level VARCHAR(20) DEFAULT 'pending',
-    assessment_method VARCHAR(255),
     notes TEXT,
     assessed_date DATE,
     is_finalized BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    assessed_by_fk INT,
-    UNIQUE KEY uk_student_slo_term (students_fk, student_learning_outcome_fk, term_fk)
+    assessed_by_fk INT
 );
 
 

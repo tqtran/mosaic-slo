@@ -23,7 +23,7 @@ if (!in_array($orderDirection, ['ASC', 'DESC'])) {
     $orderDirection = 'ASC';
 }
 
-$columns = ['students_pk', 'c_number', 'student_id', 'student_first_name', 'student_last_name', 'email', 'is_active'];
+$columns = ['students_pk', 'student_id', 'first_name', 'last_name', 'email', 'is_active'];
 $orderColumn = $columns[$orderColumnIndex] ?? 'students_pk';
 
 $columnSearch = [];
@@ -40,7 +40,7 @@ $types = '';
 
 if ($searchValue !== '') {
     $searchConditions = [];
-    foreach (['c_number', 'student_id', 'student_first_name', 'student_last_name', 'email'] as $col) {
+    foreach (['student_id', 'first_name', 'last_name', 'email'] as $col) {
         $searchConditions[] = "{$dbPrefix}students." . $col . " LIKE ?";
         $params[] = "%{$searchValue}%";
         $types .= 's';
@@ -79,7 +79,7 @@ if ($whereClause) {
     $totalFiltered = $totalRecords;
 }
 
-$sql = "SELECT students_pk, c_number, student_id, student_first_name, student_last_name, email, is_active
+$sql = "SELECT students_pk, student_id, first_name, last_name, email, is_active
         FROM {$dbPrefix}students 
         {$whereClause}
         ORDER BY {$orderColumn} {$orderDirection}
@@ -113,10 +113,9 @@ while ($row = $result->fetch()) {
     
     $data[] = [
         $row['students_pk'],
-        htmlspecialchars($row['c_number']),
         htmlspecialchars($row['student_id']),
-        htmlspecialchars($row['student_first_name']),
-        htmlspecialchars($row['student_last_name']),
+        htmlspecialchars($row['first_name']),
+        htmlspecialchars($row['last_name']),
         htmlspecialchars($row['email']),
         $statusBadge,
         $actions

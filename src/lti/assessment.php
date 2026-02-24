@@ -189,8 +189,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Query available course sections (distinct crn/term_code from enrollment)
 // Filter by LTI course context if available
+// TODO: Need to link enrollment.crn to courses table to get course_fk for SLO lookup
 $courseSectionsQuery = "
-    SELECT DISTINCT e.crn, e.term_code, t.term_name, t.term_year, t.slo_set_fk
+    SELECT DISTINCT e.crn, e.term_code, t.term_name
     FROM {$dbPrefix}enrollment e
     LEFT JOIN {$dbPrefix}terms t ON e.term_code = t.term_code
     WHERE 1=1
@@ -201,7 +202,7 @@ $types = '';
 
 // Filter by academic year from LTI launch if available
 if ($ltiAcademicYear) {
-    $courseSectionsQuery .= " AND t.term_year = ?";
+    $courseSectionsQuery .= " AND YEAR(t.start_date) = ?";
     $params[] = $ltiAcademicYear;
     $types .= 's';
 }
@@ -213,7 +214,7 @@ if ($ltiCrn) {
     $types .= 's';
 }
 
-$courseSectionsQuery .= " ORDER BY t.term_year DESC, t.term_name DESC, e.crn ASC";
+$courseSectionsQuery .= " ORDER BY t.start_date DESC, e.crn ASC";
 
 if (!empty($params)) {
     $courseSectionsResult = $db->query($courseSectionsQuery, $params, $types);
@@ -231,28 +232,16 @@ $selectedTermCode = isset($_GET['term_code']) && !empty($_GET['term_code'])
     ? $_GET['term_code']
     : ($courseSections[0]['term_code'] ?? '');
 
-// Get slo_set_fk for the selected term
-$sloSetFk = null;
-foreach ($courseSections as $cs) {
-    if ($cs['crn'] === $selectedCrn && $cs['term_code'] === $selectedTermCode) {
-        $sloSetFk = $cs['slo_set_fk'];
-        break;
-    }
-}
-
-// Get SLOs for selected slo_set
+// TODO: Temporarily get all active SLOs until we can link enrollment.crn to courses table
+// Proper fix: Add course_code or course_fk column to enrollment table
 $slos = [];
-if ($sloSetFk) {
-    $slosResult = $db->query(
-        "SELECT student_learning_outcomes_pk, slo_code, description
-         FROM {$dbPrefix}student_learning_outcomes
-         WHERE slo_set_fk = ? AND is_active = TRUE
-         ORDER BY sequence_num ASC",
-        [$sloSetFk],
-        'i'
-    );
-    $slos = $slosResult->fetchAll();
-}
+$slosResult = $db->query(
+    "SELECT student_learning_outcomes_pk, slo_code, slo_description
+     FROM {$dbPrefix}student_learning_outcomes
+     WHERE is_active = TRUE
+     ORDER BY sequence_num ASC"
+);
+$slos = $slosResult->fetchAll();
 
 $selectedSloId = isset($_GET['slo_id']) && !empty($slos)
     ? (int)$_GET['slo_id']
@@ -263,7 +252,7 @@ $students = [];
 if ($selectedCrn && $selectedTermCode && $selectedSloId > 0) {
     // Build query to get students enrolled in this crn/term_code
     $studentsQuery = "
-        SELECT e.enrollment_pk, e.crn, e.term_code, s.c_number, s.first_name, s.last_name,
+        SELECT e.enrollment_pk, e.crn, e.term_code, s.student_id, s.first_name, s.last_name,
                a.achievement_level, a.score_value
         FROM {$dbPrefix}enrollment e
         INNER JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
@@ -449,7 +438,7 @@ $theme->showHeader($context);
                                                 data-term-code="<?= htmlspecialchars($cs['term_code']) ?>"
                                                 <?= $cs['crn'] === $selectedCrn && $cs['term_code'] === $selectedTermCode ? 'selected' : '' ?>>
                                             CRN <?= htmlspecialchars($cs['crn']) ?> 
-                                            (<?= htmlspecialchars($cs['term_name'] ?? $cs['term_code']) ?> <?= htmlspecialchars($cs['term_year'] ?? '') ?>)
+                                            (<?= htmlspecialchars($cs['term_name'] ?? $cs['term_code']) ?>)
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -462,7 +451,7 @@ $theme->showHeader($context);
                                 <select name="slo_id" id="slo_id" class="form-select" onchange="this.form.submit()">
                                     <?php foreach ($slos as $slo): ?>
                                         <option value="<?= $slo['student_learning_outcomes_pk'] ?>" <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($slo['slo_code']) ?> - <?= htmlspecialchars(substr($slo['description'], 0, 60)) ?><?= strlen($slo['description']) > 60 ? '...' : '' ?>
+                                            <?= htmlspecialchars($slo['slo_code']) ?> - <?= htmlspecialchars(substr($slo['slo_description'], 0, 60)) ?><?= strlen($slo['slo_description']) > 60 ? '...' : '' ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -496,7 +485,7 @@ $theme->showHeader($context);
                                                 data-term-code="<?= htmlspecialchars($cs['term_code']) ?>"
                                                 <?= $cs['crn'] === $selectedCrn && $cs['term_code'] === $selectedTermCode ? 'selected' : '' ?>>
                                             CRN <?= htmlspecialchars($cs['crn']) ?>
-                                            (<?= htmlspecialchars($cs['term_name'] ?? $cs['term_code']) ?> <?= htmlspecialchars($cs['term_year'] ?? '') ?>)
+                                            (<?= htmlspecialchars($cs['term_name'] ?? $cs['term_code']) ?>)
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -518,7 +507,7 @@ $theme->showHeader($context);
                     </div>
                     <?php if ($selectedSlo): ?>
                         <div class="alert alert-info mb-0">
-                            <strong>SLO Description:</strong> <?= htmlspecialchars($selectedSlo['description']) ?>
+                            <strong>SLO Description:</strong> <?= htmlspecialchars($selectedSlo['slo_description']) ?>
                         </div>
                     <?php endif; ?>
                 </form>
@@ -583,7 +572,7 @@ $theme->showHeader($context);
                                 ?>
                                     <tr class="student-row">
                                         <td><?= $index++ ?></td>
-                                        <td><code><?= htmlspecialchars($student['c_number']) ?></code></td>
+                                        <td><code><?= htmlspecialchars($student['student_id']) ?></code></td>
                                         <td>
                                             <strong><?= htmlspecialchars($student['first_name']) ?> <?= htmlspecialchars($student['last_name']) ?></strong>
                                         </td>
