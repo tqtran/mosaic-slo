@@ -271,22 +271,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch terms for dropdown
-$termResult = $db->query("
-    SELECT terms_pk, term_code, term_name 
-    FROM {$dbPrefix}terms 
-    WHERE is_active = 1 
+// Fetch terms for dropdown (sorted descending with latest first)
+$termsResult = $db->query("
+    SELECT terms_pk, term_code, term_name, academic_year
+    FROM {$dbPrefix}terms
+    WHERE is_active = 1
     ORDER BY term_name DESC
 ");
-$terms = $termResult->fetchAll();
+$terms = $termsResult->fetchAll();
 
-// Calculate statistics
+// Get selected term (default to latest/first)
+$selectedTermFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : ($terms[0]['terms_pk'] ?? null);
+
+// Calculate statistics (filtered by term)
+$termFilter = $selectedTermFk ? "WHERE term_fk = {$selectedTermFk}" : '';
 $statsResult = $db->query("
     SELECT 
         COUNT(*) as total,
         SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
         SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
     FROM {$dbPrefix}programs
+    {$termFilter}
 ");
 $stats = $statsResult->fetch();
 $totalPrograms = $stats['total'];
@@ -346,9 +351,25 @@ $theme->showHeader($context);
         </div>
         <?php endif; ?>
         
-        <!-- Statistics Row -->
-        <div class="row">
-            <div class="col-12 col-sm-6 col-md-4">
+        <!-- Filter and Statistics Row -->
+        <div class="row mb-3">
+            <div class="col-12 col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <label for="termFilter" class="form-label"><i class="fas fa-filter"></i> Filter by Term</label>
+                        <select id="termFilter" class="form-select">
+                            <?php foreach ($terms as $term): ?>
+                                <option value="<?= $term['terms_pk'] ?>" <?= $term['terms_pk'] == $selectedTermFk ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($term['term_name']) ?>
+                                    <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-info"><i class="fas fa-graduation-cap"></i></span>
                     <div class="info-box-content">
@@ -358,7 +379,7 @@ $theme->showHeader($context);
                 </div>
             </div>
             
-            <div class="col-12 col-sm-6 col-md-4">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
                     <div class="info-box-content">
@@ -368,7 +389,7 @@ $theme->showHeader($context);
                 </div>
             </div>
             
-            <div class="col-12 col-sm-6 col-md-4">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-warning"><i class="fas fa-ban"></i></span>
                     <div class="info-box-content">
@@ -399,14 +420,12 @@ $theme->showHeader($context);
                             <th>ID</th>
                             <th>Program Code</th>
                             <th>Program Name</th>
-                            <th>Department</th>
                             <th>Degree Type</th>
                             <th>Status</th>
                             <th>Created</th>
                             <th>Actions</th>
                         </tr>
                         <tr>
-                            <th></th>
                             <th></th>
                             <th></th>
                             <th></th>
@@ -416,18 +435,6 @@ $theme->showHeader($context);
                             <th></th>
                         </tr>
                     </thead>
-                    <tfoot>
-                        <tr>
-                            <th>ID</th>
-                            <th>Program Code</th>
-                            <th>Program Name</th>
-                            <th>Department</th>
-                            <th>Degree Type</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </tfoot>
                     <tbody>
                         <!-- Data loaded via AJAX -->
                     </tbody>
@@ -467,9 +474,11 @@ $theme->showHeader($context);
                     <div class="mb-3">
                         <label for="termFk" class="form-label">Term</label>
                         <select class="form-select" id="termFk" name="term_fk" required>
-                            <option value="">Select Term</option>
                             <?php foreach ($terms as $term): ?>
-                            <option value="<?= $term['terms_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?> (<?= htmlspecialchars($term['term_code']) ?>)</option>
+                                <option value="<?= $term['terms_pk'] ?>" <?= $term['terms_pk'] == $selectedTermFk ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($term['term_name']) ?>
+                                    <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -517,9 +526,11 @@ $theme->showHeader($context);
                     <div class="mb-3">
                         <label for="editTermFk" class="form-label">Term</label>
                         <select class="form-select" id="editTermFk" name="term_fk" required>
-                            <option value="">Select Term</option>
                             <?php foreach ($terms as $term): ?>
-                            <option value="<?= $term['terms_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?> (<?= htmlspecialchars($term['term_code']) ?>)</option>
+                                <option value="<?= $term['terms_pk'] ?>">
+                                    <?= htmlspecialchars($term['term_name']) ?>
+                                    <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -562,8 +573,8 @@ $theme->showHeader($context);
                         <p id="viewDegreeType"></p>
                     </div>
                     <div class="col-md-6">
-                        <strong>Department:</strong>
-                        <p id="viewDepartment"></p>
+                        <strong>Status:</strong>
+                        <p id="viewProgramStatus"></p>
                     </div>
                 </div>
                 <div class="row mb-3">
@@ -610,7 +621,7 @@ $theme->showHeader($context);
                     <div class="mb-3">
                         <label for="programUpload" class="form-label">Upload CSV File</label>
                         <input type="file" class="form-control" id="programUpload" name="program_upload" accept=".csv" required>
-                        <small class="form-text text-muted">CSV format: Program Code, Program Name, Degree Type, Department Code, Status (Active/Inactive)</small>
+                        <small class="form-text text-muted">CSV format: Program Code, Program Name, Degree Type, Term Code, Status (Active/Inactive)</small>
                     </div>
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> Existing records with matching codes will be updated.
@@ -653,36 +664,32 @@ $theme->showHeader($context);
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 
 <script>
-// Convert PHP arrays to JavaScript
-var departments = <?= json_encode(array_map(function($d) { 
-    return ['name' => $d['department_name'], 'code' => $d['department_code']]; 
-}, $departments)) ?>;
-
 $(document).ready(function() {
+    // Term filter change handler
+    $('#termFilter').on('change', function() {
+        var termFk = $(this).val();
+        window.location.href = '<?= BASE_URL ?>administration/programs.php?term_fk=' + termFk;
+    });
+    
     // Setup - add filters to each header cell (second row)
     $('#programsTable thead tr:eq(1) th').each(function(i) {
         var title = $('#programsTable thead tr:eq(0) th:eq(' + i + ')').text();
-        
-        // Department column (index 3) gets dropdown
-        if (title === 'Department') {
-            var select = $('<select class="form-select form-select-sm"><option value="">All Departments</option></select>')
-                .appendTo($(this).empty());
-            
-            // Populate from PHP data
-            departments.forEach(function(dept) {
-                select.append('<option value="' + dept.name + '">' + dept.name + '</option>');
-            });
-        } else if (title !== 'Actions') {
+        if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         } else {
-            $(this).html('');
+            $(this).html(''); // No filter for Actions column
         }
     });
     
     var table = $('#programsTable').DataTable({
         processing: true,
         serverSide: true,
-        ajax: '<?= BASE_URL ?>administration/programs_data.php',
+        ajax: {
+            url: '<?= BASE_URL ?>administration/programs_data.php',
+            data: function(d) {
+                d.term_fk = $('#termFilter').val();
+            }
+        },
         dom: 'Bfrtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
@@ -691,19 +698,15 @@ $(document).ready(function() {
             { data: 0, name: 'programs_pk' },
             { data: 1, name: 'program_code' },
             { data: 2, name: 'program_name' },
-            { data: 3, name: 'department_name' },
-            { data: 4, name: 'degree_type' },
-            { data: 5, name: 'is_active' },
-            { data: 6, name: 'created_at' },
-            { data: 7, name: 'actions', orderable: false, searchable: false }
+            { data: 3, name: 'degree_type' },
+            { data: 4, name: 'is_active' },
+            { data: 5, name: 'created_at' },
+            { data: 6, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             // Apply the search
             this.api().columns().every(function() {
                 var column = this;
-                $('select', this.header()).on('change', function() {
-                    column.search($(this).val()).draw();
-                });
                 $('input', this.header()).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
@@ -718,7 +721,6 @@ function viewProgram(prog) {
     $('#viewProgramName').text(prog.program_name);
     $('#viewProgramCode').text(prog.program_code);
     $('#viewDegreeType').text(prog.degree_type || 'N/A');
-    $('#viewDepartment').text(prog.department_name ? prog.department_name + ' (' + prog.department_code + ')' : 'N/A');
     $('#viewProgramStatus').html(prog.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>');
     $('#viewProgramId').text(prog.programs_pk);
     $('#viewProgramCreated').text(prog.created_at);

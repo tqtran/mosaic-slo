@@ -15,6 +15,9 @@ require_once __DIR__ . '/../system/includes/init.php';
 // Get DataTables parameters
 $params = getDataTablesParams();
 
+// Get term filter
+$termFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : null;
+
 // Define searchable columns
 $searchableColumns = [
     'po.outcome_code',
@@ -47,6 +50,18 @@ if ($orderColumn === 'actions') {
 $whereParams = [];
 $whereTypes = '';
 $whereClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
+
+// Add term filter if specified
+if ($termFk !== null && $termFk > 0) {
+    if (!empty($whereClause)) {
+        $whereClause .= ' AND p.term_fk = ?';
+    } else {
+        $whereClause = 'p.term_fk = ?';
+    }
+    $whereParams[] = $termFk;
+    $whereTypes .= 'i';
+}
+
 if (!empty($whereClause)) {
     $whereClause = "WHERE {$whereClause}";
 }

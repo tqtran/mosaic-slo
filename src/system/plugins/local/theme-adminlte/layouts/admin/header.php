@@ -126,9 +126,9 @@
                 
                 <li class="nav-header">STUDENTS & ASSESSMENT</li>
                 <li class="nav-item">
-                    <a href="<?= BASE_URL ?>administration/students.php" class="nav-link <?= ($currentPage ?? '') === 'admin_students' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-people"></i>
-                        <p>Students</p>
+                    <a href="<?= BASE_URL ?>administration/enrollment.php" class="nav-link <?= ($currentPage ?? '') === 'admin_enrollment' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-person-check"></i>
+                        <p>Enrollment</p>
                     </a>
                 </li>
                 <li class="nav-item">

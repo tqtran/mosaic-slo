@@ -41,7 +41,6 @@ $columns = [
     's.student_id',
     'e.enrollment_status',
     'e.enrollment_date',
-    'e.drop_date',
     'e.updated_at',
     'actions' // Not sortable, placeholder
 ];
@@ -67,8 +66,7 @@ if (!empty($searchValue)) {
         'e.crn LIKE ?',
         's.student_id LIKE ?',
         'e.enrollment_status LIKE ?',
-        'e.enrollment_date LIKE ?',
-        'e.drop_date LIKE ?'
+        'e.enrollment_date LIKE ?'
     ];
     $whereConditions[] = '(' . implode(' OR ', $searchConditions) . ')';
     $searchParam = "%{$searchValue}%";
@@ -120,7 +118,6 @@ $dataQuery = "
         s.last_name,
         e.enrollment_status,
         e.enrollment_date,
-        e.drop_date,
         e.created_at,
         e.updated_at
     FROM {$dbPrefix}enrollment e
@@ -169,7 +166,6 @@ foreach ($enrollments as $row) {
         htmlspecialchars($row['student_id']),
         '<span class="badge bg-' . $statusClass . '">' . htmlspecialchars($row['enrollment_status']) . '</span>',
         htmlspecialchars($row['enrollment_date'] ?? ''),
-        htmlspecialchars($row['drop_date'] ?? '-'),
         htmlspecialchars($row['updated_at'] ?? ''),
         '<button class="btn btn-sm btn-info" title="View" onclick=\'viewEnrollment(' . $rowJson . ')\'><i class="fas fa-eye"></i></button> ' .
         '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editEnrollment(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .

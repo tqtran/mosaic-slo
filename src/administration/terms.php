@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         // Copy Institutional Outcomes
                         $ioResult = $db->query(
-                            "SELECT institutional_outcomes_pk, code, description, sequence_num, is_active 
+                            "SELECT institutional_outcomes_pk, outcome_code, outcome_description, sequence_num, is_active 
                              FROM {$dbPrefix}institutional_outcomes 
                              WHERE term_fk = ?",
                             [$sourceTermPk],
@@ -77,8 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             // Check if exists in destination
                             $existingCheck = $db->query(
                                 "SELECT institutional_outcomes_pk FROM {$dbPrefix}institutional_outcomes 
-                                 WHERE term_fk = ? AND code = ?",
-                                [$destTermPk, $io['code']],
+                                 WHERE term_fk = ? AND outcome_code = ?",
+                                [$destTermPk, $io['outcome_code']],
                                 'is'
                             );
                             $existing = $existingCheck->fetch();
@@ -90,9 +90,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 // Insert new
                                 $db->query(
                                     "INSERT INTO {$dbPrefix}institutional_outcomes 
-                                     (term_fk, code, description, sequence_num, is_active, created_at, updated_at) 
+                                     (term_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
                                      VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                                    [$destTermPk, $io['code'], $io['description'], $io['sequence_num'], $io['is_active']],
+                                    [$destTermPk, $io['outcome_code'], $io['outcome_description'], $io['sequence_num'], $io['is_active']],
                                     'issii'
                                 );
                                 $newIoPk = $db->lastInsertId();
@@ -183,7 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         // Copy Courses
                         $coursesResult = $db->query(
-                            "SELECT course_number, course_name, credits, is_active 
+                            "SELECT courses_pk, program_fk, course_number, course_name, is_active 
                              FROM {$dbPrefix}courses 
                              WHERE term_fk = ?",
                             [$sourceTermPk],
@@ -192,24 +192,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $courses = $coursesResult->fetchAll();
                         
                         foreach ($courses as $course) {
+                            $sourceCoursePk = $course['courses_pk'];
+                            
+                            // Map program_fk to destination program (or use same if programs were copied)
+                            $newProgramFk = $programMapping[$course['program_fk']] ?? $course['program_fk'];
+                            
                             // Check if course exists in destination
                             $existingCheck = $db->query(
                                 "SELECT courses_pk FROM {$dbPrefix}courses 
-                                 WHERE term_fk = ? AND course_number = ?",
-                                [$destTermPk, $course['course_number']],
-                                'is'
+                                 WHERE term_fk = ? AND course_number = ? AND program_fk = ?",
+                                [$destTermPk, $course['course_number'], $newProgramFk],
+                                'isi'
                             );
                             $existing = $existingCheck->fetch();
-                            
-                            // Get source course PK first
-                            $sourceCourseResult = $db->query(
-                                "SELECT courses_pk FROM {$dbPrefix}courses 
-                                 WHERE term_fk = ? AND course_number = ?",
-                                [$sourceTermPk, $course['course_number']],
-                                'is'
-                            );
-                            $sourceCourseRow = $sourceCourseResult->fetch();
-                            $sourceCoursePk = $sourceCourseRow['courses_pk'];
                             
                             if ($existing) {
                                 // Map to existing course
@@ -219,10 +214,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 // Insert course
                                 $db->query(
                                     "INSERT INTO {$dbPrefix}courses 
-                                     (term_fk, course_number, course_name, credits, is_active, created_at, updated_at) 
+                                     (program_fk, term_fk, course_number, course_name, is_active, created_at, updated_at) 
                                      VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                                    [$destTermPk, $course['course_number'], $course['course_name'], $course['credits'], $course['is_active']],
-                                    'issii'
+                                    [$newProgramFk, $destTermPk, $course['course_number'], $course['course_name'], $course['is_active']],
+                                    'iissi'
                                 );
                                 $newCoursePk = $db->lastInsertId();
                                 $courseMapping[$sourceCoursePk] = $newCoursePk;
@@ -672,6 +667,16 @@ $theme->showHeader($context);
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                        </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
@@ -966,7 +971,17 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-    $('#termsTable').DataTable({
+    // Setup - add a text input to each header cell (second row)
+    $('#termsTable thead tr:eq(1) th').each(function(i) {
+        var title = $('#termsTable thead tr:eq(0) th:eq(' + i + ')').text();
+        if (title !== 'Actions' && title !== 'ID') {
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+        } else {
+            $(this).html('');
+        }
+    });
+    
+    var table = $('#termsTable').DataTable({
         processing: true,
         serverSide: true,
         ajax: 'terms_data.php',
@@ -981,6 +996,17 @@ $(document).ready(function() {
         language: {
             search: "_INPUT_",
             searchPlaceholder: "Search terms..."
+        },
+        initComplete: function() {
+            // Apply the search
+            this.api().columns().every(function() {
+                var column = this;
+                $('input', this.header()).on('keyup change clear', function() {
+                    if (column.search() !== this.value) {
+                        column.search(this.value).draw();
+                    }
+                });
+            });
         }
     });
 });

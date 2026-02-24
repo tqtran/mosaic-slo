@@ -28,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         switch ($action) {
             case 'add':
+                $termFk = (int)($_POST['term_fk'] ?? 0);
                 $outcomeCode = trim($_POST['outcome_code'] ?? '');
                 $outcomeDescription = trim($_POST['outcome_description'] ?? '');
                 $sequenceNum = (int)($_POST['sequence_num'] ?? 0);
@@ -35,20 +36,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Validation
                 $errors = [];
+                if ($termFk <= 0) {
+                    $errors[] = 'Term is required';
+                }
                 if (empty($outcomeCode)) {
                     $errors[] = 'Outcome code is required';
                 } elseif (!preg_match('/^[A-Z0-9_.-]+$/i', $outcomeCode)) {
                     $errors[] = 'Outcome code can only contain letters, numbers, hyphens, underscores, and periods';
                 } else {
-                    // Check uniqueness
+                    // Check uniqueness within the term
                     $result = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}institutional_outcomes WHERE outcome_code = ?",
-                        [$outcomeCode],
-                        's'
+                        "SELECT COUNT(*) as count FROM {$dbPrefix}institutional_outcomes WHERE term_fk = ? AND outcome_code = ?",
+                        [$termFk, $outcomeCode],
+                        'is'
                     );
                     $row = $result->fetch();
                     if ($row['count'] > 0) {
-                        $errors[] = 'Outcome code already exists';
+                        $errors[] = 'Outcome code already exists in this term';
                     }
                 }
                 if (empty($outcomeDescription)) {
@@ -57,10 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (empty($errors)) {
                     $db->query(
-                        "INSERT INTO {$dbPrefix}institutional_outcomes (outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, NOW(), NOW())",
-                        [$outcomeCode, $outcomeDescription, $sequenceNum, $isActive],
-                        'ssii'
+                        "INSERT INTO {$dbPrefix}institutional_outcomes (term_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
+                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                        [$termFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive],
+                        'issii'
                     );
                     $successMessage = 'Institutional outcome added successfully';
                 } else {
@@ -70,6 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'edit':
                 $id = (int)($_POST['outcome_id'] ?? 0);
+                $termFk = (int)($_POST['term_fk'] ?? 0);
                 $outcomeCode = trim($_POST['outcome_code'] ?? '');
                 $outcomeDescription = trim($_POST['outcome_description'] ?? '');
                 $sequenceNum = (int)($_POST['sequence_num'] ?? 0);
@@ -80,21 +85,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($id <= 0) {
                     $errors[] = 'Invalid outcome ID';
                 }
+                if ($termFk <= 0) {
+                    $errors[] = 'Term is required';
+                }
                 if (empty($outcomeCode)) {
                     $errors[] = 'Outcome code is required';
                 } elseif (!preg_match('/^[A-Z0-9_.-]+$/i', $outcomeCode)) {
                     $errors[] = 'Outcome code can only contain letters, numbers, hyphens, underscores, and periods';
                 } else {
-                    // Check uniqueness (excluding current record)
+                    // Check uniqueness within the term (excluding current record)
                     $result = $db->query(
                         "SELECT COUNT(*) as count FROM {$dbPrefix}institutional_outcomes 
-                         WHERE outcome_code = ? AND institutional_outcomes_pk != ?",
-                        [$outcomeCode, $id],
-                        'si'
+                         WHERE term_fk = ? AND outcome_code = ? AND institutional_outcomes_pk != ?",
+                        [$termFk, $outcomeCode, $id],
+                        'isi'
                     );
                     $row = $result->fetch();
                     if ($row['count'] > 0) {
-                        $errors[] = 'Outcome code already exists';
+                        $errors[] = 'Outcome code already exists in this term';
                     }
                 }
                 if (empty($outcomeDescription)) {
@@ -104,10 +112,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($errors)) {
                     $db->query(
                         "UPDATE {$dbPrefix}institutional_outcomes 
-                         SET outcome_code = ?, outcome_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
+                         SET term_fk = ?, outcome_code = ?, outcome_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
                          WHERE institutional_outcomes_pk = ?",
-                        [$outcomeCode, $outcomeDescription, $sequenceNum, $isActive, $id],
-                        'ssiii'
+                        [$termFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive, $id],
+                        'issiii'
                     );
                     $successMessage = 'Institutional outcome updated successfully';
                 } else {
@@ -228,18 +236,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Calculate statistics
+// Fetch terms for dropdown (sorted descending with latest first)
+$termsResult = $db->query("
+    SELECT terms_pk, term_code, term_name, academic_year
+    FROM {$dbPrefix}terms
+    WHERE is_active = 1
+    ORDER BY term_name DESC
+");
+$terms = $termsResult->fetchAll();
+
+// Get selected term (default to latest/first)
+$selectedTermFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : ($terms[0]['terms_pk'] ?? null);
+
+// Calculate statistics (filtered by term)
+$termFilter = $selectedTermFk ? "WHERE term_fk = {$selectedTermFk}" : '';
 $statsResult = $db->query("
     SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
+        COALESCE(SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END), 0) as active,
+        COALESCE(SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END), 0) as inactive
     FROM {$dbPrefix}institutional_outcomes
+    {$termFilter}
 ");
 $stats = $statsResult->fetch();
-$totalOutcomes = $stats['total'];
-$activeOutcomes = $stats['active'];
-$inactiveOutcomes = $stats['inactive'];
+$totalOutcomes = $stats['total'] ?? 0;
+$activeOutcomes = $stats['active'] ?? 0;
+$inactiveOutcomes = $stats['inactive'] ?? 0;
 
 // Load theme system
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
@@ -294,9 +316,25 @@ $theme->showHeader($context);
         </div>
         <?php endif; ?>
         
-        <!-- Statistics Row -->
-        <div class="row">
-            <div class="col-12 col-sm-6 col-md-4">
+        <!-- Filter and Statistics Row -->
+        <div class="row mb-3">
+            <div class="col-12 col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <label for="termFilter" class="form-label"><i class="fas fa-filter"></i> Filter by Term</label>
+                        <select id="termFilter" class="form-select">
+                            <?php foreach ($terms as $term): ?>
+                                <option value="<?= $term['terms_pk'] ?>" <?= $term['terms_pk'] == $selectedTermFk ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($term['term_name']) ?>
+                                    <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-12 col-md-3">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-info"><i class="fas fa-flag"></i></span>
                     <div class="info-box-content">
@@ -306,7 +344,7 @@ $theme->showHeader($context);
                 </div>
             </div>
             
-            <div class="col-12 col-sm-6 col-md-4">
+            <div class="col-12 col-md-3">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
                     <div class="info-box-content">
@@ -316,7 +354,7 @@ $theme->showHeader($context);
                 </div>
             </div>
             
-            <div class="col-12 col-sm-6 col-md-4">
+            <div class="col-12 col-md-3">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-warning"><i class="fas fa-ban"></i></span>
                     <div class="info-box-content">
@@ -362,17 +400,6 @@ $theme->showHeader($context);
                             <th></th>
                         </tr>
                     </thead>
-                    <tfoot>
-                        <tr>
-                            <th>ID</th>
-                            <th>Code</th>
-                            <th>Description</th>
-                            <th>Sequence</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </tfoot>
                     <tbody>
                         <!-- Data loaded via AJAX -->
                     </tbody>
@@ -395,6 +422,17 @@ $theme->showHeader($context);
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="action" value="add">
                     <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="addTermFk" class="form-label">Term</label>
+                            <select class="form-select" id="addTermFk" name="term_fk" required>
+                                <?php foreach ($terms as $term): ?>
+                                    <option value="<?= $term['terms_pk'] ?>" <?= $term['terms_pk'] == $selectedTermFk ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($term['term_name']) ?>
+                                        <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                         <div class="col-md-6 mb-3">
                             <label for="outcomeCode" class="form-label">Outcome Code</label>
                             <input type="text" class="form-control" id="outcomeCode" name="outcome_code" maxlength="50" required>
@@ -437,6 +475,17 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" name="outcome_id" id="editOutcomeId">
                     <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="editTermFk" class="form-label">Term</label>
+                            <select class="form-select" id="editTermFk" name="term_fk" required>
+                                <?php foreach ($terms as $term): ?>
+                                    <option value="<?= $term['terms_pk'] ?>">
+                                        <?= htmlspecialchars($term['term_name']) ?>
+                                        <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                         <div class="col-md-6 mb-3">
                             <label for="editOutcomeCode" class="form-label">Outcome Code</label>
                             <input type="text" class="form-control" id="editOutcomeCode" name="outcome_code" maxlength="50" required>
@@ -577,6 +626,12 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
+    // Term filter change handler
+    $('#termFilter').on('change', function() {
+        var termFk = $(this).val();
+        window.location.href = '<?= BASE_URL ?>administration/institutional_outcomes.php?term_fk=' + termFk;
+    });
+    
     // Setup - add a text input to each header cell (second row)
     $('#outcomesTable thead tr:eq(1) th').each(function(i) {
         var title = $('#outcomesTable thead tr:eq(0) th:eq(' + i + ')').text();
@@ -590,7 +645,12 @@ $(document).ready(function() {
     var table = $('#outcomesTable').DataTable({
         processing: true,
         serverSide: true,
-        ajax: '<?= BASE_URL ?>administration/institutional_outcomes_data.php',
+        ajax: {
+            url: '<?= BASE_URL ?>administration/institutional_outcomes_data.php',
+            data: function(d) {
+                d.term_fk = $('#termFilter').val();
+            }
+        },
         dom: 'Bfrtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
@@ -631,6 +691,7 @@ function viewOutcome(outcome) {
 
 function editOutcome(outcome) {
     $('#editOutcomeId').val(outcome.institutional_outcomes_pk);
+    $('#editTermFk').val(outcome.term_fk);
     $('#editOutcomeCode').val(outcome.outcome_code);
     $('#editOutcomeDescription').val(outcome.outcome_description);
     $('#editSequenceNum').val(outcome.sequence_num);

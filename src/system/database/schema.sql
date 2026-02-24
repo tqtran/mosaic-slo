@@ -91,7 +91,7 @@ CREATE TABLE tbl_terms (
 CREATE TABLE tbl_institutional_outcomes (
     institutional_outcomes_pk INT AUTO_INCREMENT PRIMARY KEY,
     term_fk INT NOT NULL,
-    outcome_code VARCHAR(50) NOT NULL UNIQUE,
+    outcome_code VARCHAR(50) NOT NULL,
     outcome_description TEXT NOT NULL,
     sequence_num INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
@@ -102,6 +102,7 @@ CREATE TABLE tbl_institutional_outcomes (
     FOREIGN KEY (term_fk) REFERENCES tbl_terms(terms_pk) ON DELETE CASCADE,
     FOREIGN KEY (created_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
     FOREIGN KEY (updated_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    UNIQUE KEY unique_term_outcome (term_fk, outcome_code),
     INDEX idx_term_fk (term_fk),
     INDEX idx_outcome_code (outcome_code),
     INDEX idx_sequence_num (sequence_num),

@@ -17,6 +17,9 @@ header('Content-Type: application/json');
 try {
     // Get DataTables parameters
     $params = getDataTablesParams();
+    
+    // Get term filter
+    $termFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : null;
 
 // Define searchable columns
 $searchableColumns = [
@@ -45,6 +48,18 @@ if ($orderColumn === 'actions') {
 $whereParams = [];
 $whereTypes = '';
 $whereClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
+
+// Add term filter if specified
+if ($termFk !== null && $termFk > 0) {
+    if (!empty($whereClause)) {
+        $whereClause .= ' AND io.term_fk = ?';
+    } else {
+        $whereClause = 'io.term_fk = ?';
+    }
+    $whereParams[] = $termFk;
+    $whereTypes .= 'i';
+}
+
 if (!empty($whereClause)) {
     $whereClause = "WHERE {$whereClause}";
 }
@@ -72,6 +87,7 @@ $recordsFiltered = $filteredRow['total'];
 $dataQuery = "
     SELECT 
         io.institutional_outcomes_pk,
+        io.term_fk,
         io.outcome_code,
         io.outcome_description,
         io.sequence_num,
@@ -108,10 +124,10 @@ foreach ($outcomes as $row) {
         : $row['outcome_description'];
     
     $data[] = [
-        htmlspecialchars($row['institutional_outcomes_pk']),
+        htmlspecialchars((string)$row['institutional_outcomes_pk']),
         '<span class="badge bg-primary">' . htmlspecialchars($row['outcome_code']) . '</span>',
         htmlspecialchars($descriptionPreview),
-        htmlspecialchars($row['sequence_num']),
+        htmlspecialchars((string)$row['sequence_num']),
         '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
         htmlspecialchars($row['created_at'] ?? ''),
         '<button class="btn btn-sm btn-info" title="View" onclick=\'viewOutcome(' . $rowJson . ')\'><i class="fas fa-eye"></i></button> ' .

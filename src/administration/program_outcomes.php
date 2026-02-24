@@ -331,6 +331,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Fetch terms for dropdown (sorted descending with latest first)
+$termsResult = $db->query("
+    SELECT terms_pk, term_code, term_name, academic_year
+    FROM {$dbPrefix}terms
+    WHERE is_active = 1
+    ORDER BY term_name DESC
+");
+$terms = $termsResult->fetchAll();
+
+// Get selected term (default to latest/first)
+$selectedTermFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : ($terms[0]['terms_pk'] ?? null);
+
 // Fetch programs for dropdown
 $programsResult = $db->query("SELECT * FROM {$dbPrefix}programs WHERE is_active = 1 ORDER BY program_name ASC");
 $programs = $programsResult->fetchAll();
@@ -344,13 +356,16 @@ $institutionalOutcomesResult = $db->query(
 );
 $institutionalOutcomes = $institutionalOutcomesResult->fetchAll();
 
-// Calculate statistics
+// Calculate statistics (filtered by term)
+$termFilter = $selectedTermFk ? "WHERE p.term_fk = {$selectedTermFk}" : '';
 $statsResult = $db->query("
     SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
-    FROM {$dbPrefix}program_outcomes
+        SUM(CASE WHEN po.is_active = 1 THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN po.is_active = 0 THEN 1 ELSE 0 END) as inactive
+    FROM {$dbPrefix}program_outcomes po
+    JOIN {$dbPrefix}programs p ON po.program_fk = p.programs_pk
+    {$termFilter}
 ");
 $stats = $statsResult->fetch();
 $totalOutcomes = $stats['total'];
@@ -410,9 +425,25 @@ $theme->showHeader($context);
         </div>
         <?php endif; ?>
         
-        <!-- Statistics Row -->
-        <div class="row">
-            <div class="col-12 col-sm-6 col-md-4">
+        <!-- Filter and Statistics Row -->
+        <div class="row mb-3">
+            <div class="col-12 col-md-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <label for="termFilter" class="form-label"><i class="fas fa-filter"></i> Filter by Term</label>
+                        <select id="termFilter" class="form-select">
+                            <?php foreach ($terms as $term): ?>
+                                <option value="<?= $term['terms_pk'] ?>" <?= $term['terms_pk'] == $selectedTermFk ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($term['term_name']) ?>
+                                    <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-info"><i class="fas fa-bullseye"></i></span>
                     <div class="info-box-content">
@@ -422,7 +453,7 @@ $theme->showHeader($context);
                 </div>
             </div>
             
-            <div class="col-12 col-sm-6 col-md-4">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
                     <div class="info-box-content">
@@ -432,7 +463,7 @@ $theme->showHeader($context);
                 </div>
             </div>
             
-            <div class="col-12 col-sm-6 col-md-4">
+            <div class="col-12 col-sm-6 col-md-3">
                 <div class="info-box shadow-sm">
                     <span class="info-box-icon bg-warning"><i class="fas fa-ban"></i></span>
                     <div class="info-box-content">
@@ -771,11 +802,22 @@ var institutionalOutcomes = <?= json_encode(array_map(function($io) {
 }, $institutionalOutcomes)) ?>;
 
 $(document).ready(function() {
+    // Term filter change handler
+    $('#termFilter').on('change', function() {
+        var termFk = $(this).val();
+        window.location.href = '<?= BASE_URL ?>administration/program_outcomes.php?term_fk=' + termFk;
+    });
+    
     // Initialize DataTable
     var table = $('#outcomesTable').DataTable({
         processing: true,
         serverSide: true,
-        ajax: 'program_outcomes_data.php',
+        ajax: {
+            url: 'program_outcomes_data.php',
+            data: function(d) {
+                d.term_fk = $('#termFilter').val();
+            }
+        },
         dom: 'Bfrtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'

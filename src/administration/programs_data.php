@@ -15,13 +15,14 @@ require_once __DIR__ . '/../system/includes/init.php';
 // Get DataTables parameters
 $params = getDataTablesParams();
 
+// Get term filter
+$termFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : null;
+
 // Define searchable columns
 $searchableColumns = [
     'p.program_code',
     'p.program_name',
-    'p.degree_type',
-    'd.department_name',
-    'd.department_code'
+    'p.degree_type'
 ];
 
 // Column definitions for ordering (must match DataTables column order)
@@ -29,7 +30,6 @@ $columns = [
     'p.programs_pk',
     'p.program_code',
     'p.program_name',
-    'd.department_name',
     'p.degree_type',
     'p.is_active',
     'p.created_at',
@@ -46,6 +46,18 @@ if ($orderColumn === 'actions') {
 $whereParams = [];
 $whereTypes = '';
 $whereClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
+
+// Add term filter if specified
+if ($termFk !== null && $termFk > 0) {
+    if (!empty($whereClause)) {
+        $whereClause .= ' AND p.term_fk = ?';
+    } else {
+        $whereClause = 'p.term_fk = ?';
+    }
+    $whereParams[] = $termFk;
+    $whereTypes .= 'i';
+}
+
 if (!empty($whereClause)) {
     $whereClause = "WHERE {$whereClause}";
 }
@@ -56,7 +68,7 @@ $totalRow = $totalResult->fetch();
 $recordsTotal = $totalRow['total'];
 
 // Get filtered records count
-$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}programs p LEFT JOIN {$dbPrefix}departments d ON p.department_fk = d.departments_pk {$whereClause}";
+$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}programs p {$whereClause}";
 if (!empty($whereParams)) {
     $filteredResult = $db->query($countQuery, $whereParams, $whereTypes);
 } else {
@@ -67,9 +79,8 @@ $recordsFiltered = $filteredRow['total'];
 
 // Get data
 $dataQuery = "
-    SELECT p.*, d.department_name, d.department_code
+    SELECT p.*
     FROM {$dbPrefix}programs p
-    LEFT JOIN {$dbPrefix}departments d ON p.department_fk = d.departments_pk
     {$whereClause}
     ORDER BY {$orderColumn} {$params['orderDir']}
     LIMIT ? OFFSET ?
@@ -97,7 +108,6 @@ foreach ($programs as $row) {
         htmlspecialchars($row['programs_pk']),
         '<span class="badge bg-primary">' . htmlspecialchars($row['program_code']) . '</span>',
         htmlspecialchars($row['program_name']),
-        htmlspecialchars($row['department_name'] ?? 'N/A'),
         htmlspecialchars($row['degree_type'] ?? ''),
         '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
         htmlspecialchars($row['created_at'] ?? ''),
