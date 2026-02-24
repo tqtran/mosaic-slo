@@ -12,6 +12,9 @@ declare(strict_types=1);
 require_once __DIR__ . '/../system/includes/admin_session.php';
 require_once __DIR__ . '/../system/includes/init.php';
 
+// Get selected term (from GET/session)
+$selectedTermFk = getSelectedTermFk();
+
 // Handle POST requests
 $successMessage = '';
 $errorMessage = '';
@@ -347,14 +350,25 @@ $termResult = $db->query("
 ");
 $terms = $termResult->fetchAll();
 
-// Calculate statistics
-$statsResult = $db->query("
-    SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
-    FROM {$dbPrefix}courses
-");
+// Calculate statistics (filtered by selected term if applicable)
+if ($selectedTermFk) {
+    $statsResult = $db->query("
+        SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
+            SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
+        FROM {$dbPrefix}courses
+        WHERE term_fk = ?
+    ", [$selectedTermFk], 'i');
+} else {
+    $statsResult = $db->query("
+        SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active,
+            SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive
+        FROM {$dbPrefix}courses
+    ");
+}
 $stats = $statsResult->fetch();
 $totalCourses = $stats['total'];
 $activeCourses = $stats['active'];
@@ -697,6 +711,13 @@ var terms = <?= json_encode(array_map(function($t) {
 }, $terms)) ?>;
 
 $(document).ready(function() {
+    // Sync local term filter with header selector
+    var selectedTerm = '<?= $selectedTermFk ?? '' ?>';
+    if (selectedTerm) {
+        $('#termFilter').val(selectedTerm);
+        $('#headerTermSelector').val(selectedTerm);
+    }
+    
     // Term filter change handler
     $('#termFilter').on('change', function() {
         var termFk = $(this).val();

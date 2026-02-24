@@ -294,13 +294,40 @@ if (isset($_SESSION['error_message'])) {
     unset($_SESSION['error_message']);
 }
 
-// Get statistics
-$statsResult = $db->query("
-    SELECT 
-        COUNT(*) as total,
-        COALESCE(SUM(CASE WHEN is_finalized = 1 THEN 1 ELSE 0 END), 0) as finalized
-    FROM {$dbPrefix}assessments
+// Get terms for dropdown
+$termsResult = $db->query("
+    SELECT terms_pk, term_code, term_name, academic_year
+    FROM {$dbPrefix}terms
+    WHERE is_active = 1
+    ORDER BY term_name DESC
 ");
+$terms = $termsResult->fetchAll();
+
+// Get selected term (from GET/session, or default to latest)
+$selectedTermFk = getSelectedTermFk();
+if (!$selectedTermFk && !empty($terms)) {
+    $selectedTermFk = $terms[0]['terms_pk'];
+}
+
+// Get statistics (filtered by term through enrollment->terms join)
+if ($selectedTermFk) {
+    $statsResult = $db->query("
+        SELECT 
+            COUNT(*) as total,
+            COALESCE(SUM(CASE WHEN a.is_finalized = 1 THEN 1 ELSE 0 END), 0) as finalized
+        FROM {$dbPrefix}assessments a
+        LEFT JOIN {$dbPrefix}enrollment e ON a.enrollment_fk = e.enrollment_pk
+        LEFT JOIN {$dbPrefix}terms t ON e.term_code = t.term_code
+        WHERE t.terms_pk = ?
+    ", [$selectedTermFk], 'i');
+} else {
+    $statsResult = $db->query("
+        SELECT 
+            COUNT(*) as total,
+            COALESCE(SUM(CASE WHEN is_finalized = 1 THEN 1 ELSE 0 END), 0) as finalized
+        FROM {$dbPrefix}assessments
+    ");
+}
 $stats = $statsResult->fetch();
 $totalAssessments = (int)($stats['total'] ?? 0);
 $finalizedAssessments = (int)($stats['finalized'] ?? 0);
@@ -689,6 +716,13 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
+    // Sync local term filter with header selector
+    var selectedTerm = '<?= $selectedTermFk ?? '' ?>';
+    if (selectedTerm) {
+        $('#termFilter').val(selectedTerm);
+        $('#headerTermSelector').val(selectedTerm);
+    }
+    
     // Term filter change handler
     $('#termFilter').on('change', function() {
         var termFk = $(this).val();

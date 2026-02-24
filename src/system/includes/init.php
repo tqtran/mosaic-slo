@@ -103,4 +103,42 @@ $db = \Mosaic\Core\Database::getInstance($configData['database']);
 // Initialize logger
 $logger = \Mosaic\Core\Logger::getInstance($configData, $db->getConnection());
 
+// Ensure critical variables are in GLOBALS for theme access
+$GLOBALS['db'] = $db;
+$GLOBALS['dbPrefix'] = $dbPrefix;
+$GLOBALS['config'] = $config;
+
+/**
+ * Get the currently selected term ID with session persistence
+ * 
+ * Handles term selection across page navigation:
+ * 1. If term_fk is in GET/POST, use it and update session
+ * 2. Otherwise, use session value
+ * 3. If no session value, return null (all terms)
+ * 
+ * @return int|null Selected term primary key or null for all terms
+ */
+function getSelectedTermFk(): ?int {
+    // Check if term_fk is in request
+    if (isset($_GET['term_fk']) && $_GET['term_fk'] !== '') {
+        $termFk = (int)$_GET['term_fk'];
+        $_SESSION['selected_term_fk'] = $termFk;
+        return $termFk;
+    }
+    
+    if (isset($_POST['term_fk']) && $_POST['term_fk'] !== '') {
+        $termFk = (int)$_POST['term_fk'];
+        $_SESSION['selected_term_fk'] = $termFk;
+        return $termFk;
+    }
+    
+    // Use session value if available
+    if (isset($_SESSION['selected_term_fk']) && $_SESSION['selected_term_fk'] !== '') {
+        return (int)$_SESSION['selected_term_fk'];
+    }
+    
+    // No term selected - return null for "all terms"
+    return null;
+}
+
 // TODO: Authentication and authorization checks will go here

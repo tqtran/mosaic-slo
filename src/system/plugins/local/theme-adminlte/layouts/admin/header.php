@@ -48,6 +48,47 @@
         </li>
     </ul>
     <ul class="navbar-nav ms-auto">
+        <?php
+        // Get database and config from global scope
+        $db = $GLOBALS['db'] ?? null;
+        $dbPrefix = $GLOBALS['dbPrefix'] ?? '';
+        $headerTerms = [];
+        $headerSelectedTerm = null;
+        
+        // Fetch active terms for header dropdown
+        if ($db && $dbPrefix) {
+            try {
+                $headerTermsResult = $db->query("
+                    SELECT terms_pk, term_code, term_name, academic_year
+                    FROM {$dbPrefix}terms 
+                    WHERE is_active = 1 
+                    ORDER BY term_name DESC
+                ");
+                $headerTerms = $headerTermsResult->fetchAll();
+                
+                // Get selected term from session/GET
+                $headerSelectedTerm = function_exists('getSelectedTermFk') ? getSelectedTermFk() : null;
+            } catch (\Exception $e) {
+                // Silently fail if database not available
+                error_log("Header term selector error: " . $e->getMessage());
+            }
+        }
+        ?>
+        <li class="nav-item me-3">
+            <select id="headerTermSelector" class="form-select form-select-sm" style="min-width: 200px;">
+                <option value="">All Terms</option>
+                <?php if (empty($headerTerms)): ?>
+                    <option disabled>No terms available</option>
+                <?php else: ?>
+                    <?php foreach ($headerTerms as $headerTerm): ?>
+                        <option value="<?= $headerTerm['terms_pk'] ?>" <?= $headerTerm['terms_pk'] == $headerSelectedTerm ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($headerTerm['term_name']) ?>
+                            <?= !empty($headerTerm['academic_year']) ? ' (' . htmlspecialchars($headerTerm['academic_year']) . ')' : '' ?>
+                        </option>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </select>
+        </li>
         <li class="nav-item">
             <span class="nav-link"><strong><?= htmlspecialchars(SITE_NAME ?? 'MOSAIC') ?></strong></span>
         </li>

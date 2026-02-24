@@ -17,6 +17,23 @@
 <!-- AdminLTE 4 -->
 <script src="https://cdn.jsdelivr.net/npm/adminlte4@4.0.0-rc.6.20260104/dist/js/adminlte.min.js"></script>
 
+<!-- Global term selector handler -->
+<script>
+$(document).ready(function() {
+    $('#headerTermSelector').on('change', function() {
+        var termFk = $(this).val();
+        var currentUrl = window.location.pathname;
+        
+        // Build new URL with term_fk parameter
+        if (termFk) {
+            window.location.href = currentUrl + '?term_fk=' + termFk;
+        } else {
+            window.location.href = currentUrl + '?term_fk=';
+        }
+    });
+});
+</script>
+
 <?php if (isset($customScripts)): ?>
 <?= $customScripts ?>
 <?php endif; ?>

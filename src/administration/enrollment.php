@@ -285,27 +285,34 @@ $termsResult = $db->query("
 ");
 $terms = $termsResult->fetchAll();
 
-// Get selected term (default to latest/first)
-$selectedTermFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : ($terms[0]['terms_pk'] ?? null);
+// Get selected term (from GET/session, or default to latest)
+$selectedTermFk = getSelectedTermFk();
+if (!$selectedTermFk && !empty($terms)) {
+    $selectedTermFk = $terms[0]['terms_pk'];
+}
 
 // Calculate statistics (filtered by term)
-$termFilter = '';
-$termParams = [];
-$termTypes = '';
 if ($selectedTermFk) {
-    $termFilter = "LEFT JOIN {$dbPrefix}terms t ON e.term_code = t.term_code WHERE t.terms_pk = ?";
-    $termParams = [$selectedTermFk];
-    $termTypes = 'i';
+    $statsResult = $db->query("
+        SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN enrollment_status = 'enrolled' THEN 1 ELSE 0 END) as enrolled,
+            SUM(CASE WHEN enrollment_status = 'completed' THEN 1 ELSE 0 END) as completed,
+            SUM(CASE WHEN enrollment_status = 'dropped' THEN 1 ELSE 0 END) as dropped
+        FROM {$dbPrefix}enrollment e
+        LEFT JOIN {$dbPrefix}terms t ON e.term_code = t.term_code
+        WHERE t.terms_pk = ?
+    ", [$selectedTermFk], 'i');
+} else {
+    $statsResult = $db->query("
+        SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN enrollment_status = 'enrolled' THEN 1 ELSE 0 END) as enrolled,
+            SUM(CASE WHEN enrollment_status = 'completed' THEN 1 ELSE 0 END) as completed,
+            SUM(CASE WHEN enrollment_status = 'dropped' THEN 1 ELSE 0 END) as dropped
+        FROM {$dbPrefix}enrollment e
+    ");
 }
-$statsResult = $db->query("
-    SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN enrollment_status = 'enrolled' THEN 1 ELSE 0 END) as enrolled,
-        SUM(CASE WHEN enrollment_status = 'completed' THEN 1 ELSE 0 END) as completed,
-        SUM(CASE WHEN enrollment_status = 'dropped' THEN 1 ELSE 0 END) as dropped
-    FROM {$dbPrefix}enrollment e
-    {$termFilter}
-", $termParams, $termTypes);
 $stats = $statsResult->fetch();
 $totalEnrollments = $stats['total'];
 $enrolledCount = $stats['enrolled'];
@@ -695,6 +702,13 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
+    // Sync local term filter with header selector
+    var selectedTerm = '<?= $selectedTermFk ?? '' ?>';
+    if (selectedTerm) {
+        $('#termFilter').val(selectedTerm);
+        $('#headerTermSelector').val(selectedTerm);
+    }
+    
     // Term filter change handler
     $('#termFilter').on('change', function() {
         var termFk = $(this).val();

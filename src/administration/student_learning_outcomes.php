@@ -282,19 +282,31 @@ $termsResult = $db->query("
 ");
 $terms = $termsResult->fetchAll();
 
-// Get selected term (default to latest/first)
-$selectedTermFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : ($terms[0]['terms_pk'] ?? null);
+// Get selected term (from GET/session, or default to latest)
+$selectedTermFk = getSelectedTermFk();
+if (!$selectedTermFk && !empty($terms)) {
+    $selectedTermFk = $terms[0]['terms_pk'];
+}
 
 // Calculate statistics (filtered by term through courses)
-$termFilter = $selectedTermFk ? "WHERE c.term_fk = {$selectedTermFk}" : '';
-$statsResult = $db->query("
-    SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN slo.is_active = 1 THEN 1 ELSE 0 END) as active
-    FROM {$dbPrefix}student_learning_outcomes slo
-    LEFT JOIN {$dbPrefix}courses c ON slo.course_fk = c.courses_pk
-    {$termFilter}
-");
+if ($selectedTermFk) {
+    $statsResult = $db->query("
+        SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN slo.is_active = 1 THEN 1 ELSE 0 END) as active
+        FROM {$dbPrefix}student_learning_outcomes slo
+        LEFT JOIN {$dbPrefix}courses c ON slo.course_fk = c.courses_pk
+        WHERE c.term_fk = ?
+    ", [$selectedTermFk], 'i');
+} else {
+    $statsResult = $db->query("
+        SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN slo.is_active = 1 THEN 1 ELSE 0 END) as active
+        FROM {$dbPrefix}student_learning_outcomes slo
+        LEFT JOIN {$dbPrefix}courses c ON slo.course_fk = c.courses_pk
+    ");
+}
 $stats = $statsResult->fetch();
 $totalSLOs = $stats['total'];
 $activeSLOs = $stats['active'];
@@ -658,6 +670,13 @@ var programOutcomes = <?= json_encode(array_map(function($po) {
 }, $programOutcomes)) ?>;
 
 $(document).ready(function() {
+    // Sync local term filter with header selector
+    var selectedTerm = '<?= $selectedTermFk ?? '' ?>';
+    if (selectedTerm) {
+        $('#termFilter').val(selectedTerm);
+        $('#headerTermSelector').val(selectedTerm);
+    }
+    
     // Term filter change handler
     $('#termFilter').on('change', function() {
         var termFk = $(this).val();
