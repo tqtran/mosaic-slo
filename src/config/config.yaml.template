@@ -193,9 +193,9 @@ emergency_admin:
   # @description: Username for emergency admin login
   # @required: true
   # @type: string
-  # @default: sloadmin@breakglass.idx
+  # @default: sloadmin@breakglass.local
   # @help: Change this immediately after setup for security
-  username: sloadmin@breakglass.idx
+  username: sloadmin@breakglass.local
   
   # @label: Emergency Password
   # @description: Password for emergency admin login

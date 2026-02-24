@@ -159,24 +159,9 @@ echo PHP_EOL;
 color_output("Enter admin user details:", 'yellow');
 echo PHP_EOL;
 
-$userId = prompt("Username (user_id)");
-if (empty($userId)) {
-    log_message("Username validation failed: empty username", 'ERROR');
-    color_output("[X] Username is required", 'red');
-    exit(1);
-}
-
-log_message("Validating username: $userId");
-
-$firstName = prompt("First Name");
-if (empty($firstName)) {
-    color_output("[X] First name is required", 'red');
-    exit(1);
-}
-
-$lastName = prompt("Last Name");
-if (empty($lastName)) {
-    color_output("[X] Last name is required", 'red');
+$fullName = prompt("Full Name");
+if (empty($fullName)) {
+    color_output("[X] Full name is required", 'red');
     exit(1);
 }
 
@@ -217,12 +202,12 @@ $passwordHash = password_hash($password, PASSWORD_ARGON2ID, [
 ]);
 
 // Insert user
-log_message("Inserting user record for: $userId");
+log_message("Inserting user record for: $email");
 try {
     $stmt = $db->query(
-        "INSERT INTO {$dbPrefix}users (user_id, first_name, last_name, email, password_hash, is_active) 
-         VALUES (?, ?, ?, ?, ?, 1)",
-        [$userId, $firstName, $lastName, $email, $passwordHash]
+        "INSERT INTO {$dbPrefix}users (full_name, email, password_hash, is_active) 
+         VALUES (?, ?, ?, 1)",
+        [$fullName, $email, $passwordHash]
     );
     
     $userPk = $db->getInsertId();

@@ -126,6 +126,12 @@
                 
                 <li class="nav-header">STUDENTS & ASSESSMENT</li>
                 <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/students.php" class="nav-link <?= ($currentPage ?? '') === 'admin_students' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-person-badge"></i>
+                        <p>Students</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/enrollment.php" class="nav-link <?= ($currentPage ?? '') === 'admin_enrollment' ? 'active' : '' ?>">
                         <i class="nav-icon bi bi-person-check"></i>
                         <p>Enrollment</p>
@@ -147,6 +153,12 @@
                 </li>
                 
                 <li class="nav-header">SYSTEM</li>
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/users.php" class="nav-link <?= ($currentPage ?? '') === 'admin_users' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-people"></i>
+                        <p>Users</p>
+                    </a>
+                </li>
                 <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/config.php" class="nav-link <?= ($currentPage ?? '') === 'admin_config' ? 'active' : '' ?>">
                         <i class="nav-icon bi bi-gear"></i>

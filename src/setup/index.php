@@ -267,9 +267,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                             try {
                                 $adminUsername = 'sloadmin';
                                 $adminPassword = 'slopass';
-                                $adminEmail = 'admin@' . ($db_host === 'localhost' ? 'localhost' : parse_url('http://' . $db_host, PHP_URL_HOST));
-                                $adminFirstName = 'SLO';
-                                $adminLastName = 'Administrator';
+                                $adminEmail = 'sloadmin@example.com';
+                                $adminFullName = 'SLO Administrator';
                                 
                                 // Hash password with Argon2id
                                 $passwordHash = password_hash($adminPassword, PASSWORD_ARGON2ID, [
@@ -280,13 +279,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                 
                                 // Insert admin user
                                 $stmt = $pdo->prepare("
-                                    INSERT INTO {$db_prefix}users (user_id, first_name, last_name, email, password_hash, is_active) 
-                                    VALUES (?, ?, ?, ?, ?, 1)
+                                    INSERT INTO {$db_prefix}users (full_name, email, password_hash, is_active) 
+                                    VALUES (?, ?, ?, 1)
                                 ");
-                                $stmt->execute([$adminUsername, $adminFirstName, $adminLastName, $adminEmail, $passwordHash]);
+                                $stmt->execute([$adminFullName, $adminEmail, $passwordHash]);
                                 $adminUserId = $pdo->lastInsertId();
                                 
-                                $adminMsg = "Default admin user created: username='$adminUsername', password='$adminPassword'";
+                                $adminMsg = "Default admin user created: email='$adminEmail', password='$adminPassword'";
                                 if ($setupLog) fwrite($setupLog, "$adminMsg\n");
                                 echo "<!-- $adminMsg -->\n";
                                 flush();

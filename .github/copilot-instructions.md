@@ -144,7 +144,7 @@ $result = $db->query("SELECT * FROM tbl_users WHERE users_pk = ?", [$userId], 'i
 3. **SAML SSO**: SAML 2.0 federation with institutional Identity Providers
 
 **Emergency Admin (Break Glass)**:
-- Configuration-based account in `config.yaml` (default: sloadmin@breakglass.idx/slopass)
+- Configuration-based account in `config.yaml` (default: sloadmin@breakglass.local/slopass)
 - Email format required for login form compatibility
 - Bypasses database for emergency recovery access
 - Password stored in plain text - change immediately after setup

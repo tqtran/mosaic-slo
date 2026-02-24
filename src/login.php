@@ -89,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Get user by email
             $stmt = $db->prepare("
-                SELECT users_pk, user_id, first_name, last_name, email, password_hash, is_active
+                SELECT users_pk, full_name, email, password_hash, is_active
                 FROM tbl_users
                 WHERE email = ?
             ");
@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Set session variables
                     $_SESSION['user_id'] = $user['users_pk'];
                     $_SESSION['user_email'] = $user['email'];
-                    $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
+                    $_SESSION['user_name'] = $user['full_name'];
                     $_SESSION['logged_in_at'] = time();
                     $_SESSION['last_activity'] = time();
                     
