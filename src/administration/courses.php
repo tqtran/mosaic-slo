@@ -12,8 +12,10 @@ declare(strict_types=1);
 require_once __DIR__ . '/../system/includes/admin_session.php';
 require_once __DIR__ . '/../system/includes/init.php';
 
-// Get selected term (from GET/session)
+// Get selected term (from GET/session, or default to latest)
 $selectedTermFk = getSelectedTermFk();
+
+// We'll set default term after fetching terms list
 
 // Handle POST requests
 $successMessage = '';
@@ -346,9 +348,29 @@ $termResult = $db->query("
     SELECT terms_pk, term_code, term_name 
     FROM {$dbPrefix}terms 
     WHERE is_active = 1 
-    ORDER BY term_name DESC
+    ORDER BY term_code ASC
 ");
 $terms = $termResult->fetchAll();
+
+// Default to first term if none selected
+if (!$selectedTermFk && !empty($terms)) {
+    $selectedTermFk = $terms[0]['terms_pk'];
+    // Save to session for header dropdown sync
+    $_SESSION['selected_term_fk'] = $selectedTermFk;
+}
+
+// Get selected term name
+$selectedTermName = '';
+$selectedTermCode = '';
+if ($selectedTermFk && !empty($terms)) {
+    foreach ($terms as $term) {
+        if ($term['terms_pk'] == $selectedTermFk) {
+            $selectedTermName = $term['term_name'];
+            $selectedTermCode = $term['term_code'];
+            break;
+        }
+    }
+}
 
 // Calculate statistics (filtered by selected term if applicable)
 if ($selectedTermFk) {
@@ -379,9 +401,17 @@ require_once __DIR__ . '/../system/Core/ThemeLoader.php';
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
+$pageTitle = 'Course Management';
+if ($selectedTermName) {
+    $pageTitle .= ' - ' . $selectedTermName;
+    if ($selectedTermCode) {
+        $pageTitle .= ' (' . $selectedTermCode . ')';
+    }
+}
+
 $context = new ThemeContext([
     'layout' => 'admin',
-    'pageTitle' => 'Course Management',
+    'pageTitle' => $pageTitle,
     'currentPage' => 'admin_courses',
     'breadcrumbs' => [
         ['url' => BASE_URL, 'label' => 'Home'],
@@ -426,39 +456,6 @@ $theme->showHeader($context);
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php endif; ?>
-        
-        <!-- Statistics Row -->
-        <div class="row mb-3">
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-info"><i class="fas fa-book"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Total Courses</span>
-                        <span class="info-box-number"><?= $totalCourses ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Active Courses</span>
-                        <span class="info-box-number"><?= $activeCourses ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-warning"><i class="fas fa-ban"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Inactive Courses</span>
-                        <span class="info-box-number"><?= $inactiveCourses ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Courses Table -->
         <div class="card">
@@ -552,7 +549,7 @@ $theme->showHeader($context);
                         <select class="form-select" id="termFk" name="term_fk" required>
                             <option value="">Select Term</option>
                             <?php foreach ($terms as $term): ?>
-                            <option value="<?= $term['terms_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?> (<?= htmlspecialchars($term['term_code']) ?>)</option>
+                            <option value="<?= $term['terms_pk'] ?>"><?= htmlspecialchars($term['term_code'] . ' - ' . $term['term_name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -605,7 +602,7 @@ $theme->showHeader($context);
                         <select class="form-select" id="editTermFk" name="term_fk" required>
                             <option value="">Select Term</option>
                             <?php foreach ($terms as $term): ?>
-                            <option value="<?= $term['terms_pk'] ?>"><?= htmlspecialchars($term['term_name']) ?> (<?= htmlspecialchars($term['term_code']) ?>)</option>
+                            <option value="<?= $term['terms_pk'] ?>"><?= htmlspecialchars($term['term_code'] . ' - ' . $term['term_name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>

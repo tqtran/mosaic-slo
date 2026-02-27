@@ -24,14 +24,9 @@ try {
 
     // Column mapping
     $columns = [
-        0 => 't.terms_pk',
-        1 => 't.term_code',
-        2 => 't.term_name',
-        3 => 't.academic_year',
-        4 => 't.start_date',
-        5 => 't.end_date',
-        6 => 't.is_active',
-        7 => ''  // Actions column
+        0 => 't.term_code',
+        1 => 't.term_name',
+        2 => ''  // Actions column
     ];
 
     $orderBy = $columns[$orderColumn] ?? 't.term_code';
@@ -94,14 +89,7 @@ try {
     // Format data
     $data = [];
     while ($row = $result->fetch()) {
-        $statusBadge = $row['is_active'] 
-            ? '<span class="badge bg-success">Active</span>' 
-            : '<span class="badge bg-secondary">Inactive</span>';
-        
-        $startDate = $row['start_date'] ? date('M d, Y', strtotime($row['start_date'])) : '-';
-        $endDate = $row['end_date'] ? date('M d, Y', strtotime($row['end_date'])) : '-';
-        
-        // Prepare data for JavaScript functions
+        // Prepare data for JavaScript functions (keeping all data for edit functionality)
         $termJson = htmlspecialchars(json_encode([
             'terms_pk' => $row['terms_pk'],
             'term_code' => $row['term_code'],
@@ -126,13 +114,8 @@ try {
         ';
         
         $data[] = [
-            $row['terms_pk'],
             htmlspecialchars($row['term_code'] ?? ''),
             htmlspecialchars($row['term_name']),
-            htmlspecialchars($row['academic_year'] ?? ''),
-            $startDate,
-            $endDate,
-            $statusBadge,
             $actions
         ];
     }

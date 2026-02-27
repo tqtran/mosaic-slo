@@ -299,7 +299,7 @@ $termsResult = $db->query("
     SELECT terms_pk, term_code, term_name, academic_year
     FROM {$dbPrefix}terms
     WHERE is_active = 1
-    ORDER BY term_name DESC
+    ORDER BY term_code ASC
 ");
 $terms = $termsResult->fetchAll();
 
@@ -307,6 +307,21 @@ $terms = $termsResult->fetchAll();
 $selectedTermFk = getSelectedTermFk();
 if (!$selectedTermFk && !empty($terms)) {
     $selectedTermFk = $terms[0]['terms_pk'];
+    // Save to session for header dropdown sync
+    $_SESSION['selected_term_fk'] = $selectedTermFk;
+}
+
+// Get selected term name
+$selectedTermName = '';
+$selectedTermCode = '';
+if ($selectedTermFk && !empty($terms)) {
+    foreach ($terms as $term) {
+        if ($term['terms_pk'] == $selectedTermFk) {
+            $selectedTermName = $term['term_name'];
+            $selectedTermCode = $term['term_code'];
+            break;
+        }
+    }
 }
 
 // Get statistics (filtered by term through enrollment->terms join)
@@ -357,9 +372,17 @@ require_once __DIR__ . '/../system/Core/ThemeLoader.php';
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
+$pageTitle = 'Assessment Management';
+if ($selectedTermName) {
+    $pageTitle .= ' - ' . $selectedTermName;
+    if ($selectedTermCode) {
+        $pageTitle .= ' (' . $selectedTermCode . ')';
+    }
+}
+
 $context = new ThemeContext([
     'layout' => 'admin',
-    'pageTitle' => 'Assessment Management',
+    'pageTitle' => $pageTitle,
     'currentPage' => 'admin_assessments',
     'breadcrumbs' => [
         ['url' => BASE_URL, 'label' => 'Home'],
@@ -404,40 +427,6 @@ $theme->showHeader($context);
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 <?php endif; ?>
-
-<!-- Statistics Row -->
-<div class="row mb-3">
-    <div class="col-12 col-md-6">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <i class="fas fa-chart-bar fa-3x opacity-50"></i>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <div class="fs-5 fw-bold"><?= number_format($totalAssessments) ?></div>
-                        <div>Total Assessments</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-md-6">
-        <div class="card bg-success text-white">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-shrink-0">
-                        <i class="fas fa-check-circle fa-3x opacity-50"></i>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <div class="fs-5 fw-bold"><?= number_format($finalizedAssessments) ?></div>
-                        <div>Finalized Assessments</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Assessments Table -->
 <div class="card">

@@ -253,39 +253,6 @@ $theme->showHeader($context);
         </div>
         <?php endif; ?>
         
-        <!-- Statistics Row -->
-        <div class="row">
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-info"><i class="fas fa-calendar-week"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Total Terms</span>
-                        <span class="info-box-number"><?= $totalTerms ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Active Terms</span>
-                        <span class="info-box-number"><?= $activeTerms ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-primary"><i class="fas fa-bookmark"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Terms with Courses</span>
-                        <span class="info-box-number"><?= $termsWithCourses ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
         <!-- Terms Table -->
         <div class="card shadow-sm mt-4">
             <div class="card-header">

@@ -298,6 +298,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                 // Continue even if admin creation fails
                             }
                             
+                            // ========================================================
+                            // PRE-GENERATE TERMS FOR CURRENT + NEXT 5 YEARS
+                            // ========================================================
+                            if ($setupLog) fwrite($setupLog, "\n=== Pre-generating Terms ===\n");
+                            try {
+                                // Determine current term year (starts in July)
+                                $currentMonth = (int)date('n');
+                                $currentYear = (int)date('Y');
+                                $startYear = ($currentMonth >= 7) ? $currentYear : ($currentYear - 1);
+                                
+                                // Generate terms for 6 years (current + next 5)
+                                $seasons = [
+                                    ['code' => '10', 'name' => 'Winter'],
+                                    ['code' => '30', 'name' => 'Spring'],
+                                    ['code' => '50', 'name' => 'Summer'],
+                                    ['code' => '70', 'name' => 'Fall']
+                                ];
+                                
+                                $termsCreated = 0;
+                                $stmt = $pdo->prepare("
+                                    INSERT INTO {$db_prefix}terms 
+                                    (term_code, term_name, academic_year, is_active) 
+                                    VALUES (?, ?, ?, 1)
+                                ");
+                                
+                                for ($yearOffset = 0; $yearOffset < 6; $yearOffset++) {
+                                    $year = $startYear + $yearOffset;
+                                    $academicYear = $year . '-' . ($year + 1);
+                                    
+                                    foreach ($seasons as $season) {
+                                        $termCode = $year . $season['code'];
+                                        $termName = $season['name'] . ' ' . $year;
+                                        
+                                        $stmt->execute([$termCode, $termName, $academicYear]);
+                                        $termsCreated++;
+                                        
+                                        if ($setupLog) {
+                                            fwrite($setupLog, "  Created: $termCode - $termName ($academicYear)\n");
+                                        }
+                                    }
+                                }
+                                
+                                $termsMsg = "Pre-generated $termsCreated terms for years $startYear-" . ($startYear + 5);
+                                if ($setupLog) fwrite($setupLog, "$termsMsg\n");
+                                echo "<!-- $termsMsg -->\n";
+                                flush();
+                                
+                            } catch (PDOException $e) {
+                                $errorMsg = "Failed to generate terms: " . $e->getMessage();
+                                if ($setupLog) fwrite($setupLog, "ERROR: $errorMsg\n");
+                                echo "<!-- ERROR: $errorMsg -->\n";
+                                flush();
+                                // Continue even if term generation fails
+                            }
+                            
                             // SEED DATA IMPORT DISABLED - User will import manually
                             if (false && file_exists($seedFile)) {
                                 if ($setupLog) fwrite($setupLog, "\n=== Importing Seed Data ===\n");

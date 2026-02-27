@@ -278,7 +278,7 @@ $termsResult = $db->query("
     SELECT terms_pk, term_code, term_name, academic_year
     FROM {$dbPrefix}terms
     WHERE is_active = 1
-    ORDER BY term_name DESC
+    ORDER BY term_code ASC
 ");
 $terms = $termsResult->fetchAll();
 
@@ -286,6 +286,21 @@ $terms = $termsResult->fetchAll();
 $selectedTermFk = getSelectedTermFk();
 if (!$selectedTermFk && !empty($terms)) {
     $selectedTermFk = $terms[0]['terms_pk'];
+    // Save to session for header dropdown sync
+    $_SESSION['selected_term_fk'] = $selectedTermFk;
+}
+
+// Get selected term name
+$selectedTermName = '';
+$selectedTermCode = '';
+if ($selectedTermFk && !empty($terms)) {
+    foreach ($terms as $term) {
+        if ($term['terms_pk'] == $selectedTermFk) {
+            $selectedTermName = $term['term_name'];
+            $selectedTermCode = $term['term_code'];
+            break;
+        }
+    }
 }
 
 // Calculate statistics (filtered by term through courses)
@@ -323,9 +338,17 @@ require_once __DIR__ . '/../system/Core/ThemeLoader.php';
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
+$pageTitle = 'Student Learning Outcomes';
+if ($selectedTermName) {
+    $pageTitle .= ' - ' . $selectedTermName;
+    if ($selectedTermCode) {
+        $pageTitle .= ' (' . $selectedTermCode . ')';
+    }
+}
+
 $context = new ThemeContext([
     'layout' => 'admin',
-    'pageTitle' => 'Student Learning Outcomes',
+    'pageTitle' => $pageTitle,
     'currentPage' => 'admin_slos',
     'breadcrumbs' => [
         ['url' => BASE_URL, 'label' => 'Home'],
@@ -369,29 +392,6 @@ $theme->showHeader($context);
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php endif; ?>
-        
-        <!-- Statistics Row -->
-        <div class="row mb-3">
-            <div class="col-12 col-sm-6 col-md-6">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-info"><i class="fas fa-list-check"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Total SLOs</span>
-                        <span class="info-box-number"><?= $totalSLOs ?></span>
-                    </div>
-                </div>
-            </div>
-        
-            <div class="col-12 col-sm-6 col-md-6">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Active SLOs</span>
-                        <span class="info-box-number"><?= $activeSLOs ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <div class="card">
             <div class="card-header">

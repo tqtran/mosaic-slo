@@ -101,6 +101,14 @@ app:
   # @default: true
   # @help: Set to false in production for security. Also enables authentication debug logging.
   debug_mode: true
+  
+  # @label: Degree Types
+  # @description: Available degree types for academic programs
+  # @required: false
+  # @type: list
+  # @default: Associate of Arts (AA),Associate of Science (AS),Associate in Arts for Transfer (AA-T),Associate in Science for Transfer (AS-T),Bachelor of Science (BS),Bachelor of Applied Science (BAS),Certificate of Achievement (16 or more semester units),Certificate of Achievement (8-15.5 semester units),Local Certificate (fewer than 8 semester units),Noncredit Certificate of Completion,Noncredit Certificate of Competency
+  # @help: Comma-separated list of degree types (California Community College standard degree types)
+  degree_types: Associate of Arts (AA),Associate of Science (AS),Associate in Arts for Transfer (AA-T),Associate in Science for Transfer (AS-T),Bachelor of Science (BS),Bachelor of Applied Science (BAS),Certificate of Achievement (16 or more semester units),Certificate of Achievement (8-15.5 semester units),Local Certificate (fewer than 8 semester units),Noncredit Certificate of Completion,Noncredit Certificate of Competency
 
 # Theme Configuration
 theme:

@@ -101,12 +101,12 @@ foreach ($slos as $row) {
         : '<span class="text-muted">-</span>';
     
     $data[] = [
-        htmlspecialchars($row['student_learning_outcomes_pk']),
+        htmlspecialchars((string)$row['student_learning_outcomes_pk']),
         htmlspecialchars($row['course_name'] ?? '') . ' (' . htmlspecialchars($row['course_number'] ?? '') . ')',
         $programOutcomeDisplay,
         '<span class="badge bg-primary">' . htmlspecialchars($row['slo_code']) . '</span>',
         htmlspecialchars($descriptionPreview),
-        htmlspecialchars($row['sequence_num']),
+        htmlspecialchars((string)$row['sequence_num']),
         '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
         '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editSLO(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
         '<button class="btn btn-sm btn-' . $toggleClass . '" title="Toggle Status" onclick="toggleStatus(' . $row['student_learning_outcomes_pk'] . ', \'' . htmlspecialchars($row['slo_code'], ENT_QUOTES) . '\')"><i class="fas fa-' . $toggleIcon . '"></i></button> ' .

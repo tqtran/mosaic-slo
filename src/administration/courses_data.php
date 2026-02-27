@@ -95,7 +95,7 @@ foreach ($courses as $row) {
     $rowJson = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
     
     $data[] = [
-        htmlspecialchars($row['courses_pk']),
+        htmlspecialchars((string)$row['courses_pk']),
         htmlspecialchars($row['course_name']),
         '<span class="badge bg-primary">' . htmlspecialchars($row['course_number']) . '</span>',
         htmlspecialchars($row['program_name'] ?? 'N/A'),

@@ -68,42 +68,6 @@ $theme = ThemeLoader::getActiveTheme();
 $theme->showHeader($context);
 ?>
 
-<!-- Metrics Row -->
-<div class="row">
-    <!-- Programs -->
-    <div class="col-12 col-sm-6 col-md-3">
-        <div class="info-box shadow-sm">
-            <span class="info-box-icon bg-success"><i class="fas fa-graduation-cap"></i></span>
-            <div class="info-box-content">
-                <span class="info-box-text">Programs</span>
-                <span class="info-box-number"><?= $metrics['programs'] ?></span>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Outcomes -->
-    <div class="col-12 col-sm-6 col-md-3">
-        <div class="info-box shadow-sm">
-            <span class="info-box-icon bg-warning"><i class="fas fa-bullseye"></i></span>
-            <div class="info-box-content">
-                <span class="info-box-text">Learning Outcomes</span>
-                <span class="info-box-number"><?= $metrics['outcomes'] ?></span>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Assessments -->
-    <div class="col-12 col-sm-6 col-md-3">
-        <div class="info-box shadow-sm">
-            <span class="info-box-icon bg-danger"><i class="fas fa-clipboard-check"></i></span>
-            <div class="info-box-content">
-                <span class="info-box-text">Assessments</span>
-                <span class="info-box-number"><?= $metrics['assessments'] ?></span>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Quick Actions -->
 <div class="row">
     <div class="col-md-12">
@@ -134,7 +98,7 @@ $theme->showHeader($context);
                 <div class="row mt-2">
                     <div class="col-md-3">
                         <a href="<?= BASE_URL ?>administration/courses.php" class="btn btn-app">
-                            <i class="fas fa-book"></i> Courses
+                            <i class="fas fa-book"></i> Sections
                         </a>
                     </div>
                     <div class="col-md-3">
@@ -142,18 +106,8 @@ $theme->showHeader($context);
                             <i class="fas fa-tasks"></i> SLOs
                         </a>
                     </div>
-                    <div class="col-md-3">
-                        <a href="<?= BASE_URL ?>administration/students.php" class="btn btn-app">
-                            <i class="fas fa-user-graduate"></i> Students
-                        </a>
-                    </div>
                 </div>
                 <div class="row mt-2">
-                    <div class="col-md-3">
-                        <a href="<?= BASE_URL ?>administration/assessments.php" class="btn btn-app">
-                            <i class="fas fa-clipboard-check"></i> Assessments
-                        </a>
-                    </div>
                     <div class="col-md-3">
                         <a href="<?= BASE_URL ?>administration/config.php" class="btn btn-app">
                             <i class="fas fa-cog"></i> System Config
@@ -238,10 +192,8 @@ $theme->showHeader($context);
                     <li><a href="<?= BASE_URL ?>administration/institutional_outcomes.php">Set up institutional outcomes</a></li>
                     <li><a href="<?= BASE_URL ?>administration/programs.php">Create academic programs</a></li>
                     <li><a href="<?= BASE_URL ?>administration/program_outcomes.php">Define program outcomes</a></li>
-                    <li><a href="<?= BASE_URL ?>administration/courses.php">Add courses to the catalog</a></li>
-                    <li><a href="<?= BASE_URL ?>administration/student_learning_outcomes.php">Define SLOs for courses</a></li>
-                    <li><a href="<?= BASE_URL ?>administration/students.php">Add student records</a></li>
-                    <li><a href="<?= BASE_URL ?>administration/assessments.php">Record assessment data</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/courses.php">Add sections to the catalog</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/student_learning_outcomes.php">Define SLOs for sections</a></li>
                     <li>Configure LTI integration with your LMS</li>
                 </ol>
             </div>

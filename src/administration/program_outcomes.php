@@ -185,138 +185,181 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'import':
                 if (isset($_FILES['outcome_upload']) && $_FILES['outcome_upload']['error'] === UPLOAD_ERR_OK) {
                     $tmpName = $_FILES['outcome_upload']['tmp_name'];
-                    $handle = fopen($tmpName, 'r');
                     
-                    if ($handle !== false) {
-                        // Skip BOM if present
-                        $bom = fread($handle, 3);
-                        if ($bom !== "\xEF\xBB\xBF") {
-                            rewind($handle);
-                        }
-                        
-                        $headers = fgetcsv($handle); // Read header row
-                        $imported = 0;
-                        $updated = 0;
-                        $errors = [];
-                        $rowNum = 1;
-                        
-                        while (($row = fgetcsv($handle)) !== false) {
-                            $rowNum++;
-                            if (count($row) >= 3) {
-                                $programCode = trim($row[0]);
-                                $outcomeCode = trim($row[1]);
-                                $outcomeDescription = trim($row[2]);
-                                $institutionalOutcomeCode = isset($row[3]) ? trim($row[3]) : '';
-                                $sequenceNum = isset($row[4]) ? (int)trim($row[4]) : 0;
-                                $isActive = isset($row[5]) && strtolower(trim($row[5])) === '1' ? 1 : 0;
+                    // Get selected term for auto-creating programs
+                    $selectedTermFk = getSelectedTermFk();
+                    if (!$selectedTermFk) {
+                        $errorMessage = 'No term selected. Please select a term first.';
+                        break;
+                    }
+                    
+                    $handle = fopen($tmpName, 'r');
+                
+                if ($handle !== false) {
+                    // Skip BOM if present
+                    $bom = fread($handle, 3);
+                    if ($bom !== "\xEF\xBB\xBF") {
+                        rewind($handle);
+                    }
+                    
+                    $headers = fgetcsv($handle); // Read header row
+                    $imported = 0;
+                    $updated = 0;
+                    $programsCreated = 0;
+                    $errors = [];
+                    $rowNum = 1;
+                    
+                    // Build a map of program names to program PKs
+                    $programMap = [];
+                    $programsResult = $db->query("
+                        SELECT programs_pk, program_name, program_code 
+                        FROM {$dbPrefix}programs 
+                        WHERE is_active = 1
+                    ");
+                    while ($prog = $programsResult->fetch()) {
+                        // Store by both name and code for flexible matching
+                        $programMap[$prog['program_name']] = $prog['programs_pk'];
+                        $programMap[$prog['program_code']] = $prog['programs_pk'];
+                    }
+                    
+                    // Track PSLOs by program to auto-generate codes
+                    $psloCountByProgram = [];
+                    
+                    while (($row = fgetcsv($handle)) !== false) {
+                        $rowNum++;
+                        if (count($row) >= 2) {
+                            $programName = trim($row[0]);
+                            $outcomeDescription = trim($row[1]);
+                            
+                            // Try to find matching program
+                            $programFk = null;
+                            if (isset($programMap[$programName])) {
+                                $programFk = $programMap[$programName];
+                            } else {
+                                // Try partial match (program name might include degree type)
+                                foreach ($programMap as $key => $pk) {
+                                    if (stripos($programName, $key) !== false || stripos($key, $programName) !== false) {
+                                        $programFk = $pk;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            // If program doesn't exist, create it
+                            if ($programFk === null) {
+                                // Parse program name and degree type
+                                // Format: "Program Name, Degree Type"
+                                $parts = explode(',', $programName, 2);
+                                $baseProgramName = trim($parts[0]);
+                                $degreeType = isset($parts[1]) ? trim($parts[1]) : '';
                                 
-                                // Find program by code
-                                $progResult = $db->query(
-                                    "SELECT programs_pk FROM {$dbPrefix}programs WHERE program_code = ?",
-                                    [$programCode],
-                                    's'
-                                );
+                                // Generate program code from base name
+                                $programCode = strtoupper(preg_replace('/[^A-Z0-9]+/i', '-', $baseProgramName));
+                                $programCode = trim($programCode, '-');
                                 
-                                if ($progResult->rowCount() === 0) {
-                                    $errors[] = "Row $rowNum: Program code '$programCode' not found";
-                                    continue;
+                                // Make code unique if it exists
+                                $codeCounter = 1;
+                                $originalCode = $programCode;
+                                while (isset($programMap[$programCode])) {
+                                    $programCode = $originalCode . '-' . $codeCounter;
+                                    $codeCounter++;
                                 }
                                 
-                                $prog = $progResult->fetch();
-                                $programFk = $prog['programs_pk'];
-                                
-                                // Find institutional outcome if specified
-                                $institutionalOutcomesFk = null;
-                                if (!empty($institutionalOutcomeCode)) {
-                                    $ioResult = $db->query(
-                                        "SELECT institutional_outcomes_pk FROM {$dbPrefix}institutional_outcomes WHERE outcome_code = ?",
-                                        [$institutionalOutcomeCode],
-                                        's'
+                                try {
+                                    // Create the program
+                                    $db->query(
+                                        "INSERT INTO {$dbPrefix}programs (term_fk, program_code, program_name, degree_type, is_active, created_at, updated_at) 
+                                         VALUES (?, ?, ?, ?, 1, NOW(), NOW())",
+                                        [$selectedTermFk, $programCode, $programName, $degreeType],
+                                        'isss'
                                     );
-                                    if ($ioResult->rowCount() > 0) {
-                                        $io = $ioResult->fetch();
-                                        $institutionalOutcomesFk = $io['institutional_outcomes_pk'];
-                                    } else {
-                                        $errors[] = "Row $rowNum: Institutional outcome code '$institutionalOutcomeCode' not found";
-                                        continue;
-                                    }
-                                }
-                                
-                                if (empty($outcomeCode) || empty($outcomeDescription) || !preg_match('/^[A-Z0-9_.-]+$/i', $outcomeCode)) {
-                                    $errors[] = "Row $rowNum: Invalid outcome code or description";
+                                    
+                                    $programFk = $db->getInsertId();
+                                    $programMap[$programName] = $programFk;
+                                    $programMap[$programCode] = $programFk;
+                                    $programsCreated++;
+                                } catch (\Exception $e) {
+                                    $errors[] = "Row $rowNum: Failed to create program '$programName': " . $e->getMessage();
                                     continue;
                                 }
-                                
-                                // Check if exists
-                                $result = $db->query(
-                                    "SELECT program_outcomes_pk FROM {$dbPrefix}program_outcomes 
-                                     WHERE outcome_code = ? AND program_fk = ?",
-                                    [$outcomeCode, $programFk],
-                                    'si'
+                            }
+                            
+                            // Generate PSLO code using program PK for global uniqueness (handles long program codes)
+                            if (!isset($psloCountByProgram[$programFk])) {
+                                // Check existing PSLOs for this program
+                                $countResult = $db->query(
+                                    "SELECT COUNT(*) as count FROM {$dbPrefix}program_outcomes WHERE program_fk = ?",
+                                    [$programFk],
+                                    'i'
                                 );
-                                
-                                if ($result->rowCount() > 0) {
-                                    // Update existing
-                                    $existing = $result->fetch();
-                                    if ($institutionalOutcomesFk !== null) {
-                                        $db->query(
-                                            "UPDATE {$dbPrefix}program_outcomes 
-                                             SET institutional_outcomes_fk = ?, outcome_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
-                                             WHERE program_outcomes_pk = ?",
-                                            [$institutionalOutcomesFk, $outcomeDescription, $sequenceNum, $isActive, $existing['program_outcomes_pk']],
-                                            'isiii'
-                                        );
-                                    } else {
-                                        $db->query(
-                                            "UPDATE {$dbPrefix}program_outcomes 
-                                             SET institutional_outcomes_fk = NULL, outcome_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
-                                             WHERE program_outcomes_pk = ?",
-                                            [$outcomeDescription, $sequenceNum, $isActive, $existing['program_outcomes_pk']],
-                                            'siii'
-                                        );
-                                    }
-                                    $updated++;
-                                } else {
-                                    // Insert new
-                                    if ($institutionalOutcomesFk !== null) {
-                                        $db->query(
-                                            "INSERT INTO {$dbPrefix}program_outcomes (program_fk, institutional_outcomes_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
-                                             VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                                            [$programFk, $institutionalOutcomesFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive],
-                                            'iissii'
-                                        );
-                                    } else {
-                                        $db->query(
-                                            "INSERT INTO {$dbPrefix}program_outcomes (program_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
-                                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                                            [$programFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive],
-                                            'issii'
-                                        );
-                                    }
-                                    $imported++;
-                                }
+                                $countRow = $countResult->fetch();
+                                $psloCountByProgram[$programFk] = $countRow['count'];
+                            }
+                            
+                            $psloCountByProgram[$programFk]++;
+                            $outcomeCode = 'PSLO-P' . $programFk . '-' . $psloCountByProgram[$programFk];
+                            $sequenceNum = $psloCountByProgram[$programFk];
+                            
+                            if (empty($outcomeDescription)) {
+                                $errors[] = "Row $rowNum: Empty outcome description";
+                                continue;
+                            }
+                            
+                            // Check if similar outcome already exists for this program
+                            $result = $db->query(
+                                "SELECT program_outcomes_pk FROM {$dbPrefix}program_outcomes 
+                                 WHERE program_fk = ? AND outcome_description = ?",
+                                [$programFk, $outcomeDescription],
+                                'is'
+                            );
+                            
+                            if ($result->rowCount() > 0) {
+                                // Update existing with new code and sequence
+                                $existing = $result->fetch();
+                                $db->query(
+                                    "UPDATE {$dbPrefix}program_outcomes 
+                                     SET outcome_code = ?, sequence_num = ?, is_active = 1, updated_at = NOW()
+                                     WHERE program_outcomes_pk = ?",
+                                    [$outcomeCode, $sequenceNum, $existing['program_outcomes_pk']],
+                                    'sii'
+                                );
+                                $updated++;
+                            } else {
+                                // Insert new with auto-generated code
+                                $db->query(
+                                    "INSERT INTO {$dbPrefix}program_outcomes (program_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
+                                     VALUES (?, ?, ?, ?, 1, NOW(), NOW())",
+                                    [$programFk, $outcomeCode, $outcomeDescription, $sequenceNum],
+                                    'issi'
+                                );
+                                $imported++;
                             }
                         }
-                        
-                        fclose($handle);
-                        
-                        $summary = "$imported new, $updated updated";
-                        if (count($errors) > 0) {
-                            $errorList = array_slice($errors, 0, 5);
-                            $errorMessage = "Import completed with errors: $summary<br><br>" . implode('<br>', $errorList);
-                            if (count($errors) > 5) {
-                                $errorMessage .= "<br>...and " . (count($errors) - 5) . " more errors";
-                            }
-                        } else {
-                            $successMessage = "Import completed successfully: $summary";
+                    }
+                    
+                    fclose($handle);
+                    
+                    $summary = "$imported PSLOs imported, $updated updated";
+                    if ($programsCreated > 0) {
+                        $summary .= ", $programsCreated programs created";
+                    }
+                    
+                    if (count($errors) > 0) {
+                        $errorList = array_slice($errors, 0, 5);
+                        $errorMessage = "Import completed with errors: $summary<br><br>" . implode('<br>', $errorList);
+                        if (count($errors) > 5) {
+                            $errorMessage .= "<br>...and " . (count($errors) - 5) . " more errors";
                         }
                     } else {
-                        $errorMessage = 'Failed to read CSV file';
+                        $successMessage = "Import completed successfully: $summary";
                     }
                 } else {
-                    $errorMessage = 'No file uploaded or upload error occurred';
+                    $errorMessage = 'Failed to read CSV file';
                 }
-                break;
+            } else {
+                $errorMessage = 'No file uploaded or upload error occurred';
+            }
+            break;
         }
     } catch (\Exception $e) {
         $errorMessage = 'Operation failed: ' . htmlspecialchars($e->getMessage());
@@ -336,12 +379,30 @@ $termsResult = $db->query("
     SELECT terms_pk, term_code, term_name, academic_year
     FROM {$dbPrefix}terms
     WHERE is_active = 1
-    ORDER BY term_name DESC
+    ORDER BY term_code ASC
 ");
 $terms = $termsResult->fetchAll();
 
 // Get selected term (default to latest/first)
-$selectedTermFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : ($terms[0]['terms_pk'] ?? null);
+$selectedTermFk = getSelectedTermFk();
+if (!$selectedTermFk && !empty($terms)) {
+    $selectedTermFk = $terms[0]['terms_pk'];
+    // Save to session for header dropdown sync
+    $_SESSION['selected_term_fk'] = $selectedTermFk;
+}
+
+// Get selected term name
+$selectedTermName = '';
+$selectedTermCode = '';
+if ($selectedTermFk && !empty($terms)) {
+    foreach ($terms as $term) {
+        if ($term['terms_pk'] == $selectedTermFk) {
+            $selectedTermName = $term['term_name'];
+            $selectedTermCode = $term['term_code'];
+            break;
+        }
+    }
+}
 
 // Fetch programs for dropdown
 $programsResult = $db->query("SELECT * FROM {$dbPrefix}programs WHERE is_active = 1 ORDER BY program_name ASC");
@@ -377,9 +438,17 @@ require_once __DIR__ . '/../system/Core/ThemeLoader.php';
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
+$pageTitle = 'Program Outcomes';
+if ($selectedTermName) {
+    $pageTitle .= ' - ' . $selectedTermName;
+    if ($selectedTermCode) {
+        $pageTitle .= ' (' . $selectedTermCode . ')';
+    }
+}
+
 $context = new ThemeContext([
     'layout' => 'admin',
-    'pageTitle' => 'Program Outcomes',
+    'pageTitle' => $pageTitle,
     'currentPage' => 'admin_program_outcomes',
     'breadcrumbs' => [
         ['url' => BASE_URL, 'label' => 'Home'],
@@ -425,39 +494,6 @@ $theme->showHeader($context);
         </div>
         <?php endif; ?>
         
-        <!-- Statistics Row -->
-        <div class="row mb-3">
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-info"><i class="fas fa-bullseye"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Total Outcomes</span>
-                        <span class="info-box-number"><?= $totalOutcomes ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Active Outcomes</span>
-                        <span class="info-box-number"><?= $activeOutcomes ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-warning"><i class="fas fa-ban"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Inactive Outcomes</span>
-                        <span class="info-box-number"><?= $inactiveOutcomes ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
         <!-- Program Outcomes Table -->
         <div class="card shadow-sm">
             <div class="card-header">
@@ -469,7 +505,7 @@ $theme->showHeader($context);
                         <i class="fas fa-plus"></i> Add Outcome
                     </button>
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadCsvModal">
-                        <i class="fas fa-upload"></i> Import CSV
+                        <i class="fas fa-upload"></i> Import PSLOs
                     </button>
                 </div>
             </div>
@@ -479,16 +515,14 @@ $theme->showHeader($context);
                         <tr>
                             <th>ID</th>
                             <th>Program</th>
-                            <th>Code</th>
-                            <th>Description</th>
-                            <th>Institutional Outcome</th>
+                            <th>PSLO Code</th>
+                            <th>PSLO Language</th>
+                            <th>ISLO Map</th>
                             <th>Sequence</th>
                             <th>Status</th>
-                            <th>Created</th>
                             <th>Actions</th>
                         </tr>
                         <tr>
-                            <th></th>
                             <th></th>
                             <th></th>
                             <th></th>
@@ -717,32 +751,35 @@ $theme->showHeader($context);
                 <input type="hidden" name="action" value="import">
                 <div class="modal-header">
                     <h5 class="modal-title" id="uploadCsvModalLabel">
-                        <i class="fas fa-upload"></i> Import Program Outcomes CSV
+                        <i class="fas fa-upload"></i> Import PSLOs
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="outcomeUpload" class="form-label">CSV File</label>
+                        <label for="outcomeUpload" class="form-label">Upload CSV File</label>
                         <input type="file" class="form-control" id="outcomeUpload" name="outcome_upload" accept=".csv" required>
+                        <small class="form-text text-muted">
+                            CSV format: Program Name, Program Outcome (header row optional)<br>
+                            Example file: <code>data/PSLO.csv</code>
+                        </small>
                     </div>
                     <div class="alert alert-info">
-                        <strong>CSV Format:</strong>
+                        <i class="fas fa-info-circle"></i>
                         <ul class="mb-0 small">
-                            <li>program_code,outcome_code,outcome_description,institutional_outcome_code,sequence_num,is_active</li>
-                            <li>program_code: Existing program code (required)</li>
-                            <li>outcome_code: Unique code for this program (required)</li>
-                            <li>outcome_description: Full description (required)</li>
-                            <li>institutional_outcome_code: Optional mapping to institutional outcome</li>
-                            <li>sequence_num: Display order (default 0)</li>
-                            <li>is_active: 1 or 0 (default 0)</li>
+                            <li>Programs will be auto-created if they don't exist</li>
+                            <li>PSLOs will be matched to programs by name</li>
+                            <li>Codes will be auto-generated as PSLO-P{ID}-1, PSLO-P{ID}-2, etc.</li>
+                            <li>Duplicate descriptions will be skipped</li>
+                            <li>All imported PSLOs and programs will be set to active</li>
+                            <li>Programs will be assigned to the currently selected term</li>
                         </ul>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-success">
-                        <i class="fas fa-upload"></i> Upload
+                        <i class="fas fa-upload"></i> Import
                     </button>
                 </div>
             </form>
@@ -834,7 +871,7 @@ $(document).ready(function() {
         order: [[5, 'asc'], [2, 'asc']],
         pageLength: 25,
         columnDefs: [
-            { targets: [8], orderable: false },
+            { targets: [7], orderable: false },
             { targets: [0], visible: false }
         ],
         language: {

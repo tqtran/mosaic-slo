@@ -140,14 +140,13 @@ foreach ($outcomes as $row) {
         : '<span class="text-muted">N/A</span>';
     
     $data[] = [
-        htmlspecialchars($row['program_outcomes_pk']),
+        htmlspecialchars((string)$row['program_outcomes_pk']),
         htmlspecialchars($row['program_name']),
         '<span class="badge bg-primary">' . htmlspecialchars($row['outcome_code']) . '</span>',
         htmlspecialchars($descriptionPreview),
         $institutionalOutcome,
-        htmlspecialchars($row['sequence_num']),
+        htmlspecialchars((string)$row['sequence_num']),
         '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
-        htmlspecialchars($row['created_at'] ?? ''),
         '<button class="btn btn-sm btn-info" title="View" onclick=\'viewOutcome(' . $rowJson . ')\'><i class="fas fa-eye"></i></button> ' .
         '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editOutcome(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
         '<button class="btn btn-sm btn-' . $toggleClass . '" title="Toggle Status" onclick="toggleStatus(' . $row['program_outcomes_pk'] . ', \'' . htmlspecialchars($row['outcome_code'], ENT_QUOTES) . '\')"><i class="fas fa-' . $toggleIcon . '"></i></button> ' .

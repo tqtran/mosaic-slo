@@ -89,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             [$studentCNum],
                             's'
                         );
-                        $studentFk = $db->lastInsertId();
+                        $studentFk = $db->getInsertId();
                     } else {
                         $student = $studentResult->fetch();
                         $studentFk = $student['students_pk'];
@@ -197,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         [$studentCNum, $firstName, $lastName],
                                         'sss'
                                     );
-                                    $studentFk = $db->lastInsertId();
+                                    $studentFk = $db->getInsertId();
                                 } else {
                                     // Update student name if provided and currently null
                                     $student = $studentResult->fetch();
@@ -281,7 +281,7 @@ $termsResult = $db->query("
     SELECT terms_pk, term_code, term_name, academic_year
     FROM {$dbPrefix}terms
     WHERE is_active = 1
-    ORDER BY term_name DESC
+    ORDER BY term_code ASC
 ");
 $terms = $termsResult->fetchAll();
 
@@ -289,6 +289,21 @@ $terms = $termsResult->fetchAll();
 $selectedTermFk = getSelectedTermFk();
 if (!$selectedTermFk && !empty($terms)) {
     $selectedTermFk = $terms[0]['terms_pk'];
+    // Save to session for header dropdown sync
+    $_SESSION['selected_term_fk'] = $selectedTermFk;
+}
+
+// Get selected term name
+$selectedTermName = '';
+$selectedTermCode = '';
+if ($selectedTermFk && !empty($terms)) {
+    foreach ($terms as $term) {
+        if ($term['terms_pk'] == $selectedTermFk) {
+            $selectedTermName = $term['term_name'];
+            $selectedTermCode = $term['term_code'];
+            break;
+        }
+    }
 }
 
 // Calculate statistics (filtered by term)
@@ -324,9 +339,17 @@ require_once __DIR__ . '/../system/Core/ThemeLoader.php';
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
+$pageTitle = 'Enrollment Management';
+if ($selectedTermName) {
+    $pageTitle .= ' - ' . $selectedTermName;
+    if ($selectedTermCode) {
+        $pageTitle .= ' (' . $selectedTermCode . ')';
+    }
+}
+
 $context = new ThemeContext([
     'layout' => 'admin',
-    'pageTitle' => 'Enrollment Management',
+    'pageTitle' => $pageTitle,
     'currentPage' => 'admin_enrollment',
     'breadcrumbs' => [
         ['url' => BASE_URL, 'label' => 'Home'],
@@ -371,49 +394,6 @@ $theme->showHeader($context);
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php endif; ?>
-        
-        <!-- Statistics Row -->
-        <div class="row mb-3">
-            <div class="col-12 col-sm-6 col-md-3">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-info"><i class="fas fa-users"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Total Enrollments</span>
-                        <span class="info-box-number"><?= $totalEnrollments ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-3">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-success"><i class="fas fa-user-check"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Currently Enrolled</span>
-                        <span class="info-box-number"><?= $enrolledCount ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-3">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-primary"><i class="fas fa-graduation-cap"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Completed</span>
-                        <span class="info-box-number"><?= $completedCount ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-3">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-warning"><i class="fas fa-user-xmark"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Dropped</span>
-                        <span class="info-box-number"><?= $droppedCount ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Enrollment Table -->
         <div class="card">

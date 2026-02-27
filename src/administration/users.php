@@ -234,39 +234,6 @@ $theme->showHeader($context);
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php endif; ?>
-        
-        <!-- Statistics Row -->
-        <div class="row">
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-info"><i class="fas fa-users"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Total Users</span>
-                        <span class="info-box-number"><?= $totalUsers ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-success"><i class="fas fa-user-check"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Active Users</span>
-                        <span class="info-box-number"><?= $activeUsers ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-warning"><i class="fas fa-user-slash"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Inactive Users</span>
-                        <span class="info-box-number"><?= $inactiveUsers ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Users Table -->
         <div class="card shadow-sm">

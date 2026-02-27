@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS tbl_assessments;
 DROP TABLE IF EXISTS tbl_enrollment;
 DROP TABLE IF EXISTS tbl_students;
 DROP TABLE IF EXISTS tbl_student_learning_outcomes;
+DROP TABLE IF EXISTS tbl_sections;
 DROP TABLE IF EXISTS tbl_courses;
 DROP TABLE IF EXISTS tbl_program_outcomes;
 DROP TABLE IF EXISTS tbl_programs;
@@ -175,6 +176,31 @@ CREATE TABLE tbl_courses (
     INDEX idx_program_fk (program_fk),
     INDEX idx_term_fk (term_fk),
     INDEX idx_course_number (course_number),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE tbl_sections (
+    sections_pk INT AUTO_INCREMENT PRIMARY KEY,
+    course_fk INT NOT NULL,
+    term_fk INT NOT NULL,
+    section_id VARCHAR(20) NOT NULL COMMENT 'Section identifier (e.g., 01, 02, A, B)',
+    crn VARCHAR(20) COMMENT 'Course Reference Number from Banner SIS',
+    instructor_name VARCHAR(255),
+    max_enrollment INT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by_fk INT,
+    updated_by_fk INT,
+    FOREIGN KEY (course_fk) REFERENCES tbl_courses(courses_pk) ON DELETE CASCADE,
+    FOREIGN KEY (term_fk) REFERENCES tbl_terms(terms_pk) ON DELETE CASCADE,
+    FOREIGN KEY (created_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    UNIQUE KEY unique_course_term_section (course_fk, term_fk, section_id),
+    INDEX idx_course_fk (course_fk),
+    INDEX idx_term_fk (term_fk),
+    INDEX idx_section_id (section_id),
+    INDEX idx_crn (crn),
     INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

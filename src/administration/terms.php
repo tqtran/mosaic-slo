@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     [$destTermPk, $io['outcome_code'], $io['outcome_description'], $io['sequence_num'], $io['is_active']],
                                     'issii'
                                 );
-                                $newIoPk = $db->lastInsertId();
+                                $newIoPk = $db->getInsertId();
                                 $ioMapping[$io['institutional_outcomes_pk']] = $newIoPk;
                                 $copiedInstitutionalOutcomes++;
                             }
@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     [$destTermPk, $program['program_code'], $program['program_name'], $program['degree_type'], $program['is_active']],
                                     'isssi'
                                 );
-                                $newProgramPk = $db->lastInsertId();
+                                $newProgramPk = $db->getInsertId();
                                 $programMapping[$sourceProgramPk] = $newProgramPk;
                                 $copiedPrograms++;
                             }
@@ -174,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         [$newProgramPk, $newIoFk, $outcome['outcome_code'], $outcome['outcome_description'], $outcome['sequence_num'], $outcome['is_active']],
                                         'iissii'
                                     );
-                                    $newProgramOutcomePk = $db->lastInsertId();
+                                    $newProgramOutcomePk = $db->getInsertId();
                                     $programOutcomeMapping[$outcome['program_outcomes_pk']] = $newProgramOutcomePk;
                                     $copiedProgramOutcomes++;
                                 }
@@ -219,7 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     [$newProgramFk, $destTermPk, $course['course_number'], $course['course_name'], $course['is_active']],
                                     'iissi'
                                 );
-                                $newCoursePk = $db->lastInsertId();
+                                $newCoursePk = $db->getInsertId();
                                 $courseMapping[$sourceCoursePk] = $newCoursePk;
                                 $copiedCourses++;
                             }
@@ -543,7 +543,7 @@ $termsWithCourses = $coursesRow['total'] ?? 0;
 $allTermsResult = $db->query("
     SELECT term_code, term_name 
     FROM {$dbPrefix}terms 
-    ORDER BY term_code DESC
+    ORDER BY term_code ASC
 ");
 $allTerms = $allTermsResult->fetchAll();
 
@@ -600,39 +600,6 @@ $theme->showHeader($context);
         </div>
         <?php endif; ?>
         
-        <!-- Statistics Row -->
-        <div class="row">
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-info"><i class="fas fa-calendar-week"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Total Terms</span>
-                        <span class="info-box-number"><?= $totalTerms ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Active Terms</span>
-                        <span class="info-box-number"><?= $activeTerms ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-primary"><i class="fas fa-bookmark"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Terms with Courses</span>
-                        <span class="info-box-number"><?= $termsWithCourses ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
         <!-- Terms Table -->
         <div class="card shadow-sm mt-4">
             <div class="card-header">
@@ -658,21 +625,11 @@ $theme->showHeader($context);
                 <table id="termsTable" class="table table-bordered table-striped table-hover">
                     <thead>
                         <tr>
-                            <th>ID</th>
                             <th>Term Code</th>
                             <th>Term Name</th>
-                            <th>Academic Year</th>
-                            <th>Start Date</th>
-                            <th>End Date</th>
-                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                         <tr>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
                             <th></th>
                             <th></th>
                             <th></th>
@@ -987,12 +944,11 @@ $(document).ready(function() {
         ajax: 'terms_data.php',
         dom: 'Bfrtip',
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
-        order: [[1, 'desc']],
+        order: [[0, 'desc']],
         pageLength: 25,
         orderCellsTop: true, // Use the top row for sorting
         columnDefs: [
-            { targets: [0], visible: false },
-            { targets: [7], orderable: false, searchable: false }
+            { targets: [2], orderable: false, searchable: false }
         ],
         language: {
             search: "_INPUT_",

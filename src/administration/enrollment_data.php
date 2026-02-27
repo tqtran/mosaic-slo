@@ -173,7 +173,7 @@ foreach ($enrollments as $row) {
     $rowJson = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
     
     $data[] = [
-        htmlspecialchars($row['enrollment_pk']),
+        htmlspecialchars((string)$row['enrollment_pk']),
         '<span class="badge bg-info">' . htmlspecialchars($row['term_code']) . '</span>',
         '<span class="badge bg-primary">' . htmlspecialchars($row['crn']) . '</span>',
         htmlspecialchars($row['student_id']),

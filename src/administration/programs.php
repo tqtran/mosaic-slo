@@ -276,12 +276,30 @@ $termsResult = $db->query("
     SELECT terms_pk, term_code, term_name, academic_year
     FROM {$dbPrefix}terms
     WHERE is_active = 1
-    ORDER BY term_name DESC
+    ORDER BY term_code ASC
 ");
 $terms = $termsResult->fetchAll();
 
 // Get selected term (default to latest/first)
-$selectedTermFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : ($terms[0]['terms_pk'] ?? null);
+$selectedTermFk = getSelectedTermFk();
+if (!$selectedTermFk && !empty($terms)) {
+    $selectedTermFk = $terms[0]['terms_pk'];
+    // Save to session for header dropdown sync
+    $_SESSION['selected_term_fk'] = $selectedTermFk;
+}
+
+// Get selected term name
+$selectedTermName = '';
+$selectedTermCode = '';
+if ($selectedTermFk && !empty($terms)) {
+    foreach ($terms as $term) {
+        if ($term['terms_pk'] == $selectedTermFk) {
+            $selectedTermName = $term['term_name'];
+            $selectedTermCode = $term['term_code'];
+            break;
+        }
+    }
+}
 
 // Calculate statistics (filtered by term)
 $termFilter = $selectedTermFk ? "WHERE term_fk = {$selectedTermFk}" : '';
@@ -303,9 +321,17 @@ require_once __DIR__ . '/../system/Core/ThemeLoader.php';
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
+$pageTitle = 'Program Management';
+if ($selectedTermName) {
+    $pageTitle .= ' - ' . $selectedTermName;
+    if ($selectedTermCode) {
+        $pageTitle .= ' (' . $selectedTermCode . ')';
+    }
+}
+
 $context = new ThemeContext([
     'layout' => 'admin',
-    'pageTitle' => 'Program Management',
+    'pageTitle' => $pageTitle,
     'currentPage' => 'admin_programs',
     'breadcrumbs' => [
         ['url' => BASE_URL, 'label' => 'Home'],
@@ -350,39 +376,6 @@ $theme->showHeader($context);
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php endif; ?>
-        
-        <!-- Statistics Row -->
-        <div class="row mb-3">
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-info"><i class="fas fa-graduation-cap"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Total Programs</span>
-                        <span class="info-box-number"><?= $totalPrograms ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Active Programs</span>
-                        <span class="info-box-number"><?= $activePrograms ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-warning"><i class="fas fa-ban"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Inactive Programs</span>
-                        <span class="info-box-number"><?= $inactivePrograms ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Programs Table -->
         <div class="card">
@@ -398,25 +391,36 @@ $theme->showHeader($context);
                 </div>
             </div>
             <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="degreeTypeFilter" class="form-label">Degree Type:</label>
+                        <select id="degreeTypeFilter" class="form-select">
+                            <option value="">All Degree Types</option>
+                            <?php
+                            $degreeTypes = explode(',', $config->get('app.degree_types', 'Associate of Arts (AA),Associate of Science (AS),Associate in Arts for Transfer (AA-T),Associate in Science for Transfer (AS-T),Bachelor of Science (BS),Bachelor of Applied Science (BAS),Certificate of Achievement (16 or more semester units),Certificate of Achievement (8-15.5 semester units),Local Certificate (fewer than 8 semester units),Noncredit Certificate of Completion,Noncredit Certificate of Competency'));
+                            foreach ($degreeTypes as $type) {
+                                $type = trim($type);
+                                echo '<option value="' . htmlspecialchars($type) . '">' . htmlspecialchars($type) . '</option>';
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="statusFilter" class="form-label">Status:</label>
+                        <select id="statusFilter" class="form-select">
+                            <option value="">All Statuses</option>
+                            <option value="1">Active</option>
+                            <option value="0">Inactive</option>
+                        </select>
+                    </div>
+                </div>
                 <table id="programsTable" class="table table-bordered table-striped">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Program Code</th>
                             <th>Program Name</th>
                             <th>Degree Type</th>
                             <th>Status</th>
-                            <th>Created</th>
                             <th>Actions</th>
-                        </tr>
-                        <tr>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -448,7 +452,16 @@ $theme->showHeader($context);
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="degreeType" class="form-label">Degree Type</label>
-                            <input type="text" class="form-control" id="degreeType" name="degree_type" maxlength="50" placeholder="e.g., AS, BS, BA, MS">
+                            <select class="form-select" id="degreeType" name="degree_type">
+                                <option value="">Select Degree Type</option>
+                                <?php
+                                $degreeTypes = explode(',', $config->get('app.degree_types', 'Associate of Arts (AA),Associate of Science (AS),Associate in Arts for Transfer (AA-T),Associate in Science for Transfer (AS-T),Bachelor of Science (BS),Bachelor of Applied Science (BAS),Certificate of Achievement (16 or more semester units),Certificate of Achievement (8-15.5 semester units),Local Certificate (fewer than 8 semester units),Noncredit Certificate of Completion,Noncredit Certificate of Competency'));
+                                foreach ($degreeTypes as $type) {
+                                    $type = trim($type);
+                                    echo '<option value="' . htmlspecialchars($type) . '">' . htmlspecialchars($type) . '</option>';
+                                }
+                                ?>
+                            </select>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -460,8 +473,7 @@ $theme->showHeader($context);
                         <select class="form-select" id="termFk" name="term_fk" required>
                             <?php foreach ($terms as $term): ?>
                                 <option value="<?= $term['terms_pk'] ?>" <?= $term['terms_pk'] == $selectedTermFk ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($term['term_name']) ?>
-                                    <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
+                                    <?= htmlspecialchars($term['term_code'] . ' - ' . $term['term_name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -500,7 +512,16 @@ $theme->showHeader($context);
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="editDegreeType" class="form-label">Degree Type</label>
-                            <input type="text" class="form-control" id="editDegreeType" name="degree_type" maxlength="50">
+                            <select class="form-select" id="editDegreeType" name="degree_type">
+                                <option value="">Select Degree Type</option>
+                                <?php
+                                $degreeTypes = explode(',', $config->get('app.degree_types', 'Associate of Arts (AA),Associate of Science (AS),Associate in Arts for Transfer (AA-T),Associate in Science for Transfer (AS-T),Bachelor of Science (BS),Bachelor of Applied Science (BAS),Certificate of Achievement (16 or more semester units),Certificate of Achievement (8-15.5 semester units),Local Certificate (fewer than 8 semester units),Noncredit Certificate of Completion,Noncredit Certificate of Competency'));
+                                foreach ($degreeTypes as $type) {
+                                    $type = trim($type);
+                                    echo '<option value="' . htmlspecialchars($type) . '">' . htmlspecialchars($type) . '</option>';
+                                }
+                                ?>
+                            </select>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -512,8 +533,7 @@ $theme->showHeader($context);
                         <select class="form-select" id="editTermFk" name="term_fk" required>
                             <?php foreach ($terms as $term): ?>
                                 <option value="<?= $term['terms_pk'] ?>">
-                                    <?= htmlspecialchars($term['term_name']) ?>
-                                    <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
+                                    <?= htmlspecialchars($term['term_code'] . ' - ' . $term['term_name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -605,7 +625,8 @@ $theme->showHeader($context);
                     <div class="mb-3">
                         <label for="programUpload" class="form-label">Upload CSV File</label>
                         <input type="file" class="form-control" id="programUpload" name="program_upload" accept=".csv" required>
-                        <small class="form-text text-muted">CSV format: Program Code, Program Name, Degree Type, Term Code, Status (Active/Inactive)</small>
+                        <small class="form-text text-muted">CSV format: Program Code, Program Name, Degree Type, Term Code, Status (Active/Inactive)<br>
+                        Note: Degree types containing commas should be quoted (e.g., "Certificate of Achievement (16 or more semester units)")</small>
                     </div>
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> Existing records with matching codes will be updated.
@@ -649,25 +670,15 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-
-    // Setup - add filters to each header cell (second row)
-    $('#programsTable thead tr:eq(1) th').each(function(i) {
-        var title = $('#programsTable thead tr:eq(0) th:eq(' + i + ')').text();
-        if (title !== 'Actions') {
-            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
-        } else {
-            $(this).html(''); // No filter for Actions column
-        }
-    });
-    
     var table = $('#programsTable').DataTable({
-        orderCellsTop: true,
         processing: true,
         serverSide: true,
         ajax: {
             url: '<?= BASE_URL ?>administration/programs_data.php',
             data: function(d) {
                 d.term_fk = $('#termFilter').val();
+                d.degree_type = $('#degreeTypeFilter').val();
+                d.status = $('#statusFilter').val();
             }
         },
         dom: 'Bfrtip',
@@ -675,25 +686,22 @@ $(document).ready(function() {
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         columns: [
-            { data: 0, name: 'programs_pk' },
-            { data: 1, name: 'program_code' },
-            { data: 2, name: 'program_name' },
-            { data: 3, name: 'degree_type' },
-            { data: 4, name: 'is_active' },
-            { data: 5, name: 'created_at' },
-            { data: 6, name: 'actions', orderable: false, searchable: false }
+            { data: 0, name: 'program_name' },
+            { data: 1, name: 'degree_type' },
+            { data: 2, name: 'is_active' },
+            { data: 3, name: 'actions', orderable: false, searchable: false }
         ],
-        initComplete: function() {
-            // Apply the search
-            this.api().columns().every(function() {
-                var column = this;
-                $('input', this.header()).on('keyup change clear', function() {
-                    if (column.search() !== this.value) {
-                        column.search(this.value).draw();
-                    }
-                });
-            });
-        }
+        order: [[0, 'asc']]
+    });
+
+    // Reload table when filters change
+    $('#degreeTypeFilter, #statusFilter').on('change', function() {
+        table.ajax.reload();
+    });
+
+    // Term filter already handled
+    $('#termFilter').on('change', function() {
+        table.ajax.reload();
     });
 });
 

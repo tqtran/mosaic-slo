@@ -62,7 +62,7 @@
                     SELECT terms_pk, term_code, term_name, academic_year
                     FROM {$dbPrefix}terms 
                     WHERE is_active = 1 
-                    ORDER BY term_name DESC
+                    ORDER BY term_code ASC
                 ");
                 $headerTerms = $headerTermsResult->fetchAll();
                 
@@ -83,8 +83,7 @@
                 <?php else: ?>
                     <?php foreach ($headerTerms as $headerTerm): ?>
                         <option value="<?= $headerTerm['terms_pk'] ?>" <?= $headerTerm['terms_pk'] == $headerSelectedTerm ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($headerTerm['term_name']) ?>
-                            <?= !empty($headerTerm['academic_year']) ? ' (' . htmlspecialchars($headerTerm['academic_year']) . ')' : '' ?>
+                            <?= htmlspecialchars($headerTerm['term_code'] . ' - ' . $headerTerm['term_name']) ?>
                         </option>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -155,7 +154,7 @@
                 <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_institutional_outcomes' ? 'active' : '' ?>">
                         <i class="nav-icon bi bi-flag"></i>
-                        <p>Institutional Outcomes</p>
+                        <p>ISLO</p>
                     </a>
                 </li>
                 
@@ -169,7 +168,7 @@
                 <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/program_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_program_outcomes' ? 'active' : '' ?>">
                         <i class="nav-icon bi bi-bullseye"></i>
-                        <p>Program Outcomes</p>
+                        <p>PSLO</p>
                     </a>
                 </li>
                 
@@ -181,29 +180,15 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/sections.php" class="nav-link <?= ($currentPage ?? '') === 'admin_sections' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-grid-3x3"></i>
+                        <p>Sections</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/student_learning_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_slos' ? 'active' : '' ?>">
                         <i class="nav-icon bi bi-list-check"></i>
-                        <p>Student Learning Outcomes</p>
-                    </a>
-                </li>
-                
-                <li class="nav-header">STUDENTS & ASSESSMENT</li>
-                <li class="nav-item">
-                    <a href="<?= BASE_URL ?>administration/students.php" class="nav-link <?= ($currentPage ?? '') === 'admin_students' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-person-badge"></i>
-                        <p>Students</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="<?= BASE_URL ?>administration/enrollment.php" class="nav-link <?= ($currentPage ?? '') === 'admin_enrollment' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-person-check"></i>
-                        <p>Enrollment</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="<?= BASE_URL ?>administration/assessments.php" class="nav-link <?= ($currentPage ?? '') === 'admin_assessments' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-clipboard-check"></i>
-                        <p>Assessments</p>
+                        <p>CSLO</p>
                     </a>
                 </li>
                 

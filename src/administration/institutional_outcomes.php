@@ -171,20 +171,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $imported = 0;
                         $skipped = 0;
                         
+                        // Get selected term for import
+                        $selectedTermFk = getSelectedTermFk();
+                        if (!$selectedTermFk) {
+                            $errorMessage = 'No term selected. Please select a term first.';
+                            fclose($handle);
+                            break;
+                        }
+                        
+                        $sequenceNum = 1;
                         while (($row = fgetcsv($handle)) !== false) {
-                            if (count($row) >= 2) {
-                                $outcomeCode = trim($row[0]);
-                                $outcomeDescription = trim($row[1]);
-                                $sequenceNum = isset($row[2]) ? (int)trim($row[2]) : 0;
-                                $isActive = isset($row[3]) && strtolower(trim($row[3])) === 'active' ? 1 : 0;
+                            if (count($row) >= 1 && !empty(trim($row[0]))) {
+                                $outcomeDescription = trim($row[0]);
+                                $outcomeCode = 'ISLO-' . $sequenceNum; // Auto-generate code
                                 
-                                if (!empty($outcomeCode) && !empty($outcomeDescription) && preg_match('/^[A-Z0-9_.-]+$/i', $outcomeCode)) {
-                                    // Check if exists
+                                if (!empty($outcomeDescription)) {
+                                    // Check if exists for this term
                                     $result = $db->query(
                                         "SELECT institutional_outcomes_pk FROM {$dbPrefix}institutional_outcomes 
-                                         WHERE outcome_code = ?",
-                                        [$outcomeCode],
-                                        's'
+                                         WHERE outcome_code = ? AND term_fk = ?",
+                                        [$outcomeCode, $selectedTermFk],
+                                        'si'
                                     );
                                     
                                     if ($result->rowCount() > 0) {
@@ -192,21 +199,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         $existing = $result->fetch();
                                         $db->query(
                                             "UPDATE {$dbPrefix}institutional_outcomes 
-                                             SET outcome_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
+                                             SET outcome_description = ?, sequence_num = ?, updated_at = NOW()
                                              WHERE institutional_outcomes_pk = ?",
-                                            [$outcomeDescription, $sequenceNum, $isActive, $existing['institutional_outcomes_pk']],
-                                            'siii'
+                                            [$outcomeDescription, $sequenceNum, $existing['institutional_outcomes_pk']],
+                                            'sii'
                                         );
                                     } else {
                                         // Insert new
                                         $db->query(
-                                            "INSERT INTO {$dbPrefix}institutional_outcomes (outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
-                                             VALUES (?, ?, ?, ?, NOW(), NOW())",
-                                            [$outcomeCode, $outcomeDescription, $sequenceNum, $isActive],
-                                            'ssii'
+                                            "INSERT INTO {$dbPrefix}institutional_outcomes (term_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
+                                             VALUES (?, ?, ?, ?, 1, NOW(), NOW())",
+                                            [$selectedTermFk, $outcomeCode, $outcomeDescription, $sequenceNum],
+                                            'issi'
                                         );
                                     }
                                     $imported++;
+                                    $sequenceNum++;
                                 } else {
                                     $skipped++;
                                 }
@@ -214,7 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         
                         fclose($handle);
-                        $successMessage = "Import completed: {$imported} records imported/updated, {$skipped} skipped";
+                        $successMessage = "Import completed: {$imported} ISLOs imported/updated, {$skipped} skipped";
                     } else {
                         $errorMessage = 'Failed to read CSV file';
                     }
@@ -241,12 +249,30 @@ $termsResult = $db->query("
     SELECT terms_pk, term_code, term_name, academic_year
     FROM {$dbPrefix}terms
     WHERE is_active = 1
-    ORDER BY term_name DESC
+    ORDER BY term_code ASC
 ");
 $terms = $termsResult->fetchAll();
 
 // Get selected term (default to latest/first)
-$selectedTermFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : ($terms[0]['terms_pk'] ?? null);
+$selectedTermFk = getSelectedTermFk();
+if (!$selectedTermFk && !empty($terms)) {
+    $selectedTermFk = $terms[0]['terms_pk'];
+    // Save to session for header dropdown sync
+    $_SESSION['selected_term_fk'] = $selectedTermFk;
+}
+
+// Get selected term name
+$selectedTermName = '';
+$selectedTermCode = '';
+if ($selectedTermFk && !empty($terms)) {
+    foreach ($terms as $term) {
+        if ($term['terms_pk'] == $selectedTermFk) {
+            $selectedTermName = $term['term_name'];
+            $selectedTermCode = $term['term_code'];
+            break;
+        }
+    }
+}
 
 // Calculate statistics (filtered by term)
 $termFilter = $selectedTermFk ? "WHERE term_fk = {$selectedTermFk}" : '';
@@ -268,9 +294,17 @@ require_once __DIR__ . '/../system/Core/ThemeLoader.php';
 use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
+$pageTitle = 'Institutional Outcomes';
+if ($selectedTermName) {
+    $pageTitle .= ' - ' . $selectedTermName;
+    if ($selectedTermCode) {
+        $pageTitle .= ' (' . $selectedTermCode . ')';
+    }
+}
+
 $context = new ThemeContext([
     'layout' => 'admin',
-    'pageTitle' => 'Institutional Outcomes',
+    'pageTitle' => $pageTitle,
     'currentPage' => 'admin_institutional_outcomes',
     'breadcrumbs' => [
         ['url' => BASE_URL, 'label' => 'Home'],
@@ -315,39 +349,6 @@ $theme->showHeader($context);
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php endif; ?>
-        
-        <!-- Statistics Row -->
-        <div class="row mb-3">
-            <div class="col-12 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-info"><i class="fas fa-flag"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Total Outcomes</span>
-                        <span class="info-box-number"><?= $totalOutcomes ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Active Outcomes</span>
-                        <span class="info-box-number"><?= $activeOutcomes ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-warning"><i class="fas fa-ban"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Inactive Outcomes</span>
-                        <span class="info-box-number"><?= $inactiveOutcomes ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Outcomes Table -->
         <div class="card">
@@ -358,7 +359,7 @@ $theme->showHeader($context);
                         <i class="fas fa-plus"></i> Add Outcome
                     </button>
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                        <i class="fas fa-file-upload"></i> Import CSV
+                        <i class="fas fa-file-upload"></i> Import ISLOs
                     </button>
                 </div>
             </div>
@@ -411,8 +412,7 @@ $theme->showHeader($context);
                             <select class="form-select" id="addTermFk" name="term_fk" required>
                                 <?php foreach ($terms as $term): ?>
                                     <option value="<?= $term['terms_pk'] ?>" <?= $term['terms_pk'] == $selectedTermFk ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($term['term_name']) ?>
-                                        <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
+                                        <?= htmlspecialchars($term['term_code'] . ' - ' . $term['term_name']) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -464,8 +464,7 @@ $theme->showHeader($context);
                             <select class="form-select" id="editTermFk" name="term_fk" required>
                                 <?php foreach ($terms as $term): ?>
                                     <option value="<?= $term['terms_pk'] ?>">
-                                        <?= htmlspecialchars($term['term_name']) ?>
-                                        <?= !empty($term['academic_year']) ? ' (' . htmlspecialchars($term['academic_year']) . ')' : '' ?>
+                                        <?= htmlspecialchars($term['term_code'] . ' - ' . $term['term_name']) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -556,7 +555,7 @@ $theme->showHeader($context);
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-file-upload"></i> Import Institutional Outcomes</h5>
+                <h5 class="modal-title"><i class="fas fa-file-upload"></i> Import ISLOs</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" enctype="multipart/form-data">
@@ -566,10 +565,18 @@ $theme->showHeader($context);
                     <div class="mb-3">
                         <label for="outcomeUpload" class="form-label">Upload CSV File</label>
                         <input type="file" class="form-control" id="outcomeUpload" name="outcome_upload" accept=".csv" required>
-                        <small class="form-text text-muted">CSV format: Outcome Code, Description, Sequence, Status (Active/Inactive)</small>
+                        <small class="form-text text-muted">
+                            CSV format: One ISLO description per line (header row optional)<br>
+                            Example file: <code>data/ISLOs.csv</code>
+                        </small>
                     </div>
                     <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> Existing records with matching codes will be updated.
+                        <i class="fas fa-info-circle"></i> 
+                        <ul class="mb-0 small">
+                            <li>ISLOs will be imported into the currently selected term</li>
+                            <li>Codes will be auto-generated as ISLO-1, ISLO-2, etc.</li>
+                            <li>Existing ISLOs with same codes will be updated</li>
+                        </ul>
                     </div>
                 </div>
                 <div class="modal-footer">
