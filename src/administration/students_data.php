@@ -98,25 +98,26 @@ while ($row = $result->fetch()) {
         '<span class="badge bg-secondary">Inactive</span>';
     
     $rowData = json_encode($row);
+    $escapedStudentId = htmlspecialchars($row['student_id'] ?? '', ENT_QUOTES);
     
     $actions = '
         <button type="button" class="btn btn-sm btn-primary" onclick=\'editStudent(' . $rowData . ')\' title="Edit">
             <i class="fas fa-edit"></i>
         </button>
-        <button type="button" class="btn btn-sm btn-warning" onclick="toggleStatus(' . $row['students_pk'] . ', \'' . htmlspecialchars($row['student_id'], ENT_QUOTES) . '\')" title="Toggle Status">
+        <button type="button" class="btn btn-sm btn-warning" onclick="toggleStatus(' . $row['students_pk'] . ', \'' . $escapedStudentId . '\')" title="Toggle Status">
             <i class="fas fa-toggle-on"></i>
         </button>
-        <button type="button" class="btn btn-sm btn-danger" onclick="deleteStudent(' . $row['students_pk'] . ', \'' . htmlspecialchars($row['student_id'], ENT_QUOTES) . '\')" title="Delete">
+        <button type="button" class="btn btn-sm btn-danger" onclick="deleteStudent(' . $row['students_pk'] . ', \'' . $escapedStudentId . '\')" title="Delete">
             <i class="fas fa-trash"></i>
         </button>
     ';
     
     $data[] = [
         $row['students_pk'],
-        htmlspecialchars($row['student_id']),
-        htmlspecialchars($row['first_name']),
-        htmlspecialchars($row['last_name']),
-        htmlspecialchars($row['email']),
+        htmlspecialchars($row['student_id'] ?? ''),
+        htmlspecialchars($row['first_name'] ?? ''),
+        htmlspecialchars($row['last_name'] ?? ''),
+        htmlspecialchars($row['email'] ?? ''),
         $statusBadge,
         $actions
     ];

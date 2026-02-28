@@ -91,12 +91,6 @@ if (!defined('EMERGENCY_ADMIN_PASSWORD')) {
     define('EMERGENCY_ADMIN_PASSWORD', $config->get('emergency_admin.password', null));
 }
 
-// DEBUG: Log what was loaded
-error_log("[INIT] Config loaded - emergency_admin.enabled: " . var_export($config->get('emergency_admin.enabled'), true));
-error_log("[INIT] Config loaded - emergency_admin.username: " . var_export($config->get('emergency_admin.username'), true));
-error_log("[INIT] Config loaded - emergency_admin.password: " . var_export($config->get('emergency_admin.password'), true));
-error_log("[INIT] Full config dump: " . print_r($config->all(), true));
-
 // Initialize database connection
 $db = \Mosaic\Core\Database::getInstance($configData['database']);
 
