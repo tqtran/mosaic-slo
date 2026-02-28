@@ -294,6 +294,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $headers = fgetcsv($handle); // Read header row
                 $imported = 0;
                 $skipped = 0;
+                $incomplete = 0;
+                $programsCreated = 0;
+                $coursesCreated = 0;
                 $errors = [];
                 $rowNum = 1;
                 
@@ -305,7 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE is_active = 1
                 ");
                 while ($prog = $programsResult->fetch()) {
-                    $programMap[$prog['program_code']] = $prog['programs_pk'];
+                    $programMap[trim($prog['program_code'])] = $prog['programs_pk'];
                 }
                 
                 $courseMap = [];
@@ -315,7 +318,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     WHERE is_active = 1
                 ");
                 while ($course = $coursesResult->fetch()) {
-                    $courseMap[$course['course_number']] = $course['courses_pk'];
+                    $courseMap[trim($course['course_number'])] = $course['courses_pk'];
                 }
                 
                 while (($row = fgetcsv($handle)) !== false) {
@@ -323,46 +326,101 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (count($row) >= 3) {
                         // CSV format: ProgramID,Program,Course
                         $programCode = trim($row[0]);
+                        $programName = trim($row[1]);
                         $courseNumber = trim($row[2]);
                         
-                        if (empty($programCode) || empty($courseNumber)) {
-                            $errors[] = "Row $rowNum: Missing program code or course number";
-                            continue;
+                        $programFk = null;
+                        $courseFk = null;
+                        
+                        // Create/lookup program if program code is provided
+                        if (!empty($programCode)) {
+                            if (!isset($programMap[$programCode])) {
+                                // Double-check database with TRIM in case of whitespace differences
+                                $existingProgram = $db->query(
+                                    "SELECT programs_pk FROM {$dbPrefix}programs WHERE TRIM(program_code) = ? LIMIT 1",
+                                    [$programCode],
+                                    's'
+                                );
+                                $existingRow = $existingProgram->fetch();
+                                
+                                if ($existingRow) {
+                                    // Program exists with whitespace differences - use it
+                                    $programFk = $existingRow['programs_pk'];
+                                    $programMap[$programCode] = $programFk;
+                                } else {
+                                    // Auto-create program
+                                    $db->query(
+                                        "INSERT INTO {$dbPrefix}programs (program_code, program_name, term_fk, is_active, created_at, updated_at) 
+                                         VALUES (?, ?, ?, 1, NOW(), NOW())",
+                                        [$programCode, $programName ?: $programCode, $selectedTermFk],
+                                        'ssi'
+                                    );
+                                    $programFk = $db->getInsertId();
+                                    $programMap[$programCode] = $programFk;
+                                    $programsCreated++;
+                                }
+                            } else {
+                                $programFk = $programMap[$programCode];
+                            }
                         }
                         
-                        // Lookup program_fk
-                        if (!isset($programMap[$programCode])) {
-                            $errors[] = "Row $rowNum: Program code '$programCode' not found";
-                            continue;
+                        // Create/lookup course if course number is provided
+                        if (!empty($courseNumber)) {
+                            if (!isset($courseMap[$courseNumber])) {
+                                // Double-check database with TRIM in case of whitespace differences
+                                $existingCourse = $db->query(
+                                    "SELECT courses_pk FROM {$dbPrefix}courses WHERE TRIM(course_number) = ? LIMIT 1",
+                                    [$courseNumber],
+                                    's'
+                                );
+                                $existingRow = $existingCourse->fetch();
+                                
+                                if ($existingRow) {
+                                    // Course exists with whitespace differences - use it
+                                    $courseFk = $existingRow['courses_pk'];
+                                    $courseMap[$courseNumber] = $courseFk;
+                                } else {
+                                    // Auto-create course (use course_number as course_name placeholder)
+                                    $db->query(
+                                        "INSERT INTO {$dbPrefix}courses (course_name, course_number, term_fk, is_active, created_at, updated_at) 
+                                         VALUES (?, ?, ?, 1, NOW(), NOW())",
+                                        [$courseNumber, $courseNumber, $selectedTermFk],
+                                        'ssi'
+                                    );
+                                    $courseFk = $db->getInsertId();
+                                    $courseMap[$courseNumber] = $courseFk;
+                                    $coursesCreated++;
+                                }
+                            } else {
+                                $courseFk = $courseMap[$courseNumber];
+                            }
                         }
-                        $programFk = $programMap[$programCode];
                         
-                        // Lookup course_fk
-                        if (!isset($courseMap[$courseNumber])) {
-                            $errors[] = "Row $rowNum: Course '$courseNumber' not found";
-                            continue;
-                        }
-                        $courseFk = $courseMap[$courseNumber];
-                        
-                        // Check if mapping already exists
-                        $result = $db->query(
-                            "SELECT program_courses_pk FROM {$dbPrefix}program_courses 
-                             WHERE program_fk = ? AND course_fk = ?",
-                            [$programFk, $courseFk],
-                            'ii'
-                        );
-                        
-                        if ($result->rowCount() > 0) {
-                            $skipped++;
-                        } else {
-                            // Insert new mapping
-                            $db->query(
-                                "INSERT INTO {$dbPrefix}program_courses (program_fk, course_fk, created_at) 
-                                 VALUES (?, ?, NOW())",
+                        // Only create mapping if both program and course are present
+                        if ($programFk && $courseFk) {
+                            // Check if mapping already exists
+                            $result = $db->query(
+                                "SELECT program_courses_pk FROM {$dbPrefix}program_courses 
+                                 WHERE program_fk = ? AND course_fk = ?",
                                 [$programFk, $courseFk],
                                 'ii'
                             );
-                            $imported++;
+                            
+                            if ($result->rowCount() > 0) {
+                                $skipped++;
+                            } else {
+                                // Insert new mapping
+                                $db->query(
+                                    "INSERT INTO {$dbPrefix}program_courses (program_fk, course_fk, created_at) 
+                                     VALUES (?, ?, NOW())",
+                                    [$programFk, $courseFk],
+                                    'ii'
+                                );
+                                $imported++;
+                            }
+                        } else {
+                            // Incomplete row - parent records created but mapping skipped
+                            $incomplete++;
                         }
                     }
                 }
@@ -370,8 +428,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 fclose($handle);
                 
                 $summary = "$imported program-course mappings imported";
+                if ($programsCreated > 0) {
+                    $summary .= ", $programsCreated programs created";
+                }
+                if ($coursesCreated > 0) {
+                    $summary .= ", $coursesCreated courses created";
+                }
                 if ($skipped > 0) {
                     $summary .= ", $skipped duplicates skipped";
+                }
+                if ($incomplete > 0) {
+                    $summary .= ", $incomplete incomplete rows processed (parent records created, mappings skipped)";
                 }
                 
                 if (count($errors) > 0) {
@@ -718,8 +785,10 @@ $theme->showHeader($context);
                             <ul class="mb-0 mt-2">
                                 <li>Maps courses to programs (many-to-many relationship)</li>
                                 <li>ProgramID: Program code (e.g., AS_ACC, CA_ETC)</li>
+                                <li>Program: Program name (used if program doesn't exist)</li>
                                 <li>Course: Course number (e.g., ACCT C100, EDUC C202)</li>
-                                <li>Programs and courses must already exist</li>
+                                <li><strong>Programs and courses will be auto-created if they don't exist</strong></li>
+                                <li><strong>Rows with missing program or course data will create valid parent records but skip the mapping</strong></li>
                                 <li>Duplicate mappings will be skipped</li>
                             </ul>
                         </small>

@@ -160,46 +160,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $handle = fopen($tmpName, 'r');
                     
                     if ($handle !== false) {
-                        $headers = fgetcsv($handle); // Skip header row
+                        // Skip BOM if present
+                        $bom = fread($handle, 3);
+                        if ($bom !== "\xEF\xBB\xBF") {
+                            rewind($handle);
+                        }
+                        
+                        $headers = fgetcsv($handle); // Read header row
                         $imported = 0;
+                        $updated = 0;
                         $skipped = 0;
                         $errors = [];
                         
+                        // CSV Format: BannerTerm,TermCode,StudentID,SectionID,FirstName,LastName,PartofTerm,Discipline,CourseID
                         while (($row = fgetcsv($handle)) !== false) {
-                            if (count($row) >= 3) {
-                                $termCode = trim($row[0]);  // term
-                                $crn = trim($row[1]);  // crn
-                                $studentCNum = trim($row[2]);  // cnum
-                                $firstName = isset($row[3]) ? trim($row[3]) : '';  // FN
-                                $lastName = isset($row[4]) ? trim($row[4]) : '';  // LN
-                                $enrollmentStatus = isset($row[5]) ? trim($row[5]) : '1';  // status (1,2,7)
-                                $enrollmentDate = isset($row[6]) ? trim($row[6]) : date('Y-m-d');  // regdate
-                                $lastUpdated = isset($row[7]) ? trim($row[7]) : null;  // updated
+                            if (count($row) >= 4) {
+                                $bannerTerm = trim($row[0]);  // BannerTerm (lookup in terms)
+                                $termCode = trim($row[1]);  // TermCode (informational)
+                                $studentId = trim($row[2]);  // StudentID (C-number)
+                                $sectionId = trim($row[3]);  // SectionID (CRN)
+                                $firstName = isset($row[4]) ? trim($row[4]) : '';
+                                $lastName = isset($row[5]) ? trim($row[5]) : '';
+                                $partOfTerm = isset($row[6]) ? trim($row[6]) : '';
+                                $discipline = isset($row[7]) ? trim($row[7]) : '';
+                                $courseId = isset($row[8]) ? trim($row[8]) : '';
                                 
-                                if (empty($termCode) || empty($crn) || empty($studentCNum)) {
+                                if (empty($bannerTerm) || empty($sectionId) || empty($studentId)) {
                                     $skipped++;
                                     continue;
                                 }
                                 
+                                // Lookup term by BannerTerm code
+                                $termResult = $db->query(
+                                    "SELECT term_code FROM {$dbPrefix}terms WHERE banner_term = ? AND is_active = 1",
+                                    [$bannerTerm],
+                                    's'
+                                );
+                                
+                                if ($termResult->rowCount() === 0) {
+                                    $errors[] = "Row skipped: Banner term '{$bannerTerm}' not found in terms table";
+                                    $skipped++;
+                                    continue;
+                                }
+                                
+                                $term = $termResult->fetch();
+                                $validatedTermCode = $term['term_code'];
+                                
                                 // Find or create student by student_id
                                 $studentResult = $db->query(
                                     "SELECT students_pk FROM {$dbPrefix}students WHERE student_id = ?",
-                                    [$studentCNum],
+                                    [$studentId],
                                     's'
                                 );
                                 
                                 $studentFk = null;
                                 if ($studentResult->rowCount() === 0) {
-                                    // Create student with name data from Banner
+                                    // Create student with name data from enrollment
                                     $db->query(
                                         "INSERT INTO {$dbPrefix}students (student_id, first_name, last_name, created_at, updated_at) 
                                          VALUES (?, ?, ?, NOW(), NOW())",
-                                        [$studentCNum, $firstName, $lastName],
+                                        [$studentId, $firstName, $lastName],
                                         'sss'
                                     );
                                     $studentFk = $db->getInsertId();
                                 } else {
-                                    // Update student name if provided and currently null
+                                    // Update student name if provided and currently empty
                                     $student = $studentResult->fetch();
                                     $studentFk = $student['students_pk'];
                                     if (!empty($firstName) || !empty($lastName)) {
@@ -219,40 +244,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $enrollResult = $db->query(
                                     "SELECT enrollment_pk FROM {$dbPrefix}enrollment 
                                      WHERE term_code = ? AND crn = ? AND student_fk = ?",
-                                    [$termCode, $crn, $studentFk],
+                                    [$validatedTermCode, $sectionId, $studentFk],
                                     'ssi'
                                 );
                                 
                                 if ($enrollResult->rowCount() > 0) {
-                                    // Update existing
+                                    // Update existing enrollment
                                     $enroll = $enrollResult->fetch();
-                                    $updateSql = "UPDATE {$dbPrefix}enrollment 
-                                                  SET enrollment_status = ?, enrollment_date = ?, updated_at = ";
-                                    $updateSql .= $lastUpdated ? "?" : "NOW()";
-                                    $updateSql .= " WHERE enrollment_pk = ?";
-                                    
-                                    if ($lastUpdated) {
-                                        $db->query($updateSql, [$enrollmentStatus, $enrollmentDate, $lastUpdated, $enroll['enrollment_pk']], 'sssi');
-                                    } else {
-                                        $db->query($updateSql, [$enrollmentStatus, $enrollmentDate, $enroll['enrollment_pk']], 'ssi');
-                                    }
+                                    $db->query(
+                                        "UPDATE {$dbPrefix}enrollment 
+                                         SET enrollment_status = '1', enrollment_date = NOW(), updated_at = NOW() 
+                                         WHERE enrollment_pk = ?",
+                                        [$enroll['enrollment_pk']],
+                                        'i'
+                                    );
+                                    $updated++;
                                 } else {
-                                    // Insert new
+                                    // Insert new enrollment
                                     $db->query(
                                         "INSERT INTO {$dbPrefix}enrollment (term_code, crn, student_fk, enrollment_status, enrollment_date, created_at, updated_at) 
-                                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                                        [$termCode, $crn, $studentFk, $enrollmentStatus, $enrollmentDate],
-                                        'ssiss'
+                                         VALUES (?, ?, ?, '1', NOW(), NOW(), NOW())",
+                                        [$validatedTermCode, $sectionId, $studentFk],
+                                        'ssi'
                                     );
+                                    $imported++;
                                 }
-                                $imported++;
                             }
                         }
                         
                         fclose($handle);
-                        $message = "Import completed: {$imported} records imported/updated, {$skipped} skipped";
+                        $message = "Import completed: {$imported} new enrollments, {$updated} updated, {$skipped} skipped";
                         if (!empty($errors)) {
-                            $message .= "<br><br><strong>Warnings:</strong><br>" . implode('<br>', array_unique($errors));
+                            $message .= "<br><br><strong>Warnings:</strong><br>" . implode('<br>', array_slice(array_unique($errors), 0, 10));
+                            if (count($errors) > 10) {
+                                $message .= "<br>... and " . (count($errors) - 10) . " more warnings";
+                            }
                         }
                         $successMessage = $message;
                     } else {
@@ -624,14 +650,18 @@ $theme->showHeader($context);
                     <div class="mb-3">
                         <label for="enrollmentUpload" class="form-label">Upload CSV File</label>
                         <input type="file" class="form-control" id="enrollmentUpload" name="enrollment_upload" accept=".csv" required>
-                        <small class="form-text text-muted">CSV format: Term_Code, CRN, Student_C_Number, First_Name, Last_Name, Status, Enrollment_Date, Last_Updated</small>
+                        <small class="form-text text-muted">CSV format: BannerTerm, TermCode, StudentID, SectionID, FirstName, LastName, PartofTerm, Discipline, CourseID</small>
                     </div>
                     <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> <strong>Auto-Creation:</strong> 
+                        <i class="fas fa-info-circle"></i> <strong>Import Details:</strong> 
                         <ul class="mb-0 mt-2">
-                            <li>Students will be auto-created if C-number doesn't exist</li>
-                            <li>Course sections must already exist in the system</li>
-                            <li>Existing enrollments will be updated</li>
+                            <li><strong>BannerTerm:</strong> Must match banner_term in Terms table (e.g., 202533)</li>
+                            <li><strong>TermCode:</strong> Informational only (e.g., 202630)</li>
+                            <li><strong>SectionID:</strong> Course section number (CRN)</li>
+                            <li><strong>StudentID:</strong> Student C-number (e.g., C03212184)</li>
+                            <li>Students are auto-created if they don't exist</li>
+                            <li>Existing enrollments are updated</li>
+                            <li>Missing banner terms will be skipped with warnings</li>
                         </ul>
                     </div>
                 </div>

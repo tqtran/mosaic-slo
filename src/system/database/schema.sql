@@ -71,7 +71,8 @@ CREATE TABLE tbl_user_roles (
 
 CREATE TABLE tbl_terms (
     terms_pk INT AUTO_INCREMENT PRIMARY KEY,
-    term_code VARCHAR(50) NOT NULL UNIQUE COMMENT 'Banner term code (e.g., 202630)',
+    banner_term VARCHAR(20) NOT NULL UNIQUE COMMENT 'Banner system term code (e.g., 202533)',
+    term_code VARCHAR(50) NOT NULL UNIQUE COMMENT 'Institutional term code (e.g., 202630)',
     term_name VARCHAR(100) NOT NULL,
     academic_year VARCHAR(20) COMMENT 'Academic year label (e.g., 2022-2023)',
     start_date DATE NOT NULL,
@@ -79,6 +80,7 @@ CREATE TABLE tbl_terms (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_banner_term (banner_term),
     INDEX idx_term_code (term_code),
     INDEX idx_is_active (is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

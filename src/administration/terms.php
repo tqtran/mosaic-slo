@@ -257,6 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         } elseif ($action === 'add') {
+            $bannerTerm = trim($_POST['banner_term'] ?? '');
             $termCode = trim($_POST['term_code'] ?? '');
             $termName = trim($_POST['term_name'] ?? '');
             $academicYear = trim($_POST['academic_year'] ?? '');
@@ -265,6 +266,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $isActive = isset($_POST['is_active']) ? 1 : 0;
             
             $errors = [];
+            if (empty($bannerTerm)) {
+                $errors[] = 'Banner term is required';
+            }
             if (empty($termCode)) {
                 $errors[] = 'Term code is required';
             }
@@ -276,6 +280,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (empty($endDate)) {
                 $errors[] = 'End date is required';
+            }
+            
+            // Check for duplicate banner_term
+            if (!empty($bannerTerm)) {
+                $checkResult = $db->query(
+                    "SELECT terms_pk FROM {$dbPrefix}terms WHERE banner_term = ?",
+                    [$bannerTerm],
+                    's'
+                );
+                if ($checkResult->fetch()) {
+                    $errors[] = 'Banner term already exists';
+                }
             }
             
             // Check for duplicate term_code
@@ -292,10 +308,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if (empty($errors)) {
                 $db->query(
-                    "INSERT INTO {$dbPrefix}terms (term_code, term_name, academic_year, start_date, end_date, is_active, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                    [$termCode, $termName, $academicYear, $startDate, $endDate, $isActive],
-                    'sssssi'
+                    "INSERT INTO {$dbPrefix}terms (banner_term, term_code, term_name, academic_year, start_date, end_date, is_active, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                    [$bannerTerm, $termCode, $termName, $academicYear, $startDate, $endDate, $isActive],
+                    'ssssssi'
                 );
                 $successMessage = 'Term added successfully';
             } else {
@@ -303,6 +319,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } elseif ($action === 'edit') {
             $termsPk = (int)($_POST['terms_pk'] ?? 0);
+            $bannerTerm = trim($_POST['banner_term'] ?? '');
             $termCode = trim($_POST['term_code'] ?? '');
             $termName = trim($_POST['term_name'] ?? '');
             $academicYear = trim($_POST['academic_year'] ?? '');
@@ -313,6 +330,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors = [];
             if ($termsPk <= 0) {
                 $errors[] = 'Invalid term ID';
+            }
+            if (empty($bannerTerm)) {
+                $errors[] = 'Banner term is required';
             }
             if (empty($termCode)) {
                 $errors[] = 'Term code is required';
@@ -339,13 +359,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
+            // Check for duplicate banner_term (excluding current record)
+            if (!empty($bannerTerm)) {
+                $checkResult = $db->query(
+                    "SELECT terms_pk FROM {$dbPrefix}terms WHERE banner_term = ? AND terms_pk != ?",
+                    [$bannerTerm, $termsPk],
+                    'si'
+                );
+                if ($checkResult->fetch()) {
+                    $errors[] = 'Banner term already exists';
+                }
+            }
+            
             if (empty($errors)) {
                 $db->query(
                     "UPDATE {$dbPrefix}terms 
-                     SET term_code = ?, term_name = ?, academic_year = ?, start_date = ?, end_date = ?, is_active = ?, updated_at = NOW()
+                     SET banner_term = ?, term_code = ?, term_name = ?, academic_year = ?, start_date = ?, end_date = ?, is_active = ?, updated_at = NOW()
                      WHERE terms_pk = ?",
-                    [$termCode, $termName, $academicYear, $startDate, $endDate, $isActive, $termsPk],
-                    'sssssii'
+                    [$bannerTerm, $termCode, $termName, $academicYear, $startDate, $endDate, $isActive, $termsPk],
+                    'ssssssii'
                 );
                 $successMessage = 'Term updated successfully';
             } else {
@@ -474,6 +506,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if (count($row) >= 3) {
                             $data = array_combine($headers, $row);
                             
+                            $bannerTerm = trim($data['banner_term'] ?? '');
                             $termCode = trim($data['term_code'] ?? '');
                             $termName = trim($data['term_name'] ?? '');
                             $academicYear = trim($data['academic_year'] ?? '');
@@ -493,18 +526,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 if ($termRow) {
                                     // Update existing
                                     $db->query(
-                                        "UPDATE {$dbPrefix}terms SET term_name = ?, academic_year = ?, start_date = ?, end_date = ?, is_active = ?, updated_at = NOW() WHERE terms_pk = ?",
-                                        [$termName, $academicYear, $startDate, $endDate, $isActive, $termRow['terms_pk']],
-                                        'ssssii'
+                                        "UPDATE {$dbPrefix}terms SET banner_term = ?, term_name = ?, academic_year = ?, start_date = ?, end_date = ?, is_active = ?, updated_at = NOW() WHERE terms_pk = ?",
+                                        [$bannerTerm, $termName, $academicYear, $startDate, $endDate, $isActive, $termRow['terms_pk']],
+                                        'sssssii'
                                     );
                                     $updated++;
                                 } else {
                                     // Insert new
                                     $db->query(
-                                        "INSERT INTO {$dbPrefix}terms (term_code, term_name, academic_year, start_date, end_date, is_active, created_at, updated_at)
-                                         VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                                        [$termCode, $termName, $academicYear, $startDate, $endDate, $isActive],
-                                        'sssssi'
+                                        "INSERT INTO {$dbPrefix}terms (banner_term, term_code, term_name, academic_year, start_date, end_date, is_active, created_at, updated_at)
+                                         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
+                                        [$bannerTerm, $termCode, $termName, $academicYear, $startDate, $endDate, $isActive],
+                                        'ssssssi'
                                     );
                                     $imported++;
                                 }
@@ -662,8 +695,10 @@ $theme->showHeader($context);
                     
                     <div class="alert alert-info mb-0">
                         <strong>CSV Format:</strong><br>
-                        <code>term_code,term_name,academic_year,start_date,end_date,is_active</code><br>
-                        <small class="text-muted">Example: 202630,Spring 2026,2025-2026,2026-01-15,2026-05-15,1</small>
+                        <code>banner_term,term_code,term_name,academic_year,start_date,end_date,is_active</code><br>
+                        <small class="text-muted">Example: 202533,202630,Spring 2026,2025-2026,2026-01-15,2026-05-15,1</small><br>
+                        <small class="text-muted"><strong>banner_term:</strong> Banner system code (e.g., 202533)</small><br>
+                        <small class="text-muted"><strong>term_code:</strong> Institutional code (e.g., 202630)</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -691,9 +726,15 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="add">
                     
                     <div class="mb-3">
+                        <label for="banner_term" class="form-label">Banner Term <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="banner_term" name="banner_term" maxlength="20" required placeholder="e.g., 202533">
+                        <small class="text-muted">Banner system term code</small>
+                    </div>
+                    
+                    <div class="mb-3">
                         <label for="term_code" class="form-label">Term Code <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="term_code" name="term_code" maxlength="50" required placeholder="e.g., 202630">
-                        <small class="text-muted">Banner term code</small>
+                        <small class="text-muted">Institutional term code</small>
                     </div>
                     
                     <div class="mb-3">
@@ -747,8 +788,15 @@ $theme->showHeader($context);
                     <input type="hidden" name="terms_pk" id="edit_terms_pk">
                     
                     <div class="mb-3">
+                        <label for="edit_banner_term" class="form-label">Banner Term <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_banner_term" name="banner_term" maxlength="20" required>
+                        <small class="text-muted">Banner system term code (e.g., 202533)</small>
+                    </div>
+                    
+                    <div class="mb-3">
                         <label for="edit_term_code" class="form-label">Term Code <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="edit_term_code" name="term_code" maxlength="50" required>
+                        <small class="text-muted">Institutional term code (e.g., 202630)</small>
                     </div>
                     
                     <div class="mb-3">
@@ -970,6 +1018,7 @@ $(document).ready(function() {
 
 function editTerm(term) {
     $('#edit_terms_pk').val(term.terms_pk);
+    $('#edit_banner_term').val(term.banner_term || '');
     $('#edit_term_code').val(term.term_code);
     $('#edit_term_name').val(term.term_name);
     $('#edit_academic_year').val(term.academic_year || '');

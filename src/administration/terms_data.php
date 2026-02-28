@@ -68,6 +68,7 @@ try {
     $query = "
         SELECT 
             t.terms_pk,
+            t.banner_term,
             t.term_code,
             t.term_name,
             t.academic_year,
@@ -92,6 +93,7 @@ try {
         // Prepare data for JavaScript functions (keeping all data for edit functionality)
         $termJson = htmlspecialchars(json_encode([
             'terms_pk' => $row['terms_pk'],
+            'banner_term' => $row['banner_term'],
             'term_code' => $row['term_code'],
             'term_name' => $row['term_name'],
             'academic_year' => $row['academic_year'],

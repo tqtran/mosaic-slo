@@ -15,8 +15,6 @@ $params = getDataTablesParams();
 $searchableColumns = [
     'c.course_name', 
     'c.course_number',
-    'p.program_name',
-    'p.program_code',
     't.term_name'
 ];
 
@@ -24,7 +22,6 @@ $columns = [
     'c.courses_pk',
     'c.course_name',
     'c.course_number',
-    'p.program_name',
     't.term_name',
     'c.is_active',
     'c.created_at',
@@ -102,7 +99,7 @@ foreach ($courses as $row) {
         htmlspecialchars($row['created_at'] ?? ''),
         '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editCourse(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
         '<button class="btn btn-sm btn-' . $toggleClass . '" title="Toggle Status" onclick="toggleStatus(' . $row['courses_pk'] . ', \'' . htmlspecialchars($row['course_name'], ENT_QUOTES) . '\')"><i class="fas fa-' . $toggleIcon . '"></i></button> ' .
-        '<button class="btn btn-sm btn-danger\" title="Delete" onclick="deleteCourse(' . $row['courses_pk'] . ', \'' . htmlspecialchars($row['course_name'], ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
+        '<button class="btn btn-sm btn-danger" title="Delete" onclick="deleteCourse(' . $row['courses_pk'] . ', \'' . htmlspecialchars($row['course_name'], ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
     ];
 }
 
