@@ -180,15 +180,23 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="<?= BASE_URL ?>administration/sections.php" class="nav-link <?= ($currentPage ?? '') === 'admin_sections' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-grid-3x3"></i>
-                        <p>Sections</p>
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a href="<?= BASE_URL ?>administration/student_learning_outcomes.php" class="nav-link <?= ($currentPage ?? '') === 'admin_slos' ? 'active' : '' ?>">
                         <i class="nav-icon bi bi-list-check"></i>
                         <p>CSLO</p>
+                    </a>
+                </li>
+                
+                <li class="nav-header">STUDENTS</li>
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/students.php" class="nav-link <?= ($currentPage ?? '') === 'admin_students' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-person"></i>
+                        <p>Students</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/enrollment.php" class="nav-link <?= ($currentPage ?? '') === 'admin_enrollment' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-person-check"></i>
+                        <p>Enrollment</p>
                     </a>
                 </li>
                 

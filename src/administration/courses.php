@@ -179,118 +179,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 break;
                 
-            case 'import':
-                if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
-                    $errorMessage = 'Please select a valid CSV file';
-                    break;
-                }
-                
-                $file = $_FILES['csv_file']['tmp_name'];
-                $handle = fopen($file, 'r');
-                
-                if ($handle === false) {
-                    $errorMessage = 'Failed to open CSV file';
-                    break;
-                }
-                
-                // Read header
-                $headers = fgetcsv($handle);
-                if ($headers === false) {
-                    $errorMessage = 'Invalid CSV file format';
-                    fclose($handle);
-                    break;
-                }
-                
-                // Strip UTF-8 BOM if present
-                if (!empty($headers[0])) {
-                    $headers[0] = preg_replace('/^\x{FEFF}/u', '', $headers[0]);
-                }
-                
-                // Expected columns: course_name, course_number, term_code, is_active
-                $imported = 0;
-                $updated = 0;
-                $errors = [];
-                
-                while (($row = fgetcsv($handle)) !== false) {
-                    if (count($row) < 2) continue; // Need at least course_name and course_number
-                    
-                    $data = array_combine($headers, $row);
-                    if ($data === false) continue;
-                    
-                    $courseName = trim($data['course_name'] ?? '');
-                    $courseNumber = trim($data['course_number'] ?? '');
-                    $termCode = trim($data['term_code'] ?? '');
-                    $isActive = isset($data['is_active']) ? ((int)$data['is_active'] === 1 || strtolower($data['is_active']) === 'true') : true;
-                    
-                    if (empty($courseName) || empty($courseNumber)) {
-                        $errors[] = "Skipped row: missing required fields (course_name or course_number)";
-                        continue;
-                    }
-                    
-                    // Lookup term by code
-                    $termFk = null;
-                    if (!empty($termCode)) {
-                        $termLookup = $db->query(
-                            "SELECT terms_pk FROM {$dbPrefix}terms WHERE term_code = ? AND is_active = 1",
-                            [$termCode],
-                            's'
-                        );
-                        if ($termLookup->rowCount() > 0) {
-                            $termRow = $termLookup->fetch();
-                            $termFk = $termRow['terms_pk'];
-                        }
-                    }
-                    
-                    if ($termFk === null) {
-                        $errors[] = "Skipped row for {$courseName}: invalid or missing term code";
-                        continue;
-                    }
-                    
-                    // Check if course exists (based on unique key: course_number)
-                    $result = $db->query(
-                        "SELECT courses_pk FROM {$dbPrefix}courses WHERE course_number = ?",
-                        [$courseNumber],
-                        's'
-                    );
-                    $existing = $result->fetch();
-                    
-                    if ($existing) {
-                        // Update existing
-                        $db->query(
-                            "UPDATE {$dbPrefix}courses 
-                             SET course_name = ?, term_fk = ?, is_active = ?, updated_at = NOW() 
-                             WHERE courses_pk = ?",
-                            [$courseName, $termFk, $isActive, $existing['courses_pk']],
-                            'siii'
-                        );
-                        $updated++;
-                    } else {
-                        // Insert new
-                        $db->query(
-                            "INSERT INTO {$dbPrefix}courses (course_name, course_number, term_fk, is_active, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, NOW(), NOW())",
-                            [$courseName, $courseNumber, $termFk, $isActive],
-                            'ssii'
-                        );
-                        $imported++;
-                    }
-                }
-                
-                fclose($handle);
-                
-                if ($imported > 0 || $updated > 0) {
-                    $successMessage = "Import complete: $imported new, $updated updated";
-                    if (!empty($errors)) {
-                        $successMessage .= '<br>Warnings: ' . implode('<br>', array_slice($errors, 0, 5));
-                        if (count($errors) > 5) {
-                            $successMessage .= '<br>... and ' . (count($errors) - 5) . ' more';
-                        }
-                    }
-                } else {
-                    $errorMessage = 'No records imported. ' . implode('<br>', $errors);
-                }
-                break;
-                
             case 'import_map':
                 if (!isset($_FILES['map_upload']) || $_FILES['map_upload']['error'] !== UPLOAD_ERR_OK) {
                     $errorMessage = 'Please select a valid CSV file';
@@ -582,9 +470,6 @@ $theme->showHeader($context);
                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCourseModal">
                         <i class="fas fa-plus"></i> Add Course
                     </button>
-                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                        <i class="fas fa-file-upload"></i> Import Courses
-                    </button>
                     <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#mapUploadModal">
                         <i class="fas fa-project-diagram"></i> Import PSLO Map
                     </button>
@@ -757,36 +642,6 @@ $theme->showHeader($context);
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Upload Courses CSV Modal -->
-<div class="modal fade" id="uploadModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-file-upload"></i> Import Courses</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                    <input type="hidden" name="action" value="import">
-                    <div class="mb-3">
-                        <label for="csvFile" class="form-label">Upload CSV File</label>
-                        <input type="file" class="form-control" id="csvFile" name="csv_file" accept=".csv" required>
-                        <small class="form-text text-muted">CSV format: course_name, course_number, term_code, is_active (optional)</small>
-                    </div>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> Existing records with matching course numbers will be updated.
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success"><i class="fas fa-upload"></i> Import</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>

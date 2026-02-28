@@ -181,82 +181,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 break;
-                
-            case 'import':
-                if (isset($_FILES['program_upload']) && $_FILES['program_upload']['error'] === UPLOAD_ERR_OK) {
-                    $tmpName = $_FILES['program_upload']['tmp_name'];
-                    $handle = fopen($tmpName, 'r');
-                    
-                    if ($handle !== false) {
-                        $headers = fgetcsv($handle); // Skip header row
-                        $imported = 0;
-                        $skipped = 0;
-                        
-                        while (($row = fgetcsv($handle)) !== false) {
-                            if (count($row) >= 2) {
-                                $code = trim($row[0]);
-                                $name = trim($row[1]);
-                                $degreeType = isset($row[2]) ? trim($row[2]) : '';
-                                $termCode = isset($row[3]) ? trim($row[3]) : '';
-                                $isActive = isset($row[4]) && strtolower(trim($row[4])) === 'active' ? 1 : 0;
-                                
-                                // Lookup term by code
-                                $termFk = null;
-                                if (!empty($termCode)) {
-                                    $termLookup = $db->query(
-                                        "SELECT terms_pk FROM {$dbPrefix}terms WHERE term_code = ? AND is_active = 1",
-                                        [$termCode],
-                                        's'
-                                    );
-                                    if ($termLookup->rowCount() > 0) {
-                                        $termRow = $termLookup->fetch();
-                                        $termFk = $termRow['terms_pk'];
-                                    }
-                                }
-                                
-                                if (!empty($code) && !empty($name) && preg_match('/^[A-Z0-9_-]+$/i', $code) && $termFk !== null) {
-                                    // Check if exists
-                                    $result = $db->query(
-                                        "SELECT programs_pk FROM {$dbPrefix}programs WHERE program_code = ?",
-                                        [$code],
-                                        's'
-                                    );
-                                    
-                                    if ($result->rowCount() > 0) {
-                                        // Update existing
-                                        $existing = $result->fetch();
-                                        $db->query(
-                                            "UPDATE {$dbPrefix}programs 
-                                             SET program_name = ?, degree_type = ?, term_fk = ?, is_active = ?, updated_at = NOW()
-                                             WHERE programs_pk = ?",
-                                            [$name, $degreeType, $termFk, $isActive, $existing['programs_pk']],
-                                            'ssiii'
-                                        );
-                                    } else {
-                                        // Insert new
-                                        $db->query(
-                                            "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, term_fk, is_active, created_at, updated_at) 
-                                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                                            [$code, $name, $degreeType, $termFk, $isActive],
-                                            'sssii'
-                                        );
-                                    }
-                                    $imported++;
-                                } else {
-                                    $skipped++;
-                                }
-                            }
-                        }
-                        
-                        fclose($handle);
-                        $successMessage = "Import completed: {$imported} records imported/updated, {$skipped} skipped";
-                    } else {
-                        $errorMessage = 'Failed to read CSV file';
-                    }
-                } else {
-                    $errorMessage = 'No file uploaded or upload error occurred';
-                }
-                break;
         }
     } catch (\Exception $e) {
         $errorMessage = 'Operation failed: ' . htmlspecialchars($e->getMessage());
@@ -384,9 +308,6 @@ $theme->showHeader($context);
                 <div class="card-tools">
                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addProgramModal">
                         <i class="fas fa-plus"></i> Add Program
-                    </button>
-                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                        <i class="fas fa-file-upload"></i> Import CSV
                     </button>
                 </div>
             </div>
@@ -606,37 +527,6 @@ $theme->showHeader($context);
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Upload Modal -->
-<div class="modal fade" id="uploadModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-file-upload"></i> Import Programs</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                    <input type="hidden" name="action" value="import">
-                    <div class="mb-3">
-                        <label for="programUpload" class="form-label">Upload CSV File</label>
-                        <input type="file" class="form-control" id="programUpload" name="program_upload" accept=".csv" required>
-                        <small class="form-text text-muted">CSV format: Program Code, Program Name, Degree Type, Term Code, Status (Active/Inactive)<br>
-                        Note: Degree types containing commas should be quoted (e.g., "Certificate of Achievement (16 or more semester units)")</small>
-                    </div>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> Existing records with matching codes will be updated.
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success"><i class="fas fa-upload"></i> Import</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>

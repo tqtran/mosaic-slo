@@ -451,7 +451,7 @@ $theme->showHeader($context);
                         <i class="fas fa-plus"></i> Add SLO
                     </button>
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadCsvModal">
-                        <i class="fas fa-upload"></i> Import CSV
+                        <i class="fas fa-upload"></i> Import CSLO
                     </button>
                 </div>
             </div>
@@ -642,7 +642,7 @@ $theme->showHeader($context);
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-secondary text-white">
-                <h5 class="modal-title"><i class="fas fa-upload"></i> Import SLOs from CSV</h5>
+                <h5 class="modal-title"><i class="fas fa-upload"></i> Import CSLO</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" enctype="multipart/form-data">

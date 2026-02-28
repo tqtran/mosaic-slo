@@ -452,7 +452,7 @@ $theme->showHeader($context);
                         <i class="fas fa-plus"></i> Add Enrollment
                     </button>
                     <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                        <i class="fas fa-file-upload"></i> Import CSV
+                        <i class="fas fa-file-upload"></i> Import Enrollment
                     </button>
                 </div>
             </div>
