@@ -464,11 +464,13 @@ $theme->showHeader($context);
                             <th>Program Outcome</th>
                             <th>Code</th>
                             <th>Description</th>
+                            <th>Assessment Method</th>
                             <th>Sequence</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
                         <tr>
+                            <th></th>
                             <th></th>
                             <th></th>
                             <th></th>
@@ -760,9 +762,10 @@ $(document).ready(function() {
             { data: 2, name: 'program_outcome_code' },
             { data: 3, name: 'slo_code' },
             { data: 4, name: 'slo_description' },
-            { data: 5, name: 'sequence_num' },
-            { data: 6, name: 'is_active' },
-            { data: 7, name: 'actions', orderable: false, searchable: false }
+            { data: 5, name: 'assessment_method' },
+            { data: 6, name: 'sequence_num' },
+            { data: 7, name: 'is_active' },
+            { data: 8, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             var api = this.api();

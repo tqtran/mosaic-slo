@@ -179,6 +179,99 @@ if (!empty($ltiParams['context_label'])) {
 // Example: CIS157-23477 (ONL) Intro to Python Programming
 $courseName = $ltiParams['context_title'] ?? '';
 
+// Auto-create term, course, and section if needed
+if ($crn && $termId && $courseNumber) {
+    try {
+        // 1. Lookup or create term by banner_term (from Banner SIS)
+        $termFk = null;
+        $bannerTerm = $termId; // Banner term code (e.g., 202523)
+        $termCode = $bannerTerm; // Define early for logging
+        
+        $termLookup = $db->query(
+            "SELECT terms_pk FROM {$dbPrefix}terms WHERE banner_term = ? LIMIT 1",
+            [$bannerTerm],
+            's'
+        );
+        if ($termLookup->rowCount() > 0) {
+            $termRow = $termLookup->fetch();
+            $termFk = $termRow['terms_pk'];
+        } else {
+            // Create term with minimal info
+            $termName = $academicYear ? "Term {$termNumber} {$academicYear}" : "Term {$bannerTerm}";
+            $db->query(
+                "INSERT INTO {$dbPrefix}terms (term_code, banner_term, term_name, academic_year, start_date, end_date, is_active, created_at, updated_at) 
+                 VALUES (?, ?, ?, ?, '1970-01-01', '1970-01-01', 1, NOW(), NOW())",
+                [$termCode, $bannerTerm, $termName, $academicYear],
+                'ssss'
+            );
+            $termFk = $db->getInsertId();
+            $logger->info('LTI Auto-Created Term', ['term_code' => $termCode, 'term_fk' => $termFk]);
+        }
+        
+        // 2. Lookup or create course
+        $courseFk = null;
+        $courseLookup = $db->query(
+            "SELECT courses_pk FROM {$dbPrefix}courses WHERE course_number = ? LIMIT 1",
+            [$courseNumber],
+            's'
+        );
+        if ($courseLookup->rowCount() > 0) {
+            $courseRow = $courseLookup->fetch();
+            $courseFk = $courseRow['courses_pk'];
+        } else {
+            // Create course with LTI course name
+            $db->query(
+                "INSERT INTO {$dbPrefix}courses (course_number, course_name, term_fk, is_active, created_at, updated_at) 
+                 VALUES (?, ?, ?, 1, NOW(), NOW())",
+                [$courseNumber, $courseName ?: $courseNumber, $termFk],
+                'ssi'
+            );
+            $courseFk = $db->getInsertId();
+            $logger->info('LTI Auto-Created Course', ['course_number' => $courseNumber, 'course_fk' => $courseFk]);
+        }
+        
+        // 3. Lookup or create section by CRN and banner_term (not term_code)
+        $sectionLookup = $db->query(
+            "SELECT s.sections_pk 
+             FROM {$dbPrefix}sections s
+             JOIN {$dbPrefix}terms t ON s.term_fk = t.terms_pk
+             WHERE s.crn = ? AND t.banner_term = ? 
+             LIMIT 1",
+            [$crn, $bannerTerm],
+            'ss'
+        );
+        if ($sectionLookup->rowCount() == 0) {
+            // Extract section_id from context_label (e.g., CIS157-23477 (ONL) -> section_id = ONL)
+            $sectionId = '01'; // Default
+            if (preg_match('/\(([^)]+)\)/', $ltiParams['context_label'], $matches)) {
+                $sectionId = $matches[1];
+            }
+            
+            // Extract instructor name from full name (if instructor)
+            $instructorName = $isInstructor ? trim($firstName . ' ' . $lastName) : null;
+            
+            // Create section
+            $db->query(
+                "INSERT INTO {$dbPrefix}sections (course_fk, term_fk, section_id, crn, instructor_name, is_active, created_at, updated_at) 
+                 VALUES (?, ?, ?, ?, ?, 1, NOW(), NOW())",
+                [$courseFk, $termFk, $sectionId, $crn, $instructorName],
+                'iisss'
+            );
+            $sectionPk = $db->getInsertId();
+            $logger->info('LTI Auto-Created Section', [
+                'crn' => $crn,
+                'section_id' => $sectionId,
+                'course_number' => $courseNumber,
+                'term_code' => $termCode,
+                'section_pk' => $sectionPk
+            ]);
+        }
+    } catch (\Exception $e) {
+        $logger->error('LTI Auto-Create Error: ' . $e->getMessage() . ' | CRN: ' . $crn . ' | Course: ' . $courseNumber . ' | Term: ' . $termId);
+        // Don't fail the launch if auto-create fails
+    }
+}
+
 // Store LTI session data
 $_SESSION['lti_authenticated'] = true;
 $_SESSION['lti_user_id'] = $ltiParams['user_id'];

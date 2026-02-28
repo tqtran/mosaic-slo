@@ -38,6 +38,7 @@ if ($selectedTermFk) {
 $stats = [
     'programs' => 0,
     'courses' => 0,
+    'sections' => 0,
     'students' => 0,
     'enrollments' => 0,
     'institutional_outcomes' => 0,
@@ -65,6 +66,15 @@ try {
         );
         $row = $result->fetch();
         $stats['courses'] = $row['count'] ?? 0;
+        
+        // Count sections for selected term
+        $result = $db->query(
+            "SELECT COUNT(*) as count FROM {$dbPrefix}sections WHERE term_fk = ? AND is_active = 1",
+            [$selectedTermFk],
+            'i'
+        );
+        $row = $result->fetch();
+        $stats['sections'] = $row['count'] ?? 0;
         
         // Count students (all active students, not term-specific)
         $result = $db->query(
@@ -202,13 +212,13 @@ $theme->showHeader($context);
                         <div class="col-lg-3 col-6">
                             <div class="small-box bg-success">
                                 <div class="inner">
-                                    <h3><?= number_format($stats['courses']) ?></h3>
+                                    <h3><?= number_format($stats['sections']) ?></h3>
                                     <p>Sections</p>
                                 </div>
                                 <div class="icon">
-                                    <i class="fas fa-book"></i>
+                                    <i class="fas fa-chalkboard-teacher"></i>
                                 </div>
-                                <a href="<?= BASE_URL ?>administration/courses.php" class="small-box-footer">
+                                <a href="<?= BASE_URL ?>administration/sections.php" class="small-box-footer">
                                     View Sections <i class="fas fa-arrow-circle-right"></i>
                                 </a>
                             </div>
@@ -350,8 +360,8 @@ $theme->showHeader($context);
                 </div>
                 <div class="row">
                     <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-                        <a href="<?= BASE_URL ?>administration/courses.php" class="btn btn-outline-success btn-block">
-                            <i class="fas fa-book"></i><br>
+                        <a href="<?= BASE_URL ?>administration/sections.php" class="btn btn-outline-success btn-block">
+                            <i class="fas fa-chalkboard-teacher"></i><br>
                             Import Sections
                         </a>
                     </div>
@@ -455,7 +465,7 @@ $theme->showHeader($context);
                     <li><a href="<?= BASE_URL ?>administration/institutional_outcomes.php">Set up institutional outcomes</a></li>
                     <li><a href="<?= BASE_URL ?>administration/programs.php">Create academic programs</a></li>
                     <li><a href="<?= BASE_URL ?>administration/program_outcomes.php">Define program outcomes</a></li>
-                    <li><a href="<?= BASE_URL ?>administration/courses.php">Add sections to the catalog</a></li>
+                    <li><a href="<?= BASE_URL ?>administration/sections.php">Add sections to the catalog</a></li>
                     <li><a href="<?= BASE_URL ?>administration/student_learning_outcomes.php">Define SLOs for sections</a></li>
                     <li>Configure LTI integration with your LMS</li>
                 </ol>

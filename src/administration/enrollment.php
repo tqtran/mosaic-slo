@@ -190,9 +190,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     continue;
                                 }
                                 
-                                // Lookup term by BannerTerm code
+                                // Validate term exists by BannerTerm code
                                 $termResult = $db->query(
-                                    "SELECT term_code FROM {$dbPrefix}terms WHERE banner_term = ? AND is_active = 1",
+                                    "SELECT terms_pk FROM {$dbPrefix}terms WHERE banner_term = ? AND is_active = 1",
                                     [$bannerTerm],
                                     's'
                                 );
@@ -203,8 +203,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     continue;
                                 }
                                 
-                                $term = $termResult->fetch();
-                                $validatedTermCode = $term['term_code'];
+                                // Store Banner Term directly in enrollment.term_code
+                                $validatedTermCode = $bannerTerm;
+                                
+                                // Look up course_fk from course_number (CourseID from CSV)
+                                $courseFk = null;
+                                if (!empty($courseId)) {
+                                    $courseResult = $db->query(
+                                        "SELECT courses_pk FROM {$dbPrefix}courses WHERE course_number = ? AND is_active = 1",
+                                        [$courseId],
+                                        's'
+                                    );
+                                    if ($courseResult->rowCount() > 0) {
+                                        $course = $courseResult->fetch();
+                                        $courseFk = $course['courses_pk'];
+                                    } else {
+                                        $errors[] = "Row skipped: Course '{$courseId}' not found in courses table";
+                                        $skipped++;
+                                        continue;
+                                    }
+                                } else {
+                                    $errors[] = "Row skipped: CourseID (column 9) is empty";
+                                    $skipped++;
+                                    continue;
+                                }
                                 
                                 // Find or create student by student_id
                                 $studentResult = $db->query(
@@ -253,19 +275,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $enroll = $enrollResult->fetch();
                                     $db->query(
                                         "UPDATE {$dbPrefix}enrollment 
-                                         SET enrollment_status = '1', enrollment_date = NOW(), updated_at = NOW() 
+                                         SET course_fk = ?, enrollment_status = '1', enrollment_date = NOW(), updated_at = NOW() 
                                          WHERE enrollment_pk = ?",
-                                        [$enroll['enrollment_pk']],
-                                        'i'
+                                        [$courseFk, $enroll['enrollment_pk']],
+                                        'ii'
                                     );
                                     $updated++;
                                 } else {
                                     // Insert new enrollment
                                     $db->query(
-                                        "INSERT INTO {$dbPrefix}enrollment (term_code, crn, student_fk, enrollment_status, enrollment_date, created_at, updated_at) 
-                                         VALUES (?, ?, ?, '1', NOW(), NOW(), NOW())",
-                                        [$validatedTermCode, $sectionId, $studentFk],
-                                        'ssi'
+                                        "INSERT INTO {$dbPrefix}enrollment (term_code, crn, course_fk, student_fk, enrollment_status, enrollment_date, created_at, updated_at) 
+                                         VALUES (?, ?, ?, ?, '1', NOW(), NOW(), NOW())",
+                                        [$validatedTermCode, $sectionId, $courseFk, $studentFk],
+                                        'ssii'
                                     );
                                     $imported++;
                                 }

@@ -265,15 +265,18 @@ CREATE TABLE tbl_enrollment (
     enrollment_pk INT AUTO_INCREMENT PRIMARY KEY,
     term_code VARCHAR(20) NOT NULL COMMENT 'Term code from Banner (term)',
     crn VARCHAR(20) NOT NULL COMMENT 'Course Reference Number from Banner (crn)',
+    course_fk INT NOT NULL COMMENT 'Derived from course_number during import',
     student_fk INT NOT NULL,
     enrollment_status VARCHAR(10) NOT NULL DEFAULT '1' COMMENT 'Status from Banner (status): 1=enrolled, 2=completed, 7=dropped',
     enrollment_date DATE NOT NULL COMMENT 'Registration date from Banner (regdate)',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update from Banner (updated)',
+    FOREIGN KEY (course_fk) REFERENCES tbl_courses(courses_pk) ON DELETE CASCADE,
     FOREIGN KEY (student_fk) REFERENCES tbl_students(students_pk) ON DELETE CASCADE,
     UNIQUE KEY unique_enrollment (term_code, crn, student_fk),
     INDEX idx_term_code (term_code),
     INDEX idx_crn (crn),
+    INDEX idx_course_fk (course_fk),
     INDEX idx_student_fk (student_fk),
     INDEX idx_enrollment_status (enrollment_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

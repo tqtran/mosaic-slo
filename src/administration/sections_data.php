@@ -2,157 +2,132 @@
 declare(strict_types=1);
 
 /**
- * Sections DataTables Data Source
- * 
- * Provides JSON data for sections DataTable with server-side processing.
+ * Sections DataTables Server-Side Processing
  * 
  * @package Mosaic
  */
 
-require_once __DIR__ . '/../system/includes/admin_session.php';
+require_once __DIR__ . '/../system/includes/datatables_helper.php';
 require_once __DIR__ . '/../system/includes/init.php';
 
-header('Content-Type: application/json');
+$params = getDataTablesParams();
 
-try {
-    // Parse DataTables parameters
-    $draw = isset($_GET['draw']) ? (int)$_GET['draw'] : 1;
-    $start = isset($_GET['start']) ? (int)$_GET['start'] : 0;
-    $length = isset($_GET['length']) ? (int)$_GET['length'] : 10;
-    $searchValue = isset($_GET['search']['value']) ? trim($_GET['search']['value']) : '';
-    $orderColumnIndex = isset($_GET['order'][0]['column']) ? (int)$_GET['order'][0]['column'] : 1;
-    $orderDirection = isset($_GET['order'][0]['dir']) && $_GET['order'][0]['dir'] === 'desc' ? 'DESC' : 'ASC';
-    
-    // Get term filter
-    $termFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : 0;
-    
-    // Column mapping for ordering
-    $columns = [
-        0 => 's.sections_pk',
-        1 => 'c.course_number',
-        2 => 's.section_id',
-        3 => 'c.course_name',
-        4 => 's.crn',
-        5 => 's.instructor_name',
-        6 => 't.term_name',
-        7 => 's.is_active'
-    ];
-    
-    $orderColumn = $columns[$orderColumnIndex] ?? 'c.course_number';
-    
-    // Base query
-    $baseQuery = "FROM {$dbPrefix}sections s
-                  INNER JOIN {$dbPrefix}courses c ON s.course_fk = c.courses_pk
-                  INNER JOIN {$dbPrefix}terms t ON s.term_fk = t.terms_pk";
-    
-    $whereConditions = [];
-    $params = [];
-    $types = '';
-    
-    // Term filter
-    if ($termFk > 0) {
-        $whereConditions[] = "s.term_fk = ?";
-        $params[] = $termFk;
-        $types .= 'i';
-    }
-    
-    // Search filter
-    if (!empty($searchValue)) {
-        $searchConditions = [
-            "c.course_number LIKE ?",
-            "s.section_id LIKE ?",
-            "c.course_name LIKE ?",
-            "s.crn LIKE ?",
-            "s.instructor_name LIKE ?",
-            "t.term_name LIKE ?"
-        ];
-        $whereConditions[] = '(' . implode(' OR ', $searchConditions) . ')';
-        $searchParam = "%{$searchValue}%";
-        for ($i = 0; $i < 6; $i++) {
-            $params[] = $searchParam;
-            $types .= 's';
-        }
-    }
-    
-    $whereClause = '';
-    if (!empty($whereConditions)) {
-        $whereClause = ' WHERE ' . implode(' AND ', $whereConditions);
-    }
-    
-    // Count total records
-    $totalQuery = "SELECT COUNT(*) as total " . $baseQuery;
-    $totalResult = $db->query($totalQuery);
-    $totalRow = $totalResult->fetch();
-    $recordsTotal = $totalRow['total'];
-    
-    // Count filtered records
-    $filteredQuery = "SELECT COUNT(*) as total " . $baseQuery . $whereClause;
-    if (!empty($params)) {
-        $filteredResult = $db->query($filteredQuery, $params, $types);
-    } else {
-        $filteredResult = $db->query($filteredQuery);
-    }
-    $filteredRow = $filteredResult->fetch();
-    $recordsFiltered = $filteredRow['total'];
-    
-    // Fetch data
-    $dataQuery = "SELECT s.sections_pk, c.course_number, s.section_id, c.course_name, s.crn, 
-                         s.instructor_name, t.term_name, s.is_active, s.course_fk, s.term_fk, s.max_enrollment
-                  " . $baseQuery . $whereClause . "
-                  ORDER BY {$orderColumn} {$orderDirection}
-                  LIMIT {$start}, {$length}";
-    
-    if (!empty($params)) {
-        $dataResult = $db->query($dataQuery, $params, $types);
-    } else {
-        $dataResult = $db->query($dataQuery);
-    }
-    
-    $data = [];
-    while ($row = $dataResult->fetch()) {
-        $sectionLabel = htmlspecialchars($row['course_number'] . '-' . $row['section_id']);
-        $statusBadge = $row['is_active'] 
-            ? '<span class="badge bg-success">Active</span>' 
-            : '<span class="badge bg-danger">Inactive</span>';
-        
-        $editBtn = '<button type="button" class="btn btn-sm btn-warning" onclick="editSection(' . htmlspecialchars(json_encode($row)) . ')" title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>';
-        $toggleBtn = '<button type="button" class="btn btn-sm btn-' . ($row['is_active'] ? 'secondary' : 'success') . '" 
-                             onclick="toggleStatus(' . $row['sections_pk'] . ', \'' . $sectionLabel . '\')" title="Toggle Status">
-                          <i class="fas fa-toggle-' . ($row['is_active'] ? 'on' : 'off') . '"></i>
-                      </button>';
-        $deleteBtn = '<button type="button" class="btn btn-sm btn-danger" 
-                             onclick="deleteSection(' . $row['sections_pk'] . ', \'' . $sectionLabel . '\')" title="Delete">
-                          <i class="fas fa-trash"></i>
-                      </button>';
-        
-        $actions = $editBtn . ' ' . $toggleBtn . ' ' . $deleteBtn;
-        
-        $data[] = [
-            $row['sections_pk'],
-            htmlspecialchars($row['course_number']),
-            '<span class="badge bg-primary">' . htmlspecialchars($row['section_id']) . '</span>',
-            htmlspecialchars($row['course_name']),
-            htmlspecialchars($row['crn'] ?? ''),
-            htmlspecialchars($row['instructor_name'] ?? ''),
-            htmlspecialchars($row['term_name']),
-            $statusBadge,
-            $actions
-        ];
-    }
-    
-    echo json_encode([
-        'draw' => $draw,
-        'recordsTotal' => $recordsTotal,
-        'recordsFiltered' => $recordsFiltered,
-        'data' => $data
-    ]);
-    
-} catch (\Exception $e) {
-    http_response_code(500);
-    echo json_encode([
-        'error' => 'Error loading sections data',
-        'message' => DEBUG_MODE ? $e->getMessage() : 'Internal server error'
-    ]);
+$searchableColumns = [
+    's.crn',
+    'c.course_number',
+    'c.course_name',
+    's.section_id',
+    's.instructor_name'
+];
+
+$columns = [
+    's.crn',
+    'c.course_number',
+    's.section_id',
+    's.instructor_name',
+    's.max_enrollment',
+    's.is_active',
+    'actions'
+];
+
+$orderColumn = $columns[$params['orderColumn']] ?? 'c.course_number';
+if ($orderColumn === 'actions') {
+    $orderColumn = 'c.course_number';
 }
+
+$whereParams = [];
+$whereTypes = '';
+
+// Filters
+$whereConditions = [];
+
+// Term filter
+$termFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : null;
+if ($termFk) {
+    $whereConditions[] = 's.term_fk = ?';
+    $whereParams[] = $termFk;
+    $whereTypes .= 'i';
+}
+
+// Course filter
+$courseFk = isset($_GET['course_fk']) ? (int)$_GET['course_fk'] : null;
+if ($courseFk) {
+    $whereConditions[] = 's.course_fk = ?';
+    $whereParams[] = $courseFk;
+    $whereTypes .= 'i';
+}
+
+// Status filter
+$status = isset($_GET['status']) ? $_GET['status'] : null;
+if ($status !== null && $status !== '') {
+    $whereConditions[] = 's.is_active = ?';
+    $whereParams[] = (int)$status;
+    $whereTypes .= 'i';
+}
+
+$whereClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
+if (!empty($whereClause)) {
+    $whereConditions[] = $whereClause;
+}
+
+$finalWhereClause = !empty($whereConditions) ? "WHERE " . implode(' AND ', $whereConditions) : '';
+
+$totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}sections");
+$totalRow = $totalResult->fetch();
+$recordsTotal = $totalRow['total'];
+
+$countQuery = "SELECT COUNT(*) as total 
+               FROM {$dbPrefix}sections s
+               INNER JOIN {$dbPrefix}courses c ON s.course_fk = c.courses_pk
+               INNER JOIN {$dbPrefix}terms t ON s.term_fk = t.terms_pk
+               {$finalWhereClause}";
+if (!empty($whereParams)) {
+    $filteredResult = $db->query($countQuery, $whereParams, $whereTypes);
+} else {
+    $filteredResult = $db->query($countQuery);
+}
+$filteredRow = $filteredResult->fetch();
+$recordsFiltered = $filteredRow['total'];
+
+$dataQuery = "
+    SELECT s.*, c.course_number, c.course_name, t.term_name, t.term_code
+    FROM {$dbPrefix}sections s
+    INNER JOIN {$dbPrefix}courses c ON s.course_fk = c.courses_pk
+    INNER JOIN {$dbPrefix}terms t ON s.term_fk = t.terms_pk
+    {$finalWhereClause}
+    ORDER BY {$orderColumn} {$params['orderDir']}
+    LIMIT ? OFFSET ?
+";
+
+$queryParams = $whereParams;
+$queryParams[] = $params['length'];
+$queryParams[] = $params['start'];
+$queryTypes = $whereTypes . 'ii';
+
+$result = $db->query($dataQuery, $queryParams, $queryTypes);
+$sections = $result->fetchAll();
+
+$data = [];
+foreach ($sections as $row) {
+    $status = $row['is_active'] ? 'Active' : 'Inactive';
+    $statusClass = $row['is_active'] ? 'success' : 'secondary';
+    $toggleIcon = $row['is_active'] ? 'ban' : 'check';
+    $toggleClass = $row['is_active'] ? 'warning' : 'success';
+    $sectionLabel = $row['course_number'] . '-' . $row['section_id'];
+    $rowJson = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
+    
+    $data[] = [
+        '<span class="badge bg-info">' . htmlspecialchars($row['crn'] ?? 'N/A') . '</span>',
+        htmlspecialchars($row['course_number']),
+        '<span class="badge bg-primary">' . htmlspecialchars($row['section_id']) . '</span>',
+        htmlspecialchars($row['instructor_name'] ?? 'N/A'),
+        htmlspecialchars($row['max_enrollment'] ?? 'N/A'),
+        '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
+        '<button class="btn btn-sm btn-info" title="View" onclick=\'viewSection(' . $rowJson . ')\'><i class="fas fa-eye"></i></button> ' .
+        '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editSection(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
+        '<button class="btn btn-sm btn-' . $toggleClass . '" title="Toggle Status" onclick="toggleStatus(' . $row['sections_pk'] . ', \'' . htmlspecialchars($sectionLabel, ENT_QUOTES) . '\')"><i class="fas fa-' . $toggleIcon . '"></i></button> ' .
+        '<button class="btn btn-sm btn-danger" title="Delete" onclick="deleteSection(' . $row['sections_pk'] . ', \'' . htmlspecialchars($sectionLabel, ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
+    ];
+}
+
+outputDataTablesJson($params['draw'], $recordsTotal, $recordsFiltered, $data);

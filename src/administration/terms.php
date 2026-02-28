@@ -275,12 +275,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($termName)) {
                 $errors[] = 'Term name is required';
             }
-            if (empty($startDate)) {
-                $errors[] = 'Start date is required';
-            }
-            if (empty($endDate)) {
-                $errors[] = 'End date is required';
-            }
             
             // Check for duplicate banner_term
             if (!empty($bannerTerm)) {
@@ -308,10 +302,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if (empty($errors)) {
                 $db->query(
-                    "INSERT INTO {$dbPrefix}terms (banner_term, term_code, term_name, academic_year, start_date, end_date, is_active, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                    [$bannerTerm, $termCode, $termName, $academicYear, $startDate, $endDate, $isActive],
-                    'ssssssi'
+                    "INSERT INTO {$dbPrefix}terms (banner_term, term_code, term_name, academic_year, is_active, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
+                    [$bannerTerm, $termCode, $termName, $academicYear, $isActive],
+                    'ssssi'
                 );
                 $successMessage = 'Term added successfully';
             } else {
@@ -339,12 +333,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (empty($termName)) {
                 $errors[] = 'Term name is required';
-            }
-            if (empty($startDate)) {
-                $errors[] = 'Start date is required';
-            }
-            if (empty($endDate)) {
-                $errors[] = 'End date is required';
             }
             
             // Check for duplicate term_code (excluding current record)
@@ -374,10 +362,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($errors)) {
                 $db->query(
                     "UPDATE {$dbPrefix}terms 
-                     SET banner_term = ?, term_code = ?, term_name = ?, academic_year = ?, start_date = ?, end_date = ?, is_active = ?, updated_at = NOW()
+                     SET banner_term = ?, term_code = ?, term_name = ?, academic_year = ?, is_active = ?, updated_at = NOW()
                      WHERE terms_pk = ?",
-                    [$bannerTerm, $termCode, $termName, $academicYear, $startDate, $endDate, $isActive, $termsPk],
-                    'ssssssii'
+                    [$bannerTerm, $termCode, $termName, $academicYear, $isActive, $termsPk],
+                    'ssssii'
                 );
                 $successMessage = 'Term updated successfully';
             } else {
@@ -748,17 +736,6 @@ $theme->showHeader($context);
                         <small class="text-muted">Optional. Format: YYYY-YYYY</small>
                     </div>
                     
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="start_date" class="form-label">Start Date <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="start_date" name="start_date" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="end_date" class="form-label">End Date <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="end_date" name="end_date" required>
-                        </div>
-                    </div>
-                    
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="is_active" name="is_active" checked>
                         <label class="form-check-label" for="is_active">Active</label>
@@ -807,17 +784,6 @@ $theme->showHeader($context);
                     <div class="mb-3">
                         <label for="edit_academic_year" class="form-label">Academic Year</label>
                         <input type="text" class="form-control" id="edit_academic_year" name="academic_year" maxlength="20" placeholder="e.g., 2025-2026">
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="edit_start_date" class="form-label">Start Date <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="edit_start_date" name="start_date" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="edit_end_date" class="form-label">End Date <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="edit_end_date" name="end_date" required>
-                        </div>
                     </div>
                     
                     <div class="form-check">
@@ -1022,8 +988,6 @@ function editTerm(term) {
     $('#edit_term_code').val(term.term_code);
     $('#edit_term_name').val(term.term_name);
     $('#edit_academic_year').val(term.academic_year || '');
-    $('#edit_start_date').val(term.start_date);
-    $('#edit_end_date').val(term.end_date);
     $('#edit_is_active').prop('checked', term.is_active == 1);
     new bootstrap.Modal(document.getElementById('editTermModal')).show();
 }

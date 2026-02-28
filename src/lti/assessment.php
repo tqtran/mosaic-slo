@@ -83,7 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $termCode = $_POST['term_code'] ?? '';
             $sloId = (int)($_POST['slo_id'] ?? 0);
             $outcomes = $_POST['outcome'] ?? [];
-            $scores = $_POST['score'] ?? [];
             
             if (empty($crn) || empty($termCode) || $sloId <= 0) {
                 throw new \Exception('Invalid course section or SLO selected');
@@ -104,18 +103,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     continue;
                 }
                 
-                // Map outcome text to enum value
-                $achievementMap = [
-                    'Met' => 'met',
-                    'Partially Met' => 'partially_met',
-                    'Not Met' => 'not_met',
-                    'Not Assessed' => 'pending'
-                ];
-                $achievementEnum = $achievementMap[$achievementLevel] ?? 'pending';
-                
-                $scoreValue = isset($scores[$enrollmentId]) && $scores[$enrollmentId] !== '' 
-                    ? (float)$scores[$enrollmentId] 
-                    : null;
+                // Validate achievement level (already in enum format from radio buttons)
+                $validLevels = ['met', 'not_met', 'pending'];
+                if (!in_array($achievementLevel, $validLevels)) {
+                    $achievementLevel = 'pending';
+                }
                 
                 // Check if assessment already exists
                 $existing = $db->query(
@@ -130,21 +122,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $row = $existing->fetch();
                     $db->query(
                         "UPDATE {$dbPrefix}assessments 
-                         SET achievement_level = ?, score_value = ?, assessed_date = CURDATE(), 
+                         SET achievement_level = ?, assessed_date = CURDATE(), 
                              updated_at = NOW(), assessed_by_fk = ?
                          WHERE assessments_pk = ?",
-                        [$achievementEnum, $scoreValue, $assessorId, $row['assessments_pk']],
-                        'sdii'
+                        [$achievementLevel, $assessorId, $row['assessments_pk']],
+                        'sii'
                     );
                 } else {
                     // Insert new assessment
                     $db->query(
                         "INSERT INTO {$dbPrefix}assessments 
-                         (enrollment_fk, student_learning_outcome_fk, achievement_level, score_value, 
+                         (enrollment_fk, student_learning_outcome_fk, achievement_level, 
                           assessed_date, is_finalized, assessed_by_fk, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, CURDATE(), FALSE, ?, NOW(), NOW())",
-                        [$enrollmentId, $sloId, $achievementEnum, $scoreValue, $assessorId],
-                        'iisdi'
+                         VALUES (?, ?, ?, CURDATE(), FALSE, ?, NOW(), NOW())",
+                        [$enrollmentId, $sloId, $achievementLevel, $assessorId],
+                        'iisi'
                     );
                 }
                 
@@ -187,23 +179,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Query available course sections (distinct crn/term_code from enrollment)
-// Filter by LTI course context if available
-// TODO: Need to link enrollment.crn to courses table to get course_fk for SLO lookup
+// Query available course sections from enrollment table (has all the data)
+// enrollment.term_code stores Banner Term ID (e.g., 202533)
 $courseSectionsQuery = "
     SELECT DISTINCT e.crn, e.term_code, t.term_name
     FROM {$dbPrefix}enrollment e
-    LEFT JOIN {$dbPrefix}terms t ON e.term_code = t.term_code
-    WHERE 1=1
+    LEFT JOIN {$dbPrefix}terms t ON e.term_code = t.banner_term
+    WHERE e.enrollment_status = '1'
 ";
 
 $params = [];
 $types = '';
 
-// Filter by academic year from LTI launch if available
-if ($ltiAcademicYear) {
-    $courseSectionsQuery .= " AND YEAR(t.start_date) = ?";
-    $params[] = $ltiAcademicYear;
+// Filter by Banner Term from LTI launch if available
+if ($ltiTermId) {
+    $courseSectionsQuery .= " AND e.term_code = ?";
+    $params[] = $ltiTermId;
     $types .= 's';
 }
 
@@ -214,7 +205,7 @@ if ($ltiCrn) {
     $types .= 's';
 }
 
-$courseSectionsQuery .= " ORDER BY t.start_date DESC, e.crn ASC";
+$courseSectionsQuery .= " ORDER BY e.term_code DESC, e.crn ASC";
 
 if (!empty($params)) {
     $courseSectionsResult = $db->query($courseSectionsQuery, $params, $types);
@@ -232,37 +223,79 @@ $selectedTermCode = isset($_GET['term_code']) && !empty($_GET['term_code'])
     ? $_GET['term_code']
     : ($courseSections[0]['term_code'] ?? '');
 
-// TODO: Temporarily get all active SLOs until we can link enrollment.crn to courses table
-// Proper fix: Add course_code or course_fk column to enrollment table
+// Get course_fk from enrollment table (populated during enrollment import)
+$courseFkForSlo = null;
+$courseNumber = null;
+if ($ltiCrn && $ltiTermId) {
+    $enrollmentResult = $db->query(
+        "SELECT DISTINCT e.course_fk, c.course_number
+         FROM {$dbPrefix}enrollment e
+         INNER JOIN {$dbPrefix}courses c ON e.course_fk = c.courses_pk
+         WHERE e.crn = ? AND e.term_code = ? AND e.enrollment_status = '1'
+         LIMIT 1",
+        [$ltiCrn, $ltiTermId],
+        'ss'
+    );
+    if ($enrollmentResult->rowCount() > 0) {
+        $enrollmentRow = $enrollmentResult->fetch();
+        $courseFkForSlo = $enrollmentRow['course_fk'];
+        $courseNumber = $enrollmentRow['course_number'];
+    }
+}
+
+// Query SLOs for the course
 $slos = [];
-$slosResult = $db->query(
-    "SELECT student_learning_outcomes_pk, slo_code, slo_description
-     FROM {$dbPrefix}student_learning_outcomes
-     WHERE is_active = TRUE
-     ORDER BY sequence_num ASC"
-);
-$slos = $slosResult->fetchAll();
+if ($courseFkForSlo) {
+    $slosResult = $db->query(
+        "SELECT student_learning_outcomes_pk, slo_code, slo_description
+         FROM {$dbPrefix}student_learning_outcomes
+         WHERE course_fk = ? AND is_active = TRUE
+         ORDER BY sequence_num ASC",
+        [$courseFkForSlo],
+        'i'
+    );
+    $slos = $slosResult->fetchAll();
+}
 
 $selectedSloId = isset($_GET['slo_id']) && !empty($slos)
     ? (int)$_GET['slo_id']
     : ($slos[0]['student_learning_outcomes_pk'] ?? 0);
 
 // Get enrolled students with existing assessments
+// Get enrolled students for the selected CRN and Banner Term
+// SLO selection is optional - will filter assessment data if selected
 $students = [];
-if ($selectedCrn && $selectedTermCode && $selectedSloId > 0) {
-    // Build query to get students enrolled in this crn/term_code
-    $studentsQuery = "
-        SELECT e.enrollment_pk, e.crn, e.term_code, s.student_id, s.first_name, s.last_name,
-               a.achievement_level, a.score_value
-        FROM {$dbPrefix}enrollment e
-        INNER JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
-        LEFT JOIN {$dbPrefix}assessments a ON e.enrollment_pk = a.enrollment_fk 
-                                 AND a.student_learning_outcome_fk = ?
-        WHERE e.crn = ? AND e.term_code = ? AND e.enrollment_status = '1'
-        ORDER BY s.last_name ASC, s.first_name ASC
-    ";
+if ($selectedCrn && $selectedTermCode) {
+    // Query all students from enrollment by CRN and Banner Term
+    // Use course_fk directly from enrollment table (populated during import)
+    if ($selectedSloId > 0) {
+        // Include existing assessments for the selected SLO
+        $studentsQuery = "
+            SELECT e.enrollment_pk, e.crn, e.term_code, e.course_fk,
+                   s.student_id, s.first_name, s.last_name,
+                   a.achievement_level
+            FROM {$dbPrefix}enrollment e
+            INNER JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
+            LEFT JOIN {$dbPrefix}assessments a ON e.enrollment_pk = a.enrollment_fk 
+                                     AND a.student_learning_outcome_fk = ?
+            WHERE e.crn = ? AND e.term_code = ? AND e.enrollment_status = '1'
+            ORDER BY s.last_name ASC, s.first_name ASC
+        ";
+        $studentsResult = $db->query($studentsQuery, [$selectedSloId, $selectedCrn, $selectedTermCode], 'iss');
+    } else {
+        // Just get enrolled students without assessment data
+        $studentsQuery = "
+            SELECT e.enrollment_pk, e.crn, e.term_code, e.course_fk,
+                   s.student_id, s.first_name, s.last_name,
+                   NULL as achievement_level
+            FROM {$dbPrefix}enrollment e
+            INNER JOIN {$dbPrefix}students s ON e.student_fk = s.students_pk
+            WHERE e.crn = ? AND e.term_code = ? AND e.enrollment_status = '1'
+            ORDER BY s.last_name ASC, s.first_name ASC
+        ";
+        $studentsResult = $db->query($studentsQuery, [$selectedCrn, $selectedTermCode], 'ss');
+    }
     
-    $studentsResult = $db->query($studentsQuery, [$selectedSloId, $selectedCrn, $selectedTermCode], 'iss');
     $students = $studentsResult->fetchAll();
 }
 
@@ -421,44 +454,22 @@ $theme->showHeader($context);
             No Student Learning Outcomes are defined for this course. Please contact your administrator.
         </div>
     <?php elseif (empty($students)): ?>
-        <!-- Course & SLO Selection -->
+        <!-- SLO Selection -->
         <div class="card card-primary card-outline mb-4">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-graduation-cap"></i> Select Course Section and SLO</h3>
+                <h3 class="card-title"><i class="fas fa-graduation-cap"></i> Select Student Learning Outcome</h3>
             </div>
             <div class="card-body">
-                <form method="GET" action="" id="selectionForm">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="crn" class="form-label">Course Section (CRN)</label>
-                                <select name="crn" id="crn" class="form-select" onchange="this.form.submit()">
-                                    <?php foreach ($courseSections as $cs): ?>
-                                        <option value="<?= htmlspecialchars($cs['crn']) ?>" 
-                                                data-term-code="<?= htmlspecialchars($cs['term_code']) ?>"
-                                                <?= $cs['crn'] === $selectedCrn && $cs['term_code'] === $selectedTermCode ? 'selected' : '' ?>>
-                                            CRN <?= htmlspecialchars($cs['crn']) ?> 
-                                            (<?= htmlspecialchars($cs['term_name'] ?? $cs['term_code']) ?>)
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <input type="hidden" name="term_code" value="<?= htmlspecialchars($selectedTermCode) ?>">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="slo_id" class="form-label">Student Learning Outcome</label>
-                                <select name="slo_id" id="slo_id" class="form-select" onchange="this.form.submit()">
-                                    <?php foreach ($slos as $slo): ?>
-                                        <option value="<?= $slo['student_learning_outcomes_pk'] ?>" <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($slo['slo_code']) ?> - <?= htmlspecialchars(substr($slo['slo_description'], 0, 60)) ?><?= strlen($slo['slo_description']) > 60 ? '...' : '' ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </form>
+                <div class="btn-group d-flex flex-wrap gap-2" role="group">
+                    <?php foreach ($slos as $slo): ?>
+                        <a href="?crn=<?= urlencode($selectedCrn) ?>&term_code=<?= urlencode($selectedTermCode) ?>&slo_id=<?= $slo['student_learning_outcomes_pk'] ?>" 
+                           class="btn <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'btn-primary' : 'btn-outline-primary' ?> flex-fill"
+                           style="min-width: 120px;">
+                            <strong><?= htmlspecialchars($slo['slo_code']) ?></strong><br>
+                            <small><?= htmlspecialchars(substr($slo['slo_description'], 0, 50)) ?><?= strlen($slo['slo_description']) > 50 ? '...' : '' ?></small>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </div>
         
@@ -468,49 +479,27 @@ $theme->showHeader($context);
             No students are currently enrolled in this course section. Students must be enrolled before assessments can be entered.
         </div>
     <?php else: ?>
-        <!-- Course & SLO Selection -->
-        <div class="card card-primary card-outline mb-4">
+        <!-- SLO Selection Buttons -->
+        <div class="card card-primary card-outline mb-3">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-graduation-cap"></i> Assessment Details</h3>
+                <h3 class="card-title"><i class="fas fa-tasks"></i> Select Student Learning Outcome</h3>
             </div>
             <div class="card-body">
-                <form method="GET" action="" id="selectionForm">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="crn2" class="form-label">Course Section (CRN)</label>
-                                <select name="crn" id="crn2" class="form-select" onchange="this.form.submit()">
-                                    <?php foreach ($courseSections as $cs): ?>
-                                        <option value="<?= htmlspecialchars($cs['crn']) ?>"
-                                                data-term-code="<?= htmlspecialchars($cs['term_code']) ?>"
-                                                <?= $cs['crn'] === $selectedCrn && $cs['term_code'] === $selectedTermCode ? 'selected' : '' ?>>
-                                            CRN <?= htmlspecialchars($cs['crn']) ?>
-                                            (<?= htmlspecialchars($cs['term_name'] ?? $cs['term_code']) ?>)
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <input type="hidden" name="term_code" value="<?= htmlspecialchars($selectedTermCode) ?>">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="slo_id2" class="form-label">Student Learning Outcome</label>
-                                <select name="slo_id" id="slo_id2" class="form-select" onchange="this.form.submit()">
-                                    <?php foreach ($slos as $slo): ?>
-                                        <option value="<?= $slo['student_learning_outcomes_pk'] ?>" <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($slo['slo_code']) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
+                <div class="btn-group d-flex flex-wrap gap-2" role="group">
+                    <?php foreach ($slos as $slo): ?>
+                        <a href="?crn=<?= urlencode($selectedCrn) ?>&term_code=<?= urlencode($selectedTermCode) ?>&slo_id=<?= $slo['student_learning_outcomes_pk'] ?>" 
+                           class="btn <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'btn-primary' : 'btn-outline-primary' ?> flex-fill"
+                           style="min-width: 120px;">
+                            <strong><?= htmlspecialchars($slo['slo_code']) ?></strong><br>
+                            <small><?= htmlspecialchars(substr($slo['slo_description'], 0, 50)) ?><?= strlen($slo['slo_description']) > 50 ? '...' : '' ?></small>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+                <?php if ($selectedSlo): ?>
+                    <div class="alert alert-info mt-3 mb-0">
+                        <strong><?= htmlspecialchars($selectedSlo['slo_code']) ?>:</strong> <?= htmlspecialchars($selectedSlo['slo_description']) ?>
                     </div>
-                    <?php if ($selectedSlo): ?>
-                        <div class="alert alert-info mb-0">
-                            <strong>SLO Description:</strong> <?= htmlspecialchars($selectedSlo['slo_description']) ?>
-                        </div>
-                    <?php endif; ?>
-                </form>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -529,13 +518,10 @@ $theme->showHeader($context);
                     </h3>
                     <div class="card-tools">
                         <div class="btn-group">
-                            <button type="button" class="btn btn-sm btn-success" onclick="setAllOutcomes('Met')">
+                            <button type="button" class="btn btn-sm btn-success" onclick="setAllOutcomes('met')">
                                 <i class="fas fa-check"></i> All Met
                             </button>
-                            <button type="button" class="btn btn-sm btn-warning" onclick="setAllOutcomes('Partially Met')">
-                                <i class="fas fa-minus"></i> All Partial
-                            </button>
-                            <button type="button" class="btn btn-sm btn-danger" onclick="setAllOutcomes('Not Met')">
+                            <button type="button" class="btn btn-sm btn-danger" onclick="setAllOutcomes('not_met')">
                                 <i class="fas fa-times"></i> All Not Met
                             </button>
                         </div>
@@ -550,25 +536,15 @@ $theme->showHeader($context);
                                     <th>Student ID</th>
                                     <th>Student Name</th>
                                     <th>CRN</th>
-                                    <th style="width: 200px">Achievement Level</th>
-                                    <th style="width: 150px">Score (Optional)</th>
+                                    <th>Achievement Level</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php 
                                 $index = 1; 
                                 foreach ($students as $student): 
-                                    // Map enum to display value
-                                    $currentAchievement = 'Not Assessed';
-                                    if ($student['achievement_level']) {
-                                        $achievementMap = [
-                                            'met' => 'Met',
-                                            'partially_met' => 'Partially Met',
-                                            'not_met' => 'Not Met',
-                                            'pending' => 'Not Assessed'
-                                        ];
-                                        $currentAchievement = $achievementMap[$student['achievement_level']] ?? 'Not Assessed';
-                                    }
+                                    // Get current achievement level (enum from database)
+                                    $currentLevel = $student['achievement_level'] ?: 'pending';
                                 ?>
                                     <tr class="student-row">
                                         <td><?= $index++ ?></td>
@@ -578,19 +554,22 @@ $theme->showHeader($context);
                                         </td>
                                         <td><span class="badge bg-secondary"><?= htmlspecialchars($student['crn']) ?></span></td>
                                         <td>
-                                            <select name="outcome[<?= $student['enrollment_pk'] ?>]" class="form-select form-select-sm outcome-select">
-                                                <option value="Met" <?= $currentAchievement === 'Met' ? 'selected' : '' ?>>Met</option>
-                                                <option value="Partially Met" <?= $currentAchievement === 'Partially Met' ? 'selected' : '' ?>>Partially Met</option>
-                                                <option value="Not Met" <?= $currentAchievement === 'Not Met' ? 'selected' : '' ?>>Not Met</option>
-                                                <option value="Not Assessed" <?= $currentAchievement === 'Not Assessed' ? 'selected' : '' ?>>Not Assessed</option>
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <input type="number" name="score[<?= $student['enrollment_pk'] ?>]" 
-                                                   class="form-control form-control-sm" 
-                                                   min="0" max="100" step="0.01" 
-                                                   value="<?= $student['score_value'] ? htmlspecialchars($student['score_value']) : '' ?>"
-                                                   placeholder="0-100">
+                                            <div class="btn-group btn-group-sm outcome-buttons" role="group" data-enrollment="<?= $student['enrollment_pk'] ?>">
+                                                <input type="radio" class="btn-check" name="outcome[<?= $student['enrollment_pk'] ?>]" id="met_<?= $student['enrollment_pk'] ?>" value="met" <?= $currentLevel === 'met' ? 'checked' : '' ?>>
+                                                <label class="btn btn-outline-success" for="met_<?= $student['enrollment_pk'] ?>">
+                                                    <i class="fas fa-check"></i> Met
+                                                </label>
+
+                                                <input type="radio" class="btn-check" name="outcome[<?= $student['enrollment_pk'] ?>]" id="not_met_<?= $student['enrollment_pk'] ?>" value="not_met" <?= $currentLevel === 'not_met' ? 'checked' : '' ?>>
+                                                <label class="btn btn-outline-danger" for="not_met_<?= $student['enrollment_pk'] ?>">
+                                                    <i class="fas fa-times"></i> Not Met
+                                                </label>
+
+                                                <input type="radio" class="btn-check" name="outcome[<?= $student['enrollment_pk'] ?>]" id="pending_<?= $student['enrollment_pk'] ?>" value="pending" <?= $currentLevel === 'pending' ? 'checked' : '' ?>>
+                                                <label class="btn btn-outline-secondary" for="pending_<?= $student['enrollment_pk'] ?>">
+                                                    <i class="fas fa-minus"></i> Not Assessed
+                                                </label>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -623,8 +602,7 @@ $theme->showHeader($context);
             <div class="card-body">
                 <ol class="mb-0">
                     <li><strong>Select Course Section & SLO:</strong> Choose the course section and specific learning outcome you're assessing.</li>
-                    <li><strong>Enter Achievement Levels:</strong> For each student, select whether they Met, Partially Met, or did Not Meet the learning outcome.</li>
-                    <li><strong>Optional Scores:</strong> You may enter numeric scores (0-100) if applicable to your assessment method.</li>
+                    <li><strong>Enter Achievement Levels:</strong> For each student, click the button to indicate whether they Met, did Not Meet, or have Not Assessed the learning outcome.</li>
                     <li><strong>Quick Actions:</strong> Use the buttons above the table to quickly set all students to the same achievement level.</li>
                     <li><strong>Save:</strong> Click "Save Assessment Data" when complete. You can return later to update assessments.</li>
                 </ol>
@@ -635,8 +613,13 @@ $theme->showHeader($context);
 
 <script>
 function setAllOutcomes(outcome) {
-    document.querySelectorAll('.outcome-select').forEach(function(select) {
-        select.value = outcome;
+    // Set all radio buttons with the specified outcome value
+    document.querySelectorAll('.outcome-buttons').forEach(function(btnGroup) {
+        const enrollmentId = btnGroup.getAttribute('data-enrollment');
+        const radio = document.getElementById(outcome + '_' + enrollmentId);
+        if (radio) {
+            radio.checked = true;
+        }
     });
 }
 </script>

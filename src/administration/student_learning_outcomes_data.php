@@ -6,7 +6,7 @@ require_once __DIR__ . '/../system/includes/init.php';
 
 $params = getDataTablesParams();
 
-$searchableColumns = ['slo_code', 'slo_description', 'c.course_name', 'po.outcome_code'];
+$searchableColumns = ['slo_code', 'slo_description', 'slo.assessment_method', 'c.course_name', 'po.outcome_code'];
 
 $columns = [
     'student_learning_outcomes_pk',
@@ -14,6 +14,7 @@ $columns = [
     'program_outcome_code',
     'slo_code',
     'slo_description',
+    'assessment_method',
     'sequence_num',
     'is_active',
     'actions'
@@ -26,8 +27,9 @@ $columnDbNames = [
     2 => 'po.outcome_code',
     3 => 'slo.slo_code',
     4 => 'slo.slo_description',
-    5 => 'slo.sequence_num',
-    6 => 'slo.is_active'
+    5 => 'slo.assessment_method',
+    6 => 'slo.sequence_num',
+    7 => 'slo.is_active'
 ];
 
 $orderColumn = $columns[$params['orderColumn']] ?? 'slo_code';
@@ -118,12 +120,17 @@ foreach ($slos as $row) {
         ? '<span class="badge bg-info">' . htmlspecialchars($row['program_outcome_code']) . '</span>' 
         : '<span class="text-muted">-</span>';
     
+    $assessmentMethodDisplay = !empty($row['assessment_method'])
+        ? htmlspecialchars($row['assessment_method'])
+        : '<span class="text-muted">-</span>';
+    
     $data[] = [
         htmlspecialchars((string)$row['student_learning_outcomes_pk']),
         htmlspecialchars($row['course_name'] ?? '') . ' (' . htmlspecialchars($row['course_number'] ?? '') . ')',
         $programOutcomeDisplay,
         '<span class="badge bg-primary">' . htmlspecialchars($row['slo_code']) . '</span>',
         htmlspecialchars($descriptionPreview),
+        $assessmentMethodDisplay,
         htmlspecialchars((string)$row['sequence_num']),
         '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
         '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editSLO(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .

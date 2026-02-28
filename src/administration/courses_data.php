@@ -14,23 +14,19 @@ $params = getDataTablesParams();
 
 $searchableColumns = [
     'c.course_name', 
-    'c.course_number',
-    't.term_name'
+    'c.course_number'
 ];
 
 $columns = [
-    'c.courses_pk',
-    'c.course_name',
     'c.course_number',
-    't.term_name',
+    'c.course_name',
     'c.is_active',
-    'c.created_at',
     'actions'
 ];
 
-$orderColumn = $columns[$params['orderColumn']] ?? 'c.course_name';
+$orderColumn = $columns[$params['orderColumn']] ?? 'c.course_number';
 if ($orderColumn === 'actions') {
-    $orderColumn = 'c.course_name';
+    $orderColumn = 'c.course_number';
 }
 
 $whereParams = [];
@@ -45,6 +41,14 @@ if ($termFk) {
     $whereTypes .= 'i';
 }
 
+// Status filter
+$status = isset($_GET['status']) ? $_GET['status'] : null;
+if ($status !== null && $status !== '') {
+    $whereConditions[] = 'c.is_active = ?';
+    $whereParams[] = (int)$status;
+    $whereTypes .= 'i';
+}
+
 $whereClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
 if (!empty($whereClause)) {
     $whereConditions[] = $whereClause;
@@ -56,7 +60,7 @@ $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}courses");
 $totalRow = $totalResult->fetch();
 $recordsTotal = $totalRow['total'];
 
-$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}courses c LEFT JOIN {$dbPrefix}terms t ON c.term_fk = t.terms_pk {$finalWhereClause}";
+$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}courses c {$finalWhereClause}";
 if (!empty($whereParams)) {
     $filteredResult = $db->query($countQuery, $whereParams, $whereTypes);
 } else {
@@ -91,12 +95,10 @@ foreach ($courses as $row) {
     $rowJson = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
     
     $data[] = [
-        htmlspecialchars((string)$row['courses_pk']),
-        htmlspecialchars($row['course_name']),
         '<span class="badge bg-primary">' . htmlspecialchars($row['course_number']) . '</span>',
-        htmlspecialchars($row['term_name'] ?? 'N/A'),
+        htmlspecialchars($row['course_name']),
         '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
-        htmlspecialchars($row['created_at'] ?? ''),
+        '<button class="btn btn-sm btn-info" title="View" onclick=\'viewCourse(' . $rowJson . ')\'><i class="fas fa-eye"></i></button> ' .
         '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editCourse(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
         '<button class="btn btn-sm btn-' . $toggleClass . '" title="Toggle Status" onclick="toggleStatus(' . $row['courses_pk'] . ', \'' . htmlspecialchars($row['course_name'], ENT_QUOTES) . '\')"><i class="fas fa-' . $toggleIcon . '"></i></button> ' .
         '<button class="btn btn-sm btn-danger" title="Delete" onclick="deleteCourse(' . $row['courses_pk'] . ', \'' . htmlspecialchars($row['course_name'], ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
