@@ -35,7 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'add':
                 $courseName = trim($_POST['course_name'] ?? '');
                 $courseNumber = trim($_POST['course_number'] ?? '');
-                $programFk = (int)($_POST['program_fk'] ?? 0);
                 $termFk = (int)($_POST['term_fk'] ?? 0);
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
@@ -46,20 +45,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if (empty($courseNumber)) {
                     $errors[] = 'Course number is required';
-                }
-                if ($programFk <= 0) {
-                    $errors[] = 'Program is required';
-                } else {
-                    // Validate program exists
-                    $progCheck = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}programs WHERE programs_pk = ? AND is_active = 1",
-                        [$programFk],
-                        'i'
-                    );
-                    $progRow = $progCheck->fetch();
-                    if ($progRow['count'] == 0) {
-                        $errors[] = 'Invalid program selected';
-                    }
                 }
                 if ($termFk <= 0) {
                     $errors[] = 'Term is required';
@@ -78,10 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (empty($errors)) {
                     $db->query(
-                        "INSERT INTO {$dbPrefix}courses (course_name, course_number, program_fk, term_fk, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$courseName, $courseNumber, $programFk, $termFk, $isActive],
-                        'ssiii'
+                        "INSERT INTO {$dbPrefix}courses (course_name, course_number, term_fk, is_active, created_at, updated_at) 
+                         VALUES (?, ?, ?, ?, NOW(), NOW())",
+                        [$courseName, $courseNumber, $termFk, $isActive],
+                        'ssii'
                     );
                     $successMessage = 'Course added successfully';
                 } else {
@@ -93,7 +78,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $id = (int)($_POST['course_id'] ?? 0);
                 $courseName = trim($_POST['course_name'] ?? '');
                 $courseNumber = trim($_POST['course_number'] ?? '');
-                $programFk = (int)($_POST['program_fk'] ?? 0);
                 $termFk = (int)($_POST['term_fk'] ?? 0);
                 $isActive = isset($_POST['is_active']) ? 1 : 0;
                 
@@ -107,20 +91,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if (empty($courseNumber)) {
                     $errors[] = 'Course number is required';
-                }
-                if ($programFk <= 0) {
-                    $errors[] = 'Program is required';
-                } else {
-                    // Validate program exists
-                    $progCheck = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}programs WHERE programs_pk = ? AND is_active = 1",
-                        [$programFk],
-                        'i'
-                    );
-                    $progRow = $progCheck->fetch();
-                    if ($progRow['count'] == 0) {
-                        $errors[] = 'Invalid program selected';
-                    }
                 }
                 if ($termFk <= 0) {
                     $errors[] = 'Term is required';
@@ -140,10 +110,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($errors)) {
                     $db->query(
                         "UPDATE {$dbPrefix}courses 
-                         SET course_name = ?, course_number = ?, program_fk = ?, term_fk = ?, is_active = ?, updated_at = NOW()
+                         SET course_name = ?, course_number = ?, term_fk = ?, is_active = ?, updated_at = NOW()
                          WHERE courses_pk = ?",
-                        [$courseName, $courseNumber, $programFk, $termFk, $isActive, $id],
-                        'ssiiii'
+                        [$courseName, $courseNumber, $termFk, $isActive, $id],
+                        'ssiii'
                     );
                     $successMessage = 'Course updated successfully';
                 } else {
@@ -229,27 +199,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     $courseName = trim($data['course_name'] ?? '');
                     $courseNumber = trim($data['course_number'] ?? '');
-                    $programCode = trim($data['program_code'] ?? '');
                     $termCode = trim($data['term_code'] ?? '');
                     $isActive = isset($data['is_active']) ? ((int)$data['is_active'] === 1 || strtolower($data['is_active']) === 'true') : true;
                     
                     if (empty($courseName) || empty($courseNumber)) {
                         $errors[] = "Skipped row: missing required fields (course_name or course_number)";
                         continue;
-                    }
-                    
-                    // Lookup program by code
-                    $programFk = null;
-                    if (!empty($programCode)) {
-                        $progLookup = $db->query(
-                            "SELECT programs_pk FROM {$dbPrefix}programs WHERE program_code = ? AND is_active = 1",
-                            [$programCode],
-                            's'
-                        );
-                        if ($progLookup->rowCount() > 0) {
-                            $progRow = $progLookup->fetch();
-                            $programFk = $progRow['programs_pk'];
-                        }
                     }
                     
                     // Lookup term by code
@@ -266,21 +221,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                     
-                    if ($programFk === null) {
-                        $errors[] = "Skipped row for {$courseName}: invalid or missing program code";
-                        continue;
-                    }
-                    
                     if ($termFk === null) {
                         $errors[] = "Skipped row for {$courseName}: invalid or missing term code";
                         continue;
                     }
                     
-                    // Check if course exists (based on unique key: program_fk + course_number)
+                    // Check if course exists (based on unique key: course_number)
                     $result = $db->query(
-                        "SELECT courses_pk FROM {$dbPrefix}courses WHERE program_fk = ? AND course_number = ?",
-                        [$programFk, $courseNumber],
-                        'is'
+                        "SELECT courses_pk FROM {$dbPrefix}courses WHERE course_number = ?",
+                        [$courseNumber],
+                        's'
                     );
                     $existing = $result->fetch();
                     
@@ -297,10 +247,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
                         // Insert new
                         $db->query(
-                            "INSERT INTO {$dbPrefix}courses (course_name, course_number, program_fk, term_fk, is_active, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                            [$courseName, $courseNumber, $programFk, $termFk, $isActive],
-                            'ssiii'
+                            "INSERT INTO {$dbPrefix}courses (course_name, course_number, term_fk, is_active, created_at, updated_at) 
+                             VALUES (?, ?, ?, ?, NOW(), NOW())",
+                            [$courseName, $courseNumber, $termFk, $isActive],
+                            'ssii'
                         );
                         $imported++;
                     }
@@ -320,6 +270,120 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $errorMessage = 'No records imported. ' . implode('<br>', $errors);
                 }
                 break;
+                
+            case 'import_map':
+                if (!isset($_FILES['map_upload']) || $_FILES['map_upload']['error'] !== UPLOAD_ERR_OK) {
+                    $errorMessage = 'Please select a valid CSV file';
+                    break;
+                }
+                
+                $file = $_FILES['map_upload']['tmp_name'];
+                $handle = fopen($file, 'r');
+                
+                if ($handle === false) {
+                    $errorMessage = 'Failed to open CSV file';
+                    break;
+                }
+                
+                // Skip BOM if present
+                $bom = fread($handle, 3);
+                if ($bom !== "\xEF\xBB\xBF") {
+                    rewind($handle);
+                }
+                
+                $headers = fgetcsv($handle); // Read header row
+                $imported = 0;
+                $skipped = 0;
+                $errors = [];
+                $rowNum = 1;
+                
+                // Build maps for lookups
+                $programMap = [];
+                $programsResult = $db->query("
+                    SELECT programs_pk, program_code 
+                    FROM {$dbPrefix}programs 
+                    WHERE is_active = 1
+                ");
+                while ($prog = $programsResult->fetch()) {
+                    $programMap[$prog['program_code']] = $prog['programs_pk'];
+                }
+                
+                $courseMap = [];
+                $coursesResult = $db->query("
+                    SELECT courses_pk, course_number 
+                    FROM {$dbPrefix}courses 
+                    WHERE is_active = 1
+                ");
+                while ($course = $coursesResult->fetch()) {
+                    $courseMap[$course['course_number']] = $course['courses_pk'];
+                }
+                
+                while (($row = fgetcsv($handle)) !== false) {
+                    $rowNum++;
+                    if (count($row) >= 3) {
+                        // CSV format: ProgramID,Program,Course
+                        $programCode = trim($row[0]);
+                        $courseNumber = trim($row[2]);
+                        
+                        if (empty($programCode) || empty($courseNumber)) {
+                            $errors[] = "Row $rowNum: Missing program code or course number";
+                            continue;
+                        }
+                        
+                        // Lookup program_fk
+                        if (!isset($programMap[$programCode])) {
+                            $errors[] = "Row $rowNum: Program code '$programCode' not found";
+                            continue;
+                        }
+                        $programFk = $programMap[$programCode];
+                        
+                        // Lookup course_fk
+                        if (!isset($courseMap[$courseNumber])) {
+                            $errors[] = "Row $rowNum: Course '$courseNumber' not found";
+                            continue;
+                        }
+                        $courseFk = $courseMap[$courseNumber];
+                        
+                        // Check if mapping already exists
+                        $result = $db->query(
+                            "SELECT program_courses_pk FROM {$dbPrefix}program_courses 
+                             WHERE program_fk = ? AND course_fk = ?",
+                            [$programFk, $courseFk],
+                            'ii'
+                        );
+                        
+                        if ($result->rowCount() > 0) {
+                            $skipped++;
+                        } else {
+                            // Insert new mapping
+                            $db->query(
+                                "INSERT INTO {$dbPrefix}program_courses (program_fk, course_fk, created_at) 
+                                 VALUES (?, ?, NOW())",
+                                [$programFk, $courseFk],
+                                'ii'
+                            );
+                            $imported++;
+                        }
+                    }
+                }
+                
+                fclose($handle);
+                
+                $summary = "$imported program-course mappings imported";
+                if ($skipped > 0) {
+                    $summary .= ", $skipped duplicates skipped";
+                }
+                
+                if (count($errors) > 0) {
+                    $errorList = array_slice($errors, 0, 5);
+                    $errorMessage = "Import completed with errors: $summary<br><br>" . implode('<br>', $errorList);
+                    if (count($errors) > 5) {
+                        $errorMessage .= "<br>...and " . (count($errors) - 5) . " more errors";
+                    }
+                } else {
+                    $successMessage = "Import completed successfully: $summary";
+                }
+                break;
         }
     } catch (\Exception $e) {
         $errorMessage = 'Operation failed: ' . htmlspecialchars($e->getMessage());
@@ -333,15 +397,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
-
-// Fetch programs for dropdown
-$progResult = $db->query("
-    SELECT programs_pk, program_code, program_name 
-    FROM {$dbPrefix}programs 
-    WHERE is_active = 1 
-    ORDER BY program_name
-");
-$programs = $progResult->fetchAll();
 
 // Fetch terms for dropdown
 $termResult = $db->query("
@@ -468,6 +523,9 @@ $theme->showHeader($context);
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadCsvModal">
                         <i class="fas fa-upload"></i> Import CSV
                     </button>
+                    <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#uploadMapModal">
+                        <i class="fas fa-project-diagram"></i> Import PSLO Map
+                    </button>
                 </div>
             </div>
             <div class="card-body">
@@ -477,14 +535,12 @@ $theme->showHeader($context);
                             <th>ID</th>
                             <th>Course Name</th>
                             <th>Course Number</th>
-                            <th>Program</th>
                             <th>Term</th>
                             <th>Status</th>
                             <th>Created</th>
                             <th>Actions</th>
                         </tr>
                         <tr>
-                            <th></th>
                             <th></th>
                             <th></th>
                             <th></th>
@@ -499,7 +555,6 @@ $theme->showHeader($context);
                             <th>ID</th>
                             <th>Course Name</th>
                             <th>Course Number</th>
-                            <th>Program</th>
                             <th>Term</th>
                             <th>Status</th>
                             <th>Created</th>
@@ -534,15 +589,6 @@ $theme->showHeader($context);
                     <div class="mb-3">
                         <label for="courseNumber" class="form-label">Course Number</label>
                         <input type="text" class="form-control" id="courseNumber" name="course_number" maxlength="50" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="programFk" class="form-label">Program</label>
-                        <select class="form-select" id="programFk" name="program_fk" required>
-                            <option value="">Select Program</option>
-                            <?php foreach ($programs as $prog): ?>
-                            <option value="<?= $prog['programs_pk'] ?>"><?= htmlspecialchars($prog['program_name']) ?> (<?= htmlspecialchars($prog['program_code']) ?>)</option>
-                            <?php endforeach; ?>
-                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="termFk" class="form-label">Term</label>
@@ -589,15 +635,6 @@ $theme->showHeader($context);
                         <input type="text" class="form-control" id="editCourseNumber" name="course_number" maxlength="50" required>
                     </div>
                     <div class="mb-3">
-                        <label for="editProgramFk" class="form-label">Program</label>
-                        <select class="form-select" id="editProgramFk" name="program_fk" required>
-                            <option value="">Select Program</option>
-                            <?php foreach ($programs as $prog): ?>
-                            <option value="<?= $prog['programs_pk'] ?>"><?= htmlspecialchars($prog['program_name']) ?> (<?= htmlspecialchars($prog['program_code']) ?>)</option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="mb-3">
                         <label for="editTermFk" class="form-label">Term</label>
                         <select class="form-select" id="editTermFk" name="term_fk" required>
                             <option value="">Select Term</option>
@@ -640,14 +677,58 @@ $theme->showHeader($context);
                     
                     <div class="alert alert-info mb-0">
                         <strong>CSV Format:</strong><br>
-                        <code>course_name,course_number,department_code,description,credit_hours,is_active</code><br>
-                        <small class="text-muted">description (optional), credit_hours (integer, optional), is_active should be 1/0 or true/false (default: true)</small>
+                        <code>course_name,course_number,term_code,is_active</code><br>
+                        <small class="text-muted">term_code (required), is_active should be 1/0 or true/false (default: true)<br>
+                        <strong>Note:</strong> Courses are no longer assigned to programs during import. Use "Import PSLO Map" to associate courses with programs after importing courses.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-upload"></i> Upload
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- PSLO Map Upload Modal -->
+<div class="modal fade" id="uploadMapModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-project-diagram"></i> Import PSLO Map</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
+                    <input type="hidden" name="action" value="import_map">
+                    
+                    <div class="mb-3">
+                        <label for="map_upload" class="form-label">CSV File</label>
+                        <input type="file" class="form-control" id="map_upload" name="map_upload" accept=".csv" required>
+                    </div>
+                    
+                    <div class="alert alert-info mb-0">
+                        <strong>CSV Format:</strong><br>
+                        <code>ProgramID,Program,Course</code><br>
+                        <small class="text-muted">
+                            <ul class="mb-0 mt-2">
+                                <li>Maps courses to programs (many-to-many relationship)</li>
+                                <li>ProgramID: Program code (e.g., AS_ACC, CA_ETC)</li>
+                                <li>Course: Course number (e.g., ACCT C100, EDUC C202)</li>
+                                <li>Programs and courses must already exist</li>
+                                <li>Duplicate mappings will be skipped</li>
+                            </ul>
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-info">
+                        <i class="fas fa-upload"></i> Import
                     </button>
                 </div>
             </form>
@@ -738,11 +819,10 @@ $(document).ready(function() {
             { data: 0, name: 'courses_pk' },
             { data: 1, name: 'course_name' },
             { data: 2, name: 'course_number' },
-            { data: 3, name: 'program_name' },
-            { data: 4, name: 'term_name' },
-            { data: 5, name: 'is_active' },
-            { data: 6, name: 'created_at' },
-            { data: 7, name: 'actions', orderable: false, searchable: false }
+            { data: 3, name: 'term_name' },
+            { data: 4, name: 'is_active' },
+            { data: 5, name: 'created_at' },
+            { data: 6, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             this.api().columns().every(function() {
@@ -764,7 +844,6 @@ function editCourse(course) {
     $('#editCourseId').val(course.courses_pk);
     $('#editCourseName').val(course.course_name);
     $('#editCourseNumber').val(course.course_number);
-    $('#editProgramFk').val(course.program_fk);
     $('#editTermFk').val(course.term_fk);
     $('#editIsActive').prop('checked', course.is_active == 1);
     new bootstrap.Modal(document.getElementById('editCourseModal')).show();

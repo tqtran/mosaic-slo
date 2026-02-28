@@ -12,17 +12,28 @@ declare(strict_types=1);
 /**
  * Get DataTables request parameters
  * 
- * @return array{draw: int, start: int, length: int, search: string, orderColumn: int, orderDir: string}
+ * @return array{draw: int, start: int, length: int, search: string, orderColumn: int, orderDir: string, columnSearches: array}
  */
 function getDataTablesParams(): array
 {
+    // Extract individual column search values
+    $columnSearches = [];
+    if (isset($_GET['columns']) && is_array($_GET['columns'])) {
+        foreach ($_GET['columns'] as $index => $column) {
+            if (isset($column['search']['value']) && $column['search']['value'] !== '') {
+                $columnSearches[(int)$index] = $column['search']['value'];
+            }
+        }
+    }
+    
     return [
         'draw' => (int)($_GET['draw'] ?? 1),
         'start' => (int)($_GET['start'] ?? 0),
         'length' => (int)($_GET['length'] ?? 10),
         'search' => $_GET['search']['value'] ?? '',
         'orderColumn' => (int)($_GET['order'][0]['column'] ?? 0),
-        'orderDir' => strtoupper($_GET['order'][0]['dir'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC'
+        'orderDir' => strtoupper($_GET['order'][0]['dir'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC',
+        'columnSearches' => $columnSearches
     ];
 }
 
@@ -53,6 +64,33 @@ function buildSearchWhere(string $searchValue, array $searchableColumns, array &
     }
     
     return '(' . implode(' OR ', $searchConditions) . ')';
+}
+
+/**
+ * Build column-specific search WHERE clauses for DataTables
+ * 
+ * @param array<int, string> $columnSearches Map of column index to search value
+ * @param array<string> $columnNames Column database names indexed by column number
+ * @param array<string> &$params Reference to params array
+ * @param string &$types Reference to types string
+ * @return array<string> Array of WHERE conditions
+ */
+function buildColumnSearchWhere(array $columnSearches, array $columnNames, array &$params, string &$types): array
+{
+    $conditions = [];
+    
+    foreach ($columnSearches as $columnIndex => $searchValue) {
+        if (!isset($columnNames[$columnIndex]) || empty($searchValue)) {
+            continue;
+        }
+        
+        $columnName = $columnNames[$columnIndex];
+        $conditions[] = "{$columnName} LIKE ?";
+        $params[] = "%{$searchValue}%";
+        $types .= 's';
+    }
+    
+    return $conditions;
 }
 
 /**

@@ -227,18 +227,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     while (($row = fgetcsv($handle)) !== false) {
                         $rowNum++;
-                        if (count($row) >= 2) {
-                            $programName = trim($row[0]);
-                            $outcomeDescription = trim($row[1]);
+                        if (count($row) >= 5) {
+                            // CSV format: Program Code,Program,seq,PSLOID,Program Outcome
+                            $programCode = trim($row[0]);
+                            $programFullName = trim($row[1]);
+                            $psloid = trim($row[3]);
+                            $outcomeDescription = trim($row[4]);
                             
-                            // Try to find matching program
+                            // Try to find matching program by code first, then by name
                             $programFk = null;
-                            if (isset($programMap[$programName])) {
-                                $programFk = $programMap[$programName];
+                            if (isset($programMap[$programCode])) {
+                                $programFk = $programMap[$programCode];
+                            } elseif (isset($programMap[$programFullName])) {
+                                $programFk = $programMap[$programFullName];
                             } else {
-                                // Try partial match (program name might include degree type)
+                                // Try partial match
                                 foreach ($programMap as $key => $pk) {
-                                    if (stripos($programName, $key) !== false || stripos($key, $programName) !== false) {
+                                    if (stripos($programFullName, $key) !== false || stripos($key, $programFullName) !== false) {
                                         $programFk = $pk;
                                         break;
                                     }
@@ -247,17 +252,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             
                             // If program doesn't exist, create it
                             if ($programFk === null) {
-                                // Parse program name and degree type
-                                // Format: "Program Name, Degree Type"
-                                $parts = explode(',', $programName, 2);
-                                $baseProgramName = trim($parts[0]);
-                                $degreeType = isset($parts[1]) ? trim($parts[1]) : '';
+                                // Parse program full name to extract base name and degree type
+                                // Format: "Base Name, Degree Type" or "Base Name: Specialization, Degree Type"
+                                $parts = explode(',', $programFullName);
                                 
-                                // Generate program code from base name
-                                $programCode = strtoupper(preg_replace('/[^A-Z0-9]+/i', '-', $baseProgramName));
-                                $programCode = trim($programCode, '-');
+                                // If multiple parts, last part is degree type
+                                if (count($parts) >= 2) {
+                                    $degreeType = trim(array_pop($parts));
+                                    $baseProgramName = trim(implode(',', $parts));
+                                } else {
+                                    $baseProgramName = trim($programFullName);
+                                    $degreeType = '';
+                                }
                                 
-                                // Make code unique if it exists
+                                // Use provided program code (don't auto-generate)
+                                // Make code unique if it exists in the map
                                 $codeCounter = 1;
                                 $originalCode = $programCode;
                                 while (isset($programMap[$programCode])) {
@@ -266,20 +275,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 }
                                 
                                 try {
-                                    // Create the program
+                                    // Create the program with full name
                                     $db->query(
                                         "INSERT INTO {$dbPrefix}programs (term_fk, program_code, program_name, degree_type, is_active, created_at, updated_at) 
                                          VALUES (?, ?, ?, ?, 1, NOW(), NOW())",
-                                        [$selectedTermFk, $programCode, $programName, $degreeType],
+                                        [$selectedTermFk, $programCode, $baseProgramName, $degreeType],
                                         'isss'
                                     );
                                     
                                     $programFk = $db->getInsertId();
-                                    $programMap[$programName] = $programFk;
+                                    $programMap[$programFullName] = $programFk;
                                     $programMap[$programCode] = $programFk;
                                     $programsCreated++;
                                 } catch (\Exception $e) {
-                                    $errors[] = "Row $rowNum: Failed to create program '$programName': " . $e->getMessage();
+                                    $errors[] = "Row $rowNum: Failed to create program '$baseProgramName': " . $e->getMessage();
                                     continue;
                                 }
                             }
@@ -760,17 +769,18 @@ $theme->showHeader($context);
                         <label for="outcomeUpload" class="form-label">Upload CSV File</label>
                         <input type="file" class="form-control" id="outcomeUpload" name="outcome_upload" accept=".csv" required>
                         <small class="form-text text-muted">
-                            CSV format: Program Name, Program Outcome (header row optional)<br>
+                            CSV format: Program Code, Program, seq, PSLOID, Program Outcome<br>
                             Example file: <code>data/PSLO.csv</code>
                         </small>
                     </div>
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i>
                         <ul class="mb-0 small">
-                            <li>Programs will be auto-created if they don't exist</li>
-                            <li>PSLOs will be matched to programs by name</li>
-                            <li>Codes will be auto-generated as PSLO-P{ID}-1, PSLO-P{ID}-2, etc.</li>
-                            <li>Duplicate descriptions will be skipped</li>
+                            <li>Programs will be auto-created using the provided Program Code if they don't exist</li>
+                            <li>Program name and degree type are parsed from the Program column (last comma-separated part is degree)</li>
+                            <li>PSLOs will be matched to programs by code or name</li>
+                            <li>PSLO codes will be auto-generated as PSLO-P{ID}-1, PSLO-P{ID}-2, etc.</li>
+                            <li>Duplicate PSLO descriptions will be skipped</li>
                             <li>All imported PSLOs and programs will be set to active</li>
                             <li>Programs will be assigned to the currently selected term</li>
                         </ul>

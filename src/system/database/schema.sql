@@ -16,6 +16,7 @@ DROP TABLE IF EXISTS tbl_enrollment;
 DROP TABLE IF EXISTS tbl_students;
 DROP TABLE IF EXISTS tbl_student_learning_outcomes;
 DROP TABLE IF EXISTS tbl_sections;
+DROP TABLE IF EXISTS tbl_program_courses;
 DROP TABLE IF EXISTS tbl_courses;
 DROP TABLE IF EXISTS tbl_program_outcomes;
 DROP TABLE IF EXISTS tbl_programs;
@@ -159,24 +160,35 @@ CREATE TABLE tbl_program_outcomes (
 
 CREATE TABLE tbl_courses (
     courses_pk INT AUTO_INCREMENT PRIMARY KEY,
-    program_fk INT NOT NULL,
     term_fk INT NOT NULL,
-    course_number VARCHAR(50) NOT NULL,
+    course_number VARCHAR(50) NOT NULL UNIQUE,
     course_name VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_by_fk INT,
     updated_by_fk INT,
-    FOREIGN KEY (program_fk) REFERENCES tbl_programs(programs_pk) ON DELETE CASCADE,
     FOREIGN KEY (term_fk) REFERENCES tbl_terms(terms_pk) ON DELETE CASCADE,
     FOREIGN KEY (created_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
     FOREIGN KEY (updated_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
-    UNIQUE KEY unique_program_course (program_fk, course_number),
-    INDEX idx_program_fk (program_fk),
     INDEX idx_term_fk (term_fk),
     INDEX idx_course_number (course_number),
     INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Junction table for many-to-many relationship between programs and courses
+CREATE TABLE tbl_program_courses (
+    program_courses_pk INT AUTO_INCREMENT PRIMARY KEY,
+    program_fk INT NOT NULL,
+    course_fk INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by_fk INT,
+    FOREIGN KEY (program_fk) REFERENCES tbl_programs(programs_pk) ON DELETE CASCADE,
+    FOREIGN KEY (course_fk) REFERENCES tbl_courses(courses_pk) ON DELETE CASCADE,
+    FOREIGN KEY (created_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    UNIQUE KEY unique_program_course (program_fk, course_fk),
+    INDEX idx_program_fk (program_fk),
+    INDEX idx_course_fk (course_fk)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE tbl_sections (

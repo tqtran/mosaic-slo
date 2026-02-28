@@ -59,7 +59,7 @@ $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}courses");
 $totalRow = $totalResult->fetch();
 $recordsTotal = $totalRow['total'];
 
-$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}courses c LEFT JOIN {$dbPrefix}programs p ON c.program_fk = p.programs_pk LEFT JOIN {$dbPrefix}terms t ON c.term_fk = t.terms_pk {$finalWhereClause}";
+$countQuery = "SELECT COUNT(*) as total FROM {$dbPrefix}courses c LEFT JOIN {$dbPrefix}terms t ON c.term_fk = t.terms_pk {$finalWhereClause}";
 if (!empty($whereParams)) {
     $filteredResult = $db->query($countQuery, $whereParams, $whereTypes);
 } else {
@@ -69,9 +69,8 @@ $filteredRow = $filteredResult->fetch();
 $recordsFiltered = $filteredRow['total'];
 
 $dataQuery = "
-    SELECT c.*, p.program_name, p.program_code, t.term_name, t.term_code
+    SELECT c.*, t.term_name, t.term_code
     FROM {$dbPrefix}courses c
-    LEFT JOIN {$dbPrefix}programs p ON c.program_fk = p.programs_pk
     LEFT JOIN {$dbPrefix}terms t ON c.term_fk = t.terms_pk
     {$finalWhereClause}
     ORDER BY {$orderColumn} {$params['orderDir']}
@@ -98,13 +97,12 @@ foreach ($courses as $row) {
         htmlspecialchars((string)$row['courses_pk']),
         htmlspecialchars($row['course_name']),
         '<span class="badge bg-primary">' . htmlspecialchars($row['course_number']) . '</span>',
-        htmlspecialchars($row['program_name'] ?? 'N/A'),
         htmlspecialchars($row['term_name'] ?? 'N/A'),
         '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
         htmlspecialchars($row['created_at'] ?? ''),
         '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editCourse(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
         '<button class="btn btn-sm btn-' . $toggleClass . '" title="Toggle Status" onclick="toggleStatus(' . $row['courses_pk'] . ', \'' . htmlspecialchars($row['course_name'], ENT_QUOTES) . '\')"><i class="fas fa-' . $toggleIcon . '"></i></button> ' .
-        '<button class="btn btn-sm btn-danger" title="Delete" onclick="deleteCourse(' . $row['courses_pk'] . ', \'' . htmlspecialchars($row['course_name'], ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
+        '<button class="btn btn-sm btn-danger\" title="Delete" onclick="deleteCourse(' . $row['courses_pk'] . ', \'' . htmlspecialchars($row['course_name'], ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
     ];
 }
 

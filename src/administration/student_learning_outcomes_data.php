@@ -19,6 +19,17 @@ $columns = [
     'actions'
 ];
 
+// Map column indices to database column names for individual column search
+$columnDbNames = [
+    0 => 'slo.student_learning_outcomes_pk',
+    1 => 'c.course_name',
+    2 => 'po.outcome_code',
+    3 => 'slo.slo_code',
+    4 => 'slo.slo_description',
+    5 => 'slo.sequence_num',
+    6 => 'slo.is_active'
+];
+
 $orderColumn = $columns[$params['orderColumn']] ?? 'slo_code';
 if ($orderColumn === 'actions') {
     $orderColumn = 'slo_code';
@@ -42,9 +53,16 @@ if ($termFk) {
     $whereTypes .= 'i';
 }
 
+// Global search
 $whereClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
 if (!empty($whereClause)) {
     $whereConditions[] = $whereClause;
+}
+
+// Individual column searches
+$columnSearchConditions = buildColumnSearchWhere($params['columnSearches'], $columnDbNames, $whereParams, $whereTypes);
+foreach ($columnSearchConditions as $condition) {
+    $whereConditions[] = $condition;
 }
 
 $finalWhereClause = !empty($whereConditions) ? "WHERE " . implode(' AND ', $whereConditions) : '';

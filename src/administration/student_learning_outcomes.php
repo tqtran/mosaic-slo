@@ -140,12 +140,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 }
                 
+                // Get selected term for auto-creating courses
+                $selectedTermFk = getSelectedTermFk();
+                if (!$selectedTermFk) {
+                    $errorMessage = 'No term selected. Please select a term first.';
+                    break;
+                }
+                
                 $file = $_FILES['csv_file']['tmp_name'];
                 $handle = fopen($file, 'r');
                 
                 if ($handle === false) {
                     $errorMessage = 'Failed to open CSV file';
                     break;
+                }
+                
+                // Skip BOM if present
+                $bom = fread($handle, 3);
+                if ($bom !== "\xEF\xBB\xBF") {
+                    rewind($handle);
                 }
                 
                 // Read header
@@ -156,107 +169,144 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 }
                 
-                // Strip UTF-8 BOM if present
-                if (!empty($headers[0])) {
-                    $headers[0] = preg_replace('/^\x{FEFF}/u', '', $headers[0]);
-                }
-                
-                // Expected columns: course_number,program_outcome_code,slo_code,slo_description,assessment_method,sequence_num,is_active
+                // Expected columns: CRS ID,CRS TITLE,CSLO
                 $imported = 0;
                 $updated = 0;
+                $coursesCreated = 0;
                 $errors = [];
+                $rowNum = 0;
+                
+                // Track max sequence number per course during import
+                $courseMaxSequence = [];
+                
+                // Build course map by course_number (CRS ID)
+                $courseMap = [];
+                $coursesResult = $db->query(
+                    "SELECT courses_pk, course_number FROM {$dbPrefix}courses WHERE is_active = 1"
+                );
+                while ($course = $coursesResult->fetch()) {
+                    $courseMap[$course['course_number']] = $course['courses_pk'];
+                    
+                    // Get max existing sequence for this course
+                    $maxSeqResult = $db->query(
+                        "SELECT COALESCE(MAX(sequence_num), 0) as max_seq 
+                         FROM {$dbPrefix}student_learning_outcomes 
+                         WHERE course_fk = ?",
+                        [$course['courses_pk']],
+                        'i'
+                    );
+                    $maxSeqRow = $maxSeqResult->fetch();
+                    $courseMaxSequence[$course['courses_pk']] = (int)$maxSeqRow['max_seq'];
+                }
                 
                 while (($row = fgetcsv($handle)) !== false) {
-                    if (count($row) < 3) continue; // Need at least course_number, slo_code, slo_description
+                    $rowNum++;
+                    if (count($row) < 2) continue; // Need at least CRS ID and CSLO
                     
                     $data = array_combine($headers, $row);
                     if ($data === false) continue;
                     
-                    $courseNumber = trim($data['course_number'] ?? '');
-                    $programOutcomeCode = trim($data['program_outcome_code'] ?? '');
-                    $sloCode = trim($data['slo_code'] ?? '');
-                    $sloDescription = trim($data['slo_description'] ?? '');
-                    $assessmentMethod = trim($data['assessment_method'] ?? '');
-                    $sequenceNum = (int)($data['sequence_num'] ?? 0);
-                    $isActive = isset($data['is_active']) ? ((int)$data['is_active'] === 1 || strtolower($data['is_active']) === 'true') : true;
+                    // Support new format: CRS ID,CRS TITLE,CSLO
+                    $courseId = trim($data['CRS ID'] ?? $data['course_number'] ?? '');
+                    $courseTitle = trim($data['CRS TITLE'] ?? '');
+                    $csloText = trim($data['CSLO'] ?? $data['slo_description'] ?? '');
                     
-                    if (empty($courseNumber) || empty($sloCode) || empty($sloDescription)) {
-                        $errors[] = "Skipped row: missing required fields (course_number, slo_code, or slo_description)";
+                    if (empty($courseId) || empty($csloText)) {
+                        $errors[] = "Row $rowNum: Missing CRS ID or CSLO";
                         continue;
                     }
                     
-                    // Lookup course_fk by course_number
-                    $result = $db->query(
-                        "SELECT courses_pk FROM {$dbPrefix}courses WHERE course_number = ?",
-                        [$courseNumber],
-                        's'
-                    );
-                    $courseRow = $result->fetch();
-                    if (!$courseRow) {
-                        $errors[] = "Skipped row: course number '$courseNumber' not found";
-                        continue;
-                    }
-                    $courseFk = (int)$courseRow['courses_pk'];
-                    
-                    // Lookup program_outcomes_fk by code (optional/nullable)
-                    $programOutcomesFk = null;
-                    if (!empty($programOutcomeCode)) {
-                        $result = $db->query(
-                            "SELECT program_outcomes_pk FROM {$dbPrefix}program_outcomes WHERE code = ?",
-                            [$programOutcomeCode],
-                            's'
-                        );
-                        $programOutcomeRow = $result->fetch();
-                        if (!$programOutcomeRow) {
-                            $errors[] = "Warning: program outcome code '$programOutcomeCode' not found, skipping program_outcomes_fk";
-                        } else {
-                            $programOutcomesFk = (int)$programOutcomeRow['program_outcomes_pk'];
+                    // Check if course exists, create if not
+                    if (!isset($courseMap[$courseId])) {
+                        // Auto-create course
+                        if (empty($courseTitle)) {
+                            $courseTitle = $courseId; // Use course ID as title if no title provided
                         }
-                    }
-                    
-                    // Check if SLO exists (based on unique course_fk + slo_code)
-                    $result = $db->query(
-                        "SELECT student_learning_outcomes_pk FROM {$dbPrefix}student_learning_outcomes WHERE course_fk = ? AND slo_code = ?",
-                        [$courseFk, $sloCode],
-                        'is'
-                    );
-                    $existing = $result->fetch();
-                    
-                    if ($existing) {
-                        // Update existing
-                        $db->query(
-                            "UPDATE {$dbPrefix}student_learning_outcomes 
-                             SET program_outcomes_fk = ?, slo_description = ?, assessment_method = ?, sequence_num = ?, is_active = ?, updated_at = NOW() 
-                             WHERE student_learning_outcomes_pk = ?",
-                            [$programOutcomesFk, $sloDescription, $assessmentMethod, $sequenceNum, $isActive, $existing['student_learning_outcomes_pk']],
-                            'issiii'
-                        );
-                        $updated++;
+                        
+                        try {
+                            $db->query(
+                                "INSERT INTO {$dbPrefix}courses (term_fk, course_number, course_name, is_active, created_at, updated_at) 
+                                 VALUES (?, ?, ?, 1, NOW(), NOW())",
+                                [$selectedTermFk, $courseId, $courseTitle],
+                                'iss'
+                            );
+                            
+                            $courseFk = $db->getInsertId();
+                            $courseMap[$courseId] = $courseFk;
+                            $courseMaxSequence[$courseFk] = 0; // Initialize sequence for new course
+                            $coursesCreated++;
+                        } catch (\Exception $e) {
+                            $errors[] = "Row $rowNum: Failed to create course '$courseId': " . $e->getMessage();
+                            continue;
+                        }
                     } else {
-                        // Insert new
-                        if ($programOutcomesFk !== null) {
-                            $db->query(
-                                "INSERT INTO {$dbPrefix}student_learning_outcomes (course_fk, program_outcomes_fk, slo_code, slo_description, assessment_method, sequence_num, is_active, created_at, updated_at) 
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                                [$courseFk, $programOutcomesFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive],
-                                'iisssii'
-                            );
-                        } else {
-                            $db->query(
-                                "INSERT INTO {$dbPrefix}student_learning_outcomes (course_fk, slo_code, slo_description, assessment_method, sequence_num, is_active, created_at, updated_at) 
-                                 VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                                [$courseFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive],
-                                'isssii'
-                            );
+                        $courseFk = $courseMap[$courseId];
+                    }
+                    
+                    // Initialize sequence tracker if not set
+                    if (!isset($courseMaxSequence[$courseFk])) {
+                        $courseMaxSequence[$courseFk] = 0;
+                    }
+                    
+                    // Split CSLO text into separate sentences
+                    // Split on periods followed by space and capital letter, or double space
+                    $sentences = preg_split('/\.\s+(?=[A-Z])/', $csloText);
+                    
+                    foreach ($sentences as $index => $sentence) {
+                        $sentence = trim($sentence);
+                        if (empty($sentence)) continue;
+                        
+                        // Add period back if it was removed
+                        if (!preg_match('/[.!?]$/', $sentence)) {
+                            $sentence .= '.';
                         }
-                        $imported++;
+                        
+                        // Use tracked sequence number for this course (continues from previous rows)
+                        $courseMaxSequence[$courseFk]++;
+                        $sequenceNum = $courseMaxSequence[$courseFk];
+                        $sloCode = $courseId . '_clso' . $sequenceNum;
+                        
+                        // Check if SLO exists by description (not code, since we're regenerating codes)
+                        $result = $db->query(
+                            "SELECT student_learning_outcomes_pk FROM {$dbPrefix}student_learning_outcomes 
+                             WHERE course_fk = ? AND slo_description = ?",
+                            [$courseFk, $sentence],
+                            'is'
+                        );
+                        $existing = $result->fetch();
+                        
+                        if ($existing) {
+                            // Update existing with new code and sequence
+                            $db->query(
+                                "UPDATE {$dbPrefix}student_learning_outcomes 
+                                 SET slo_code = ?, sequence_num = ?, is_active = 1, updated_at = NOW() 
+                                 WHERE student_learning_outcomes_pk = ?",
+                                [$sloCode, $sequenceNum, $existing['student_learning_outcomes_pk']],
+                                'sii'
+                            );
+                            $updated++;
+                        } else {
+                            // Insert new
+                            $db->query(
+                                "INSERT INTO {$dbPrefix}student_learning_outcomes (course_fk, slo_code, slo_description, sequence_num, is_active, created_at, updated_at) 
+                                 VALUES (?, ?, ?, ?, 1, NOW(), NOW())",
+                                [$courseFk, $sloCode, $sentence, $sequenceNum],
+                                'issi'
+                            );
+                            $imported++;
+                        }
                     }
                 }
                 
                 fclose($handle);
                 
+                $summary = "$imported CSLOs imported, $updated updated";
+                if ($coursesCreated > 0) {
+                    $summary .= ", $coursesCreated courses created";
+                }
+                
                 if ($imported > 0 || $updated > 0) {
-                    $successMessage = "Import complete: $imported new, $updated updated";
+                    $successMessage = "Import complete: $summary";
                     if (!empty($errors)) {
                         $successMessage .= '<br>Warnings: ' . implode('<br>', array_slice($errors, 0, 5));
                         if (count($errors) > 5) {
@@ -605,8 +655,18 @@ $theme->showHeader($context);
                     
                     <div class="alert alert-info mb-0">
                         <strong>CSV Format:</strong><br>
-                        <code>course_number,program_outcome_code,slo_code,slo_description,assessment_method,sequence_num,is_active</code><br>
-                        <small class="text-muted">program_outcome_code is optional (can be empty). assessment_method is optional. sequence_num defaults to 0. is_active should be 1/0 or true/false (default: true)</small>
+                        <code>CRS ID,CRS TITLE,CSLO</code><br>
+                        <small class="text-muted">
+                            <ul class="mb-0">
+                                <li>CRS ID: Course identifier (e.g., BCI C100, COMM C110)</li>
+                                <li>CRS TITLE: Course name (e.g., "Introduction to Building Code")</li>
+                                <li>CSLO: Learning outcome text (can contain multiple sentences)</li>
+                                <li>Courses will be auto-created if they don't exist</li>
+                                <li>CSLO codes will be auto-generated as {COURSE_ID}_clso1, {COURSE_ID}_clso2, etc.</li>
+                                <li>Multiple sentences will be automatically split and numbered</li>
+                                <li>Courses will be assigned to the currently selected term</li>
+                            </ul>
+                        </small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -705,14 +765,24 @@ $(document).ready(function() {
             { data: 7, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
-            this.api().columns().every(function() {
+            var api = this.api();
+            
+            // Apply the search
+            api.columns().every(function(colIdx) {
                 var column = this;
-                $('select', this.header()).on('change', function() {
-                    column.search($(this).val()).draw();
+                
+                // Find the input/select in the second header row for this column
+                var filterCell = $('#slosTable thead tr:eq(1) th:eq(' + colIdx + ')');
+                
+                $('select', filterCell).on('change', function() {
+                    var val = $(this).val();
+                    column.search(val ? val : '', true, false).draw();
                 });
-                $('input', this.header()).on('keyup change clear', function() {
-                    if (column.search() !== this.value) {
-                        column.search(this.value).draw();
+                
+                $('input', filterCell).on('keyup change clear', function() {
+                    var val = $(this).val();
+                    if (column.search() !== val) {
+                        column.search(val).draw();
                     }
                 });
             });
