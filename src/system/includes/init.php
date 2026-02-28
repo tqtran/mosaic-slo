@@ -108,11 +108,14 @@ $GLOBALS['config'] = $config;
  * Handles term selection across page navigation:
  * 1. If term_fk is in GET/POST, use it and update session
  * 2. Otherwise, use session value
- * 3. If no session value, return null (all terms)
+ * 3. If no session value, auto-select term closest to today
+ * 4. If no terms exist, return null (all terms)
  * 
  * @return int|null Selected term primary key or null for all terms
  */
 function getSelectedTermFk(): ?int {
+    global $db, $dbPrefix;
+    
     // Check if term_fk is in request
     if (isset($_GET['term_fk']) && $_GET['term_fk'] !== '') {
         $termFk = (int)$_GET['term_fk'];
@@ -131,7 +134,60 @@ function getSelectedTermFk(): ?int {
         return (int)$_SESSION['selected_term_fk'];
     }
     
-    // No term selected - return null for "all terms"
+    // No term selected - auto-select the term closest to today
+    // Priority:
+    // 1. Active term where today is between start_date and end_date
+    // 2. If no dates, use the most recently created active term
+    // 3. Otherwise, find the term with the smallest date distance to today
+    try {
+        $today = date('Y-m-d');
+        
+        // First, try to find an active term containing today
+        $result = $db->query(
+            "SELECT terms_pk FROM {$dbPrefix}terms 
+             WHERE is_active = 1 
+             AND start_date IS NOT NULL 
+             AND end_date IS NOT NULL
+             AND ? BETWEEN start_date AND end_date
+             ORDER BY start_date DESC
+             LIMIT 1",
+            [$today],
+            's'
+        );
+        
+        if ($result && $row = $result->fetch()) {
+            $termFk = (int)$row['terms_pk'];
+            $_SESSION['selected_term_fk'] = $termFk;
+            return $termFk;
+        }
+        
+        // If no term contains today, find the closest term by date distance
+        // Calculate minimum distance from today to either start_date or end_date
+        $result = $db->query(
+            "SELECT terms_pk,
+                    LEAST(
+                        COALESCE(ABS(DATEDIFF(start_date, ?)), 999999),
+                        COALESCE(ABS(DATEDIFF(end_date, ?)), 999999)
+                    ) as distance
+             FROM {$dbPrefix}terms
+             WHERE is_active = 1
+             ORDER BY distance ASC, start_date DESC, created_at DESC
+             LIMIT 1",
+            [$today, $today],
+            'ss'
+        );
+        
+        if ($result && $row = $result->fetch()) {
+            $termFk = (int)$row['terms_pk'];
+            $_SESSION['selected_term_fk'] = $termFk;
+            return $termFk;
+        }
+    } catch (\Exception $e) {
+        // If database query fails, log error and fall through to return null
+        error_log("Failed to auto-select term: " . $e->getMessage());
+    }
+    
+    // No terms available - return null for "all terms"
     return null;
 }
 

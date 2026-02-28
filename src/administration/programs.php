@@ -71,11 +71,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
-                        "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, term_fk, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$code, $name, $degreeType, $termFk, $isActive],
-                        'sssii'
+                        "INSERT INTO {$dbPrefix}programs (program_code, program_name, degree_type, term_fk, is_active, created_at, updated_at, created_by_fk, updated_by_fk) 
+                         VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                        [$code, $name, $degreeType, $termFk, $isActive, $userId, $userId],
+                        'sssiiii'
                     );
                     $successMessage = 'Program added successfully';
                 } else {
@@ -131,12 +132,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
                         "UPDATE {$dbPrefix}programs 
-                         SET program_code = ?, program_name = ?, degree_type = ?, term_fk = ?, is_active = ?, updated_at = NOW()
+                         SET program_code = ?, program_name = ?, degree_type = ?, term_fk = ?, is_active = ?, updated_at = NOW(), updated_by_fk = ?
                          WHERE programs_pk = ?",
-                        [$code, $name, $degreeType, $termFk, $isActive, $id],
-                        'sssiii'
+                        [$code, $name, $degreeType, $termFk, $isActive, $userId, $id],
+                        'sssiiii'
                     );
                     $successMessage = 'Program updated successfully';
                 } else {
@@ -147,12 +149,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'toggle_status':
                 $id = (int)($_POST['program_id'] ?? 0);
                 if ($id > 0) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
                         "UPDATE {$dbPrefix}programs 
-                         SET is_active = NOT is_active, updated_at = NOW()
+                         SET is_active = NOT is_active, updated_at = NOW(), updated_by_fk = ?
                          WHERE programs_pk = ?",
-                        [$id],
-                        'i'
+                        [$userId, $id],
+                        'ii'
                     );
                     $successMessage = 'Program status updated';
                 }
@@ -312,36 +315,33 @@ $theme->showHeader($context);
                 </div>
             </div>
             <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label for="degreeTypeFilter" class="form-label">Degree Type:</label>
-                        <select id="degreeTypeFilter" class="form-select">
-                            <option value="">All Degree Types</option>
-                            <?php
-                            $degreeTypes = explode(',', $config->get('app.degree_types', 'Associate of Arts (AA),Associate of Science (AS),Associate in Arts for Transfer (AA-T),Associate in Science for Transfer (AS-T),Bachelor of Science (BS),Bachelor of Applied Science (BAS),Certificate of Achievement (16 or more semester units),Certificate of Achievement (8-15.5 semester units),Local Certificate (fewer than 8 semester units),Noncredit Certificate of Completion,Noncredit Certificate of Competency'));
-                            foreach ($degreeTypes as $type) {
-                                $type = trim($type);
-                                echo '<option value="' . htmlspecialchars($type) . '">' . htmlspecialchars($type) . '</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="statusFilter" class="form-label">Status:</label>
-                        <select id="statusFilter" class="form-select">
-                            <option value="">All Statuses</option>
-                            <option value="1">Active</option>
-                            <option value="0">Inactive</option>
-                        </select>
-                    </div>
-                </div>
                 <table id="programsTable" class="table table-bordered table-striped">
                     <thead>
                         <tr>
+                            <th>ID</th>
+                            <th>Term</th>
+                            <th>Code</th>
                             <th>Program Name</th>
                             <th>Degree Type</th>
                             <th>Status</th>
+                            <th>Created</th>
+                            <th>Created By</th>
+                            <th>Updated</th>
+                            <th>Updated By</th>
                             <th>Actions</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -459,9 +459,31 @@ $theme->showHeader($context);
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="form-check">
+                    <div class="form-check mb-3">
                         <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
                         <label class="form-check-label" for="editIsActive">Active</label>
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i class="fas fa-history"></i> Audit Information</h6>
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <small class="text-muted">Created:</small>
+                            <p class="mb-0" id="editProgramCreated"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">Created By:</small>
+                            <p class="mb-0" id="editProgramCreatedBy"></p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted">Last Updated:</small>
+                            <p class="mb-0" id="editProgramUpdated"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">Updated By:</small>
+                            <p class="mb-0" id="editProgramUpdatedBy"></p>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -483,44 +505,55 @@ $theme->showHeader($context);
             </div>
             <div class="modal-body">
                 <div class="row mb-3">
+                    <div class="col-md-4">
+                        <strong>Program Code:</strong>
+                        <p id="viewProgramCode"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Degree Type:</strong>
+                        <p id="viewDegreeType"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>ID:</strong>
+                        <p id="viewProgramId"></p>
+                    </div>
+                </div>
+                <div class="row mb-3">
                     <div class="col-md-6">
                         <strong>Program Name:</strong>
                         <p id="viewProgramName"></p>
                     </div>
                     <div class="col-md-6">
-                        <strong>Program Code:</strong>
-                        <p id="viewProgramCode"></p>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <strong>Degree Type:</strong>
-                        <p id="viewDegreeType"></p>
-                    </div>
-                    <div class="col-md-6">
                         <strong>Status:</strong>
                         <p id="viewProgramStatus"></p>
                     </div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-6">
-                        <strong>Status:</strong>
-                        <p id="viewProgramStatus"></p>
-                    </div>
-                    <div class="col-md-6">
-                        <strong>ID:</strong>
-                        <p id="viewProgramId"></p>
+                    <div class="col-12">
+                        <strong>Term:</strong>
+                        <p id="viewProgramTerm"></p>
                     </div>
                 </div>
                 <hr>
-                <div class="row">
+                <h6 class="text-muted mb-3"><i class="fas fa-history"></i> Audit Information</h6>
+                <div class="row mb-2">
                     <div class="col-md-6">
                         <strong>Created:</strong>
                         <p id="viewProgramCreated"></p>
                     </div>
                     <div class="col-md-6">
+                        <strong>Created By:</strong>
+                        <p id="viewProgramCreatedBy"></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
                         <strong>Last Updated:</strong>
                         <p id="viewProgramUpdated"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Updated By:</strong>
+                        <p id="viewProgramUpdatedBy"></p>
                     </div>
                 </div>
             </div>
@@ -560,38 +593,66 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
+    // Setup - add a text input or dropdown to each header cell (second row)
+    $('#programsTable thead tr:eq(1) th').each(function(i) {
+        var title = $('#programsTable thead tr:eq(0) th:eq(' + i + ')').text();
+        if (title === 'Actions') {
+            $(this).html('');
+        } else if (title === 'Term') {
+            // Create dropdown for Term column
+            var select = '<select class="form-select form-select-sm"><option value="">All</option>';
+            <?php foreach ($terms as $term): ?>
+            select += '<option value="<?= htmlspecialchars($term['term_code']) ?>"><?= htmlspecialchars($term['term_name']) ?></option>';
+            <?php endforeach; ?>
+            select += '</select>';
+            $(this).html(select);
+        } else if (title === 'Status') {
+            // Create dropdown for Status column
+            var select = '<select class="form-select form-select-sm">';
+            select += '<option value="">All</option>';
+            select += '<option value="Active">Active</option>';
+            select += '<option value="Inactive">Inactive</option>';
+            select += '</select>';
+            $(this).html(select);
+        } else {
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+        }
+    });
+    
     var table = $('#programsTable').DataTable({
+        orderCellsTop: true,
         processing: true,
         serverSide: true,
-        ajax: {
-            url: '<?= BASE_URL ?>administration/programs_data.php',
-            data: function(d) {
-                d.term_fk = $('#termFilter').val();
-                d.degree_type = $('#degreeTypeFilter').val();
-                d.status = $('#statusFilter').val();
-            }
-        },
+        ajax: '<?= BASE_URL ?>administration/programs_data.php',
         dom: 'Bfrtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         columns: [
-            { data: 0, name: 'program_name' },
-            { data: 1, name: 'degree_type' },
-            { data: 2, name: 'is_active' },
-            { data: 3, name: 'actions', orderable: false, searchable: false }
+            { data: 0, name: 'programs_pk' },
+            { data: 1, name: 'term_code' },
+            { data: 2, name: 'program_code' },
+            { data: 3, name: 'program_name' },
+            { data: 4, name: 'degree_type' },
+            { data: 5, name: 'is_active' },
+            { data: 6, name: 'created_at' },
+            { data: 7, name: 'created_by' },
+            { data: 8, name: 'updated_at' },
+            { data: 9, name: 'updated_by' },
+            { data: 10, name: 'actions', orderable: false, searchable: false }
         ],
-        order: [[0, 'asc']]
-    });
-
-    // Reload table when filters change
-    $('#degreeTypeFilter, #statusFilter').on('change', function() {
-        table.ajax.reload();
-    });
-
-    // Term filter already handled
-    $('#termFilter').on('change', function() {
-        table.ajax.reload();
+        order: [[3, 'asc']],
+        initComplete: function() {
+            // Apply the search
+            this.api().columns().every(function() {
+                var column = this;
+                $('input, select', this.header()).on('keyup change clear', function() {
+                    if (column.search() !== this.value) {
+                        column.search(this.value).draw();
+                    }
+                });
+            });
+        }
     });
 });
 
@@ -601,8 +662,13 @@ function viewProgram(prog) {
     $('#viewDegreeType').text(prog.degree_type || 'N/A');
     $('#viewProgramStatus').html(prog.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>');
     $('#viewProgramId').text(prog.programs_pk);
-    $('#viewProgramCreated').text(prog.created_at);
-    $('#viewProgramUpdated').text(prog.updated_at);
+    // Display term_code and term_name if available
+    var termDisplay = prog.term_code ? (prog.term_code + (prog.term_name ? ' - ' + prog.term_name : '')) : 'N/A';
+    $('#viewProgramTerm').text(termDisplay);
+    $('#viewProgramCreated').text(prog.created_at || 'N/A');
+    $('#viewProgramCreatedBy').text(prog.created_by_name || 'System');
+    $('#viewProgramUpdated').text(prog.updated_at || 'N/A');
+    $('#viewProgramUpdatedBy').text(prog.updated_by_name || 'System');
     new bootstrap.Modal(document.getElementById('viewProgramModal')).show();
 }
 
@@ -613,6 +679,11 @@ function editProgram(prog) {
     $('#editDegreeType').val(prog.degree_type);
     $('#editTermFk').val(prog.term_fk);
     $('#editIsActive').prop('checked', prog.is_active == 1);
+    // Populate read-only audit info
+    $('#editProgramCreated').text(prog.created_at || 'N/A');
+    $('#editProgramCreatedBy').text(prog.created_by_name || 'System');
+    $('#editProgramUpdated').text(prog.updated_at || 'N/A');
+    $('#editProgramUpdatedBy').text(prog.updated_by_name || 'System');
     new bootstrap.Modal(document.getElementById('editProgramModal')).show();
 }
 

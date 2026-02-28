@@ -55,11 +55,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (empty($errors)) {
                     // Note: In production, these fields should be encrypted
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
-                        "INSERT INTO {$dbPrefix}students (student_id, first_name, last_name, email, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$studentId, $firstName, $lastName, $email, $isActive],
-                        'ssssi'
+                        "INSERT INTO {$dbPrefix}students (student_id, first_name, last_name, email, is_active, created_at, updated_at, created_by_fk, updated_by_fk) 
+                         VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                        [$studentId, $firstName, $lastName, $email, $isActive, $userId, $userId],
+                        'ssssiii'
                     );
                     $successMessage = 'Student added successfully';
                 } else {
@@ -102,12 +103,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
                         "UPDATE {$dbPrefix}students 
-                         SET student_id = ?, first_name = ?, last_name = ?, email = ?, is_active = ?, updated_at = NOW()
+                         SET student_id = ?, first_name = ?, last_name = ?, email = ?, is_active = ?, updated_at = NOW(), updated_by_fk = ?
                          WHERE students_pk = ?",
-                        [$studentId, $firstName, $lastName, $email, $isActive, $id],
-                        'ssssii'
+                        [$studentId, $firstName, $lastName, $email, $isActive, $userId, $id],
+                        'sssiii'
                     );
                     $successMessage = 'Student updated successfully';
                 } else {
@@ -118,10 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'toggle_status':
                 $id = (int)($_POST['student_pk'] ?? 0);
                 if ($id > 0) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
-                        "UPDATE {$dbPrefix}students SET is_active = NOT is_active, updated_at = NOW() WHERE students_pk = ?",
-                        [$id],
-                        'i'
+                        "UPDATE {$dbPrefix}students SET is_active = NOT is_active, updated_at = NOW(), updated_by_fk = ? WHERE students_pk = ?",
+                        [$userId, $id],
+                        'ii'
                     );
                     $successMessage = 'Student status updated';
                 }
@@ -145,115 +148,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 break;
-                
-            case 'import':
-                if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
-                    $errorMessage = 'Please select a valid CSV file';
-                    break;
-                }
-                
-                $file = $_FILES['csv_file']['tmp_name'];
-                $handle = fopen($file, 'r');
-                
-                if ($handle === false) {
-                    $errorMessage = 'Failed to open CSV file';
-                    break;
-                }
-                
-                // Read header
-                $headers = fgetcsv($handle);
-                if ($headers === false) {
-                    $errorMessage = 'Invalid CSV file format';
-                    fclose($handle);
-                    break;
-                }
-                
-                // Strip UTF-8 BOM if present
-                if (!empty($headers[0])) {
-                    $headers[0] = preg_replace('/^\x{FEFF}/u', '', $headers[0]);
-                }
-                
-                // Expected columns: student_id, student_first_name, student_last_name, email, is_active
-                $imported = 0;
-                $updated = 0;
-                $errors = [];
-                
-                while (($row = fgetcsv($handle)) !== false) {
-                    if (count($row) < 3) continue; // Need at least student_id, first_name, last_name
-                    
-                    $data = array_combine($headers, $row);
-                    if ($data === false) continue;
-                    
-                    $studentId = trim($data['student_id'] ?? '');
-                    $firstName = trim($data['student_first_name'] ?? '');
-                    $lastName = trim($data['student_last_name'] ?? '');
-                    $email = trim($data['email'] ?? '');
-                    $isActive = isset($data['is_active']) ? ((int)$data['is_active'] === 1 || strtolower($data['is_active']) === 'true') : true;
-                    
-                    if (empty($studentId) || empty($firstName) || empty($lastName)) {
-                        $errors[] = "Skipped row: missing required fields (student_id, first_name, or last_name)";
-                        continue;
-                    }
-                    
-                    // Check if student exists (based on unique student_id)
-                    $result = $db->query(
-                        "SELECT students_pk FROM {$dbPrefix}students WHERE student_id = ?",
-                        [$studentId],
-                        's'
-                    );
-                    $existing = $result->fetch();
-                    
-                    if ($existing) {
-                        // Update existing
-                        $db->query(
-                            "UPDATE {$dbPrefix}students 
-                             SET first_name = ?, last_name = ?, email = ?, is_active = ?, updated_at = NOW() 
-                             WHERE students_pk = ?",
-                            [$firstName, $lastName, $email, $isActive, $existing['students_pk']],
-                            'sssii'
-                        );
-                        $updated++;
-                    } else {
-                        // Insert new
-                        $db->query(
-                            "INSERT INTO {$dbPrefix}students (student_id, first_name, last_name, email, is_active, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                            [$studentId, $firstName, $lastName, $email, $isActive],
-                            'ssssi'
-                        );
-                        $imported++;
-                    }
-                }
-                
-                fclose($handle);
-                
-                if ($imported > 0 || $updated > 0) {
-                    $successMessage = "Import complete: $imported new, $updated updated";
-                    if (!empty($errors)) {
-                        $successMessage .= '<br>Warnings: ' . implode('<br>', array_slice($errors, 0, 5));
-                        if (count($errors) > 5) {
-                            $successMessage .= '<br>... and ' . (count($errors) - 5) . ' more';
-                        }
-                    }
-                } else {
-                    $errorMessage = 'No records imported. ' . implode('<br>', $errors);
-                }
-                break;
         }
     } catch (\Exception $e) {
         $errorMessage = 'Operation failed: ' . htmlspecialchars($e->getMessage());
     }
 }
-
-$statsResult = $db->query("
-    SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active
-    FROM {$dbPrefix}students
-");
-$stats = $statsResult->fetch();
-$totalStudents = $stats['total'];
-$activeStudents = $stats['active'];
 
 require_once __DIR__ . '/../system/Core/ThemeLoader.php';
 use Mosaic\Core\ThemeLoader;
@@ -305,42 +204,13 @@ $theme->showHeader($context);
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         <?php endif; ?>
-        
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle"></i> <strong>FERPA Notice:</strong> Student data fields (ID, name, email) should be encrypted in production. Currently stored as plain text for development.
-        </div>
-        
-        <div class="row">
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-info"><i class="fas fa-user-graduate"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Total Students</span>
-                        <span class="info-box-number"><?= $totalStudents ?></span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-12 col-sm-6 col-md-4">
-                <div class="info-box shadow-sm">
-                    <span class="info-box-icon bg-success"><i class="fas fa-circle-check"></i></span>
-                    <div class="info-box-content">
-                        <span class="info-box-text">Active Students</span>
-                        <span class="info-box-number"><?= $activeStudents ?></span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-table"></i> Students</h3>
+                <h3 class="card-title"><i class="fas fa-table"></i> Students <small class="text-muted">(Encrypted Data)</small></h3>
                 <div class="card-tools">
                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal">
                         <i class="fas fa-plus"></i> Add Student
-                    </button>
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadCsvModal">
-                        <i class="fas fa-upload"></i> Import CSV
                     </button>
                 </div>
             </div>
@@ -354,9 +224,17 @@ $theme->showHeader($context);
                             <th>Last Name</th>
                             <th>Email</th>
                             <th>Status</th>
+                            <th>Created</th>
+                            <th>Created By</th>
+                            <th>Updated</th>
+                            <th>Updated By</th>
                             <th>Actions</th>
                         </tr>
                         <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                             <th></th>
                             <th></th>
                             <th></th>
@@ -462,49 +340,31 @@ $theme->showHeader($context);
                         <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
                         <label class="form-check-label" for="editIsActive">Active</label>
                     </div>
+                    
+                    <hr>
+                    <h6 class="text-muted mb-3"><i class="fas fa-info-circle"></i> Audit Information</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted"><strong>Created:</strong></small>
+                            <p id="editStudentCreated"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted"><strong>Created By:</strong></small>
+                            <p id="editStudentCreatedBy"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted"><strong>Last Updated:</strong></small>
+                            <p id="editStudentUpdated"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted"><strong>Updated By:</strong></small>
+                            <p id="editStudentUpdatedBy"></p>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Upload CSV Modal -->
-<div class="modal fade" id="uploadCsvModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-secondary text-white">
-                <h5 class="modal-title"><i class="fas fa-upload"></i> Import Students from CSV</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                    <input type="hidden" name="action" value="import">
-                    
-                    <div class="mb-3">
-                        <label for="csv_file" class="form-label">CSV File</label>
-                        <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
-                    </div>
-                    
-                    <div class="alert alert-info mb-0">
-                        <strong>CSV Format:</strong><br>
-                        <code>student_id,student_first_name,student_last_name,email,is_active</code><br>
-                        <small class="text-muted">student_id is required (unique identifier). is_active should be 1/0 or true/false (default: true)</small>
-                    </div>
-                    
-                    <div class="alert alert-warning mt-3 mb-0">
-                        <i class="fas fa-exclamation-triangle"></i> <strong>FERPA Notice:</strong> Ensure CSV files are transmitted and stored securely. Data will be stored unencrypted in development.
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-upload"></i> Upload
-                    </button>
                 </div>
             </form>
         </div>
@@ -539,7 +399,14 @@ $theme->showHeader($context);
 $(document).ready(function() {
     $('#studentsTable thead tr:eq(1) th').each(function(i) {
         var title = $('#studentsTable thead tr:eq(0) th:eq(' + i + ')').text();
-        if (title !== 'Actions') {
+        if (title === 'Status') {
+            var select = '<select class="form-select form-select-sm">';
+            select += '<option value="">All</option>';
+            select += '<option value="Active">Active</option>';
+            select += '<option value="Inactive">Inactive</option>';
+            select += '</select>';
+            $(this).html(select);
+        } else if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         } else {
             $(this).html('');
@@ -560,12 +427,16 @@ $(document).ready(function() {
             { data: 3, name: 'student_last_name' },
             { data: 4, name: 'email' },
             { data: 5, name: 'is_active' },
-            { data: 6, name: 'actions', orderable: false, searchable: false }
+            { data: 6, name: 'created_at' },
+            { data: 7, name: 'created_by_name' },
+            { data: 8, name: 'updated_at' },
+            { data: 9, name: 'updated_by_name' },
+            { data: 10, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             this.api().columns().every(function() {
                 var column = this;
-                $('input', this.header()).on('keyup change clear', function() {
+                $('input, select', this.header()).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -582,6 +453,13 @@ function editStudent(student) {
     $('#editLastName').val(student.last_name);
     $('#editEmail').val(student.email);
     $('#editIsActive').prop('checked', student.is_active == 1);
+    
+    // Populate audit information
+    $('#editStudentCreated').text(student.created_at || 'N/A');
+    $('#editStudentCreatedBy').text(student.created_by_name || 'System');
+    $('#editStudentUpdated').text(student.updated_at || 'N/A');
+    $('#editStudentUpdatedBy').text(student.updated_by_name || 'System');
+    
     new bootstrap.Modal(document.getElementById('editStudentModal')).show();
 }
 

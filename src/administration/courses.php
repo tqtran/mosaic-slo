@@ -71,11 +71,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
-                        "INSERT INTO {$dbPrefix}courses (course_number, course_name, term_fk, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, NOW(), NOW())",
-                        [$courseNumber, $courseName, $termFk, $isActive],
-                        'ssii'
+                        "INSERT INTO {$dbPrefix}courses (course_number, course_name, term_fk, is_active, created_at, updated_at, created_by_fk, updated_by_fk) 
+                         VALUES (?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                        [$courseNumber, $courseName, $termFk, $isActive, $userId, $userId],
+                        'ssiiii'
                     );
                     $successMessage = 'Course added successfully';
                 } else {
@@ -128,12 +129,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
                         "UPDATE {$dbPrefix}courses 
-                         SET course_number = ?, course_name = ?, term_fk = ?, is_active = ?, updated_at = NOW()
+                         SET course_number = ?, course_name = ?, term_fk = ?, is_active = ?, updated_at = NOW(), updated_by_fk = ?
                          WHERE courses_pk = ?",
-                        [$courseNumber, $courseName, $termFk, $isActive, $id],
-                        'ssiii'
+                        [$courseNumber, $courseName, $termFk, $isActive, $userId, $id],
+                        'ssiiii'
                     );
                     $successMessage = 'Course updated successfully';
                 } else {
@@ -144,12 +146,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'toggle_status':
                 $id = (int)($_POST['course_id'] ?? 0);
                 if ($id > 0) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
                         "UPDATE {$dbPrefix}courses 
-                         SET is_active = NOT is_active, updated_at = NOW()
+                         SET is_active = NOT is_active, updated_at = NOW(), updated_by_fk = ?
                          WHERE courses_pk = ?",
-                        [$id],
-                        'i'
+                        [$userId, $id],
+                        'ii'
                     );
                     $successMessage = 'Course status updated';
                 }
@@ -177,171 +180,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $successMessage = 'Course deleted successfully';
                     }
                 }
-                break;
-                
-            case 'import_map':
-                if (!isset($_FILES['map_upload']) || $_FILES['map_upload']['error'] !== UPLOAD_ERR_OK) {
-                    $errorMessage = 'Please select a valid CSV file';
-                    break;
-                }
-                
-                $file = $_FILES['map_upload']['tmp_name'];
-                $handle = fopen($file, 'r');
-                
-                if ($handle === false) {
-                    $errorMessage = 'Failed to open CSV file';
-                    break;
-                }
-                
-                // Skip BOM if present
-                $bom = fread($handle, 3);
-                if ($bom !== "\xEF\xBB\xBF") {
-                    rewind($handle);
-                }
-                
-                $headers = fgetcsv($handle); // Read header row
-                $imported = 0;
-                $skipped = 0;
-                $incomplete = 0;
-                $programsCreated = 0;
-                $coursesCreated = 0;
-                $errors = [];
-                $rowNum = 1;
-                
-                // Build maps for lookups
-                $programMap = [];
-                $programsResult = $db->query("
-                    SELECT programs_pk, program_code 
-                    FROM {$dbPrefix}programs 
-                    WHERE is_active = 1
-                ");
-                while ($prog = $programsResult->fetch()) {
-                    $programMap[trim($prog['program_code'])] = $prog['programs_pk'];
-                }
-                
-                $courseMap = [];
-                $coursesResult = $db->query("
-                    SELECT courses_pk, course_number 
-                    FROM {$dbPrefix}courses 
-                    WHERE is_active = 1
-                ");
-                while ($course = $coursesResult->fetch()) {
-                    $courseMap[trim($course['course_number'])] = $course['courses_pk'];
-                }
-                
-                while (($row = fgetcsv($handle)) !== false) {
-                    $rowNum++;
-                    if (count($row) >= 3) {
-                        // CSV format: ProgramID,Program,Course
-                        $programCode = trim($row[0]);
-                        $programName = trim($row[1]);
-                        $courseNumber = trim($row[2]);
-                        
-                        $programFk = null;
-                        $courseFk = null;
-                        
-                        // Create/lookup program if program code is provided
-                        if (!empty($programCode)) {
-                            if (!isset($programMap[$programCode])) {
-                                // Double-check database with TRIM in case of whitespace differences
-                                $existingProgram = $db->query(
-                                    "SELECT programs_pk FROM {$dbPrefix}programs WHERE TRIM(program_code) = ? LIMIT 1",
-                                    [$programCode],
-                                    's'
-                                );
-                                $existingRow = $existingProgram->fetch();
-                                
-                                if ($existingRow) {
-                                    // Program exists with whitespace differences - use it
-                                    $programFk = $existingRow['programs_pk'];
-                                    $programMap[$programCode] = $programFk;
-                                } else {
-                                    // Auto-create program
-                                    $db->query(
-                                        "INSERT INTO {$dbPrefix}programs (program_code, program_name, term_fk, is_active, created_at, updated_at) 
-                                         VALUES (?, ?, ?, 1, NOW(), NOW())",
-                                        [$programCode, $programName ?: $programCode, $selectedTermFk],
-                                        'ssi'
-                                    );
-                                    $programFk = $db->getInsertId();
-                                    $programMap[$programCode] = $programFk;
-                                    $programsCreated++;
-                                }
-                            } else {
-                                $programFk = $programMap[$programCode];
-                            }
-                        }
-                        
-                        // Create/lookup course if course number is provided
-                        if (!empty($courseNumber)) {
-                            if (!isset($courseMap[$courseNumber])) {
-                                // Double-check database with TRIM in case of whitespace differences
-                                $existingCourse = $db->query(
-                                    "SELECT courses_pk FROM {$dbPrefix}courses WHERE TRIM(course_number) = ? LIMIT 1",
-                                    [$courseNumber],
-                                    's'
-                                );
-                                $existingRow = $existingCourse->fetch();
-                                
-                                if ($existingRow) {
-                                    // Course exists with whitespace differences - use it
-                                    $courseFk = $existingRow['courses_pk'];
-                                    $courseMap[$courseNumber] = $courseFk;
-                                } else {
-                                    // Auto-create course (use course_number as course_name placeholder)
-                                    $db->query(
-                                        "INSERT INTO {$dbPrefix}courses (course_name, course_number, term_fk, is_active, created_at, updated_at) 
-                                         VALUES (?, ?, ?, 1, NOW(), NOW())",
-                                        [$courseNumber, $courseNumber, $selectedTermFk],
-                                        'ssi'
-                                    );
-                                    $courseFk = $db->getInsertId();
-                                    $courseMap[$courseNumber] = $courseFk;
-                                    $coursesCreated++;
-                                }
-                            } else {
-                                $courseFk = $courseMap[$courseNumber];
-                            }
-                        }
-                        
-                        // Only create mapping if both program and course are present
-                        if ($programFk && $courseFk) {
-                            // Check if mapping already exists
-                            $result = $db->query(
-                                "SELECT program_courses_pk FROM {$dbPrefix}program_courses 
-                                 WHERE program_fk = ? AND course_fk = ?",
-                                [$programFk, $courseFk],
-                                'ii'
-                            );
-                            
-                            if ($result->rowCount() > 0) {
-                                $skipped++;
-                            } else {
-                                // Insert new mapping
-                                $db->query(
-                                    "INSERT INTO {$dbPrefix}program_courses (program_fk, course_fk, created_at) 
-                                     VALUES (?, ?, NOW())",
-                                    [$programFk, $courseFk],
-                                    'ii'
-                                );
-                                $imported++;
-                            }
-                        } else {
-                            // Incomplete row - parent records created but mapping skipped
-                            $incomplete++;
-                        }
-                    }
-                }
-                
-                fclose($handle);
-                
-                $summary = "$imported program-course mappings imported";
-                if ($skipped > 0) $summary .= ", $skipped skipped (already exist)";
-                if ($programsCreated > 0) $summary .= ", $programsCreated programs created";
-                if ($coursesCreated > 0) $summary .= ", $coursesCreated courses created";
-                if ($incomplete > 0) $summary .= ", $incomplete incomplete rows (parent records created, mappings skipped)";
-                
-                $successMessage = $summary;
                 break;
         }
     } catch (\Exception $e) {
@@ -470,9 +308,6 @@ $theme->showHeader($context);
                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCourseModal">
                         <i class="fas fa-plus"></i> Add Course
                     </button>
-                    <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#mapUploadModal">
-                        <i class="fas fa-project-diagram"></i> Import PSLO Map
-                    </button>
                 </div>
             </div>
             <div class="card-body">
@@ -489,10 +324,28 @@ $theme->showHeader($context);
                 <table id="coursesTable" class="table table-bordered table-striped">
                     <thead>
                         <tr>
+                            <th>ID</th>
+                            <th>Term</th>
                             <th>Course Number</th>
                             <th>Course Name</th>
                             <th>Status</th>
+                            <th>Created</th>
+                            <th>Created By</th>
+                            <th>Updated</th>
+                            <th>Updated By</th>
                             <th>Actions</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -584,9 +437,31 @@ $theme->showHeader($context);
                         <label for="editCourseName" class="form-label">Course Name</label>
                         <input type="text" class="form-control" id="editCourseName" name="course_name" maxlength="255" required>
                     </div>
-                    <div class="form-check">
+                    <div class="form-check mb-3">
                         <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
                         <label class="form-check-label" for="editIsActive">Active</label>
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i class="fas fa-history"></i> Audit Information</h6>
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <small class="text-muted">Created:</small>
+                            <p class="mb-0" id="editCourseCreated"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">Created By:</small>
+                            <p class="mb-0" id="editCourseCreatedBy"></p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted">Last Updated:</small>
+                            <p class="mb-0" id="editCourseUpdated"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">Updated By:</small>
+                            <p class="mb-0" id="editCourseUpdatedBy"></p>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -608,71 +483,55 @@ $theme->showHeader($context);
             </div>
             <div class="modal-body">
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <strong>Course Number:</strong>
                         <p id="viewCourseNumber"></p>
                     </div>
-                    <div class="col-md-6">
-                        <strong>Course Name:</strong>
-                        <p id="viewCourseName"></p>
+                    <div class="col-md-4">
+                        <strong>ID:</strong>
+                        <p id="viewCourseId"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Status:</strong>
+                        <p id="viewCourseStatus"></p>
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <strong>Status:</strong>
-                        <p id="viewCourseStatus"></p>
+                        <strong>Course Name:</strong>
+                        <p id="viewCourseName"></p>
                     </div>
                     <div class="col-md-6">
-                        <strong>ID:</strong>
-                        <p id="viewCourseId"></p>
+                        <strong>Term:</strong>
+                        <p id="viewCourseTerm"></p>
                     </div>
                 </div>
                 <hr>
-                <div class="row">
+                <h6 class="text-muted mb-3"><i class="fas fa-history"></i> Audit Information</h6>
+                <div class="row mb-2">
                     <div class="col-md-6">
                         <strong>Created:</strong>
                         <p id="viewCourseCreated"></p>
                     </div>
                     <div class="col-md-6">
+                        <strong>Created By:</strong>
+                        <p id="viewCourseCreatedBy"></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
                         <strong>Last Updated:</strong>
                         <p id="viewCourseUpdated"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Updated By:</strong>
+                        <p id="viewCourseUpdatedBy"></p>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- PSLO Map Upload Modal -->
-<div class="modal fade" id="mapUploadModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="fas fa-project-diagram"></i> Import PSLO Map</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                    <input type="hidden" name="action" value="import_map">
-                    <div class="mb-3">
-                        <label for="mapUpload" class="form-label">Upload CSV File</label>
-                        <input type="file" class="form-control" id="mapUpload" name="map_upload" accept=".csv" required>
-                        <small class="form-text text-muted">CSV format: ProgramID, Program, Course<br>
-                        Auto-creates missing programs and courses.</small>
-                    </div>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> This import will automatically create missing programs and courses, then map them together.
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-info"><i class="fas fa-upload"></i> Import</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
@@ -706,32 +565,65 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
+    // Setup - add a text input or dropdown to each header cell (second row)
+    $('#coursesTable thead tr:eq(1) th').each(function(i) {
+        var title = $('#coursesTable thead tr:eq(0) th:eq(' + i + ')').text();
+        if (title === 'Actions') {
+            $(this).html('');
+        } else if (title === 'Term') {
+            // Create dropdown for Term column
+            var select = '<select class="form-select form-select-sm"><option value="">All</option>';
+            <?php foreach ($terms as $term): ?>
+            select += '<option value="<?= htmlspecialchars($term['term_code']) ?>"><?= htmlspecialchars($term['term_name']) ?></option>';
+            <?php endforeach; ?>
+            select += '</select>';
+            $(this).html(select);
+        } else if (title === 'Status') {
+            // Create dropdown for Status column
+            var select = '<select class="form-select form-select-sm">';
+            select += '<option value="">All</option>';
+            select += '<option value="Active">Active</option>';
+            select += '<option value="Inactive">Inactive</option>';
+            select += '</select>';
+            $(this).html(select);
+        } else {
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+        }
+    });
+    
     var table = $('#coursesTable').DataTable({
+        orderCellsTop: true,
         processing: true,
         serverSide: true,
-        ajax: {
-            url: '<?= BASE_URL ?>administration/courses_data.php',
-            data: function(d) {
-                d.term_fk = <?= $selectedTermFk ?>;
-                d.status = $('#statusFilter').val();
-            }
-        },
+        ajax: '<?= BASE_URL ?>administration/courses_data.php',
         dom: 'Bfrtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         columns: [
-            { data: 0, name: 'course_number' },
-            { data: 1, name: 'course_name' },
-            { data: 2, name: 'is_active' },
-            { data: 3, name: 'actions', orderable: false, searchable: false }
+            { data: 0, name: 'courses_pk' },
+            { data: 1, name: 'term_code' },
+            { data: 2, name: 'course_number' },
+            { data: 3, name: 'course_name' },
+            { data: 4, name: 'is_active' },
+            { data: 5, name: 'created_at' },
+            { data: 6, name: 'created_by' },
+            { data: 7, name: 'updated_at' },
+            { data: 8, name: 'updated_by' },
+            { data: 9, name: 'actions', orderable: false, searchable: false }
         ],
-        order: [[0, 'asc']]
-    });
-
-    // Reload table when filters change
-    $('#statusFilter').on('change', function() {
-        table.ajax.reload();
+        order: [[2, 'asc']],
+        initComplete: function() {
+            // Apply the search
+            this.api().columns().every(function() {
+                var column = this;
+                $('input, select', this.header()).on('keyup change clear', function() {
+                    if (column.search() !== this.value) {
+                        column.search(this.value).draw();
+                    }
+                });
+            });
+        }
     });
 });
 
@@ -740,8 +632,13 @@ function viewCourse(course) {
     $('#viewCourseName').text(course.course_name);
     $('#viewCourseStatus').html(course.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>');
     $('#viewCourseId').text(course.courses_pk);
-    $('#viewCourseCreated').text(course.created_at);
-    $('#viewCourseUpdated').text(course.updated_at);
+    // Display term_code and term_name if available
+    var termDisplay = course.term_code ? (course.term_code + (course.term_name ? ' - ' + course.term_name : '')) : 'N/A';
+    $('#viewCourseTerm').text(termDisplay);
+    $('#viewCourseCreated').text(course.created_at || 'N/A');
+    $('#viewCourseCreatedBy').text(course.created_by_name || 'System');
+    $('#viewCourseUpdated').text(course.updated_at || 'N/A');
+    $('#viewCourseUpdatedBy').text(course.updated_by_name || 'System');
     new bootstrap.Modal(document.getElementById('viewCourseModal')).show();
 }
 
@@ -751,6 +648,11 @@ function editCourse(course) {
     $('#editCourseName').val(course.course_name);
     $('#editTermFk').val(course.term_fk);
     $('#editIsActive').prop('checked', course.is_active == 1);
+    // Populate read-only audit info
+    $('#editCourseCreated').text(course.created_at || 'N/A');
+    $('#editCourseCreatedBy').text(course.created_by_name || 'System');
+    $('#editCourseUpdated').text(course.updated_at || 'N/A');
+    $('#editCourseUpdatedBy').text(course.updated_by_name || 'System');
     new bootstrap.Modal(document.getElementById('editCourseModal')).show();
 }
 

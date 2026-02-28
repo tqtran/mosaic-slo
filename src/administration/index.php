@@ -74,19 +74,19 @@ try {
         $stats['students'] = $row['count'] ?? 0;
         
         // Count enrollments for selected term
-        // Get term_code for the selected term
-        $termCodeResult = $db->query(
-            "SELECT term_code FROM {$dbPrefix}terms WHERE terms_pk = ?",
+        // Get banner_term for the selected term (enrollment.term_code actually stores banner_term)
+        $bannerTermResult = $db->query(
+            "SELECT banner_term FROM {$dbPrefix}terms WHERE terms_pk = ?",
             [$selectedTermFk],
             'i'
         );
-        $termCodeRow = $termCodeResult->fetch();
-        if ($termCodeRow) {
+        $bannerTermRow = $bannerTermResult->fetch();
+        if ($bannerTermRow) {
             $result = $db->query(
                 "SELECT COUNT(DISTINCT e.enrollment_pk) as count 
                  FROM {$dbPrefix}enrollment e
                  WHERE e.term_code = ?",
-                [$termCodeRow['term_code']],
+                [$bannerTermRow['banner_term']],
                 's'
             );
             $row = $result->fetch();
@@ -127,13 +127,13 @@ try {
         $stats['student_learning_outcomes'] = $row['count'] ?? 0;
         
         // Count assessments for selected term
-        if ($termCodeRow) {
+        if ($bannerTermRow) {
             $result = $db->query(
                 "SELECT COUNT(DISTINCT a.assessments_pk) as count 
                  FROM {$dbPrefix}assessments a
                  JOIN {$dbPrefix}enrollment e ON a.enrollment_fk = e.enrollment_pk
                  WHERE e.term_code = ?",
-                [$termCodeRow['term_code']],
+                [$bannerTermRow['banner_term']],
                 's'
             );
             $row = $result->fetch();
@@ -210,6 +210,21 @@ $theme->showHeader($context);
                                 </div>
                                 <a href="<?= BASE_URL ?>administration/students.php" class="small-box-footer">
                                     View Students <i class="fas fa-arrow-circle-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-success">
+                                <div class="inner">
+                                    <h3><?= number_format($stats['courses']) ?></h3>
+                                    <p>Courses</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-book"></i>
+                                </div>
+                                <a href="<?= BASE_URL ?>administration/courses.php" class="small-box-footer">
+                                    View Courses <i class="fas fa-arrow-circle-right"></i>
                                 </a>
                             </div>
                         </div>
@@ -297,75 +312,6 @@ $theme->showHeader($context);
     </div>
 </div>
 
-<!-- Quick Actions - CSV Imports -->
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="fas fa-file-upload"></i> Quick Import Actions
-                </h3>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-                        <a href="<?= BASE_URL ?>administration/terms.php" class="btn btn-outline-primary btn-block">
-                            <i class="fas fa-calendar-alt"></i><br>
-                            Import Terms
-                        </a>
-                    </div>
-                    <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-                        <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="btn btn-outline-primary btn-block">
-                            <i class="fas fa-flag"></i><br>
-                            Import ISLOs
-                        </a>
-                    </div>
-                    <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-                        <a href="<?= BASE_URL ?>administration/programs.php" class="btn btn-outline-info btn-block">
-                            <i class="fas fa-graduation-cap"></i><br>
-                            Import Programs
-                        </a>
-                    </div>
-                    <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-                        <a href="<?= BASE_URL ?>administration/program_outcomes.php" class="btn btn-outline-info btn-block">
-                            <i class="fas fa-bullseye"></i><br>
-                            Import PSLOs
-                        </a>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-                        <a href="<?= BASE_URL ?>administration/courses.php" class="btn btn-outline-success btn-block">
-                            <i class="fas fa-project-diagram"></i><br>
-                            Import PSLO Map
-                        </a>
-                    </div>
-                    <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-                        <a href="<?= BASE_URL ?>administration/student_learning_outcomes.php" class="btn btn-outline-teal btn-block">
-                            <i class="fas fa-tasks"></i><br>
-                            Import CSLOs
-                        </a>
-                    </div>
-                    <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-                        <a href="<?= BASE_URL ?>administration/students.php" class="btn btn-outline-warning btn-block">
-                            <i class="fas fa-user-graduate"></i><br>
-                            Import Students
-                        </a>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
-                        <a href="<?= BASE_URL ?>administration/enrollment.php" class="btn btn-outline-danger btn-block">
-                            <i class="fas fa-user-check"></i><br>
-                            Import Enrollments
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- System Status -->
 <div class="row">
     <div class="col-md-6">
@@ -418,25 +364,6 @@ $theme->showHeader($context);
                     <dt class="col-sm-4">Email Method:</dt>
                     <dd class="col-sm-8"><?= htmlspecialchars($config->get('email.method', 'disabled')) ?></dd>
                 </dl>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="fas fa-info-circle"></i> Getting Started
-                </h3>
-            </div>
-            <div class="card-body">
-                <ol>
-                    <li><a href="<?= BASE_URL ?>administration/institutional_outcomes.php">Set up institutional outcomes</a></li>
-                    <li><a href="<?= BASE_URL ?>administration/programs.php">Create academic programs</a></li>
-                    <li><a href="<?= BASE_URL ?>administration/program_outcomes.php">Define program outcomes</a></li>
-                    <li><a href="<?= BASE_URL ?>administration/student_learning_outcomes.php">Define SLOs for courses</a></li>
-                    <li>Configure LTI integration with your LMS</li>
-                </ol>
             </div>
         </div>
     </div>

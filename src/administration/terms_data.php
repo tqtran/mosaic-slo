@@ -24,9 +24,14 @@ try {
 
     // Column mapping
     $columns = [
-        0 => 't.term_code',
-        1 => 't.term_name',
-        2 => ''  // Actions column
+        0 => 't.banner_term',
+        1 => 't.term_code',
+        2 => 't.term_name',
+        3 => 't.academic_year',
+        4 => 't.start_date',
+        5 => 't.end_date',
+        6 => 't.is_active',
+        7 => ''  // Actions column
     ];
 
     $orderBy = $columns[$orderColumn] ?? 't.term_code';
@@ -42,11 +47,12 @@ try {
     $types = '';
 
     if (!empty($searchValue)) {
-        $where[] = "(t.term_code LIKE ? OR t.term_name LIKE ? OR t.academic_year LIKE ?)";
+        $where[] = "(t.banner_term LIKE ? OR t.term_code LIKE ? OR t.term_name LIKE ? OR t.academic_year LIKE ?)";
         $params[] = "%{$searchValue}%";
         $params[] = "%{$searchValue}%";
         $params[] = "%{$searchValue}%";
-        $types .= 'sss';
+        $params[] = "%{$searchValue}%";
+        $types .= 'ssss';
     }
 
     $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -115,9 +121,23 @@ try {
             </button>
         ';
         
+        // Format status badge
+        $statusBadge = $row['is_active'] 
+            ? '<span class="badge bg-success">Active</span>' 
+            : '<span class="badge bg-secondary">Inactive</span>';
+        
+        // Format dates
+        $startDate = $row['start_date'] ? date('M d, Y', strtotime($row['start_date'])) : '';
+        $endDate = $row['end_date'] ? date('M d, Y', strtotime($row['end_date'])) : '';
+        
         $data[] = [
+            htmlspecialchars($row['banner_term'] ?? ''),
             htmlspecialchars($row['term_code'] ?? ''),
             htmlspecialchars($row['term_name']),
+            htmlspecialchars($row['academic_year'] ?? ''),
+            $startDate,
+            $endDate,
+            $statusBadge,
             $actions
         ];
     }

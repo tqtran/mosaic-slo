@@ -17,24 +17,27 @@ header('Content-Type: application/json');
 try {
     // Get DataTables parameters
     $params = getDataTablesParams();
-    
-    // Get term filter
-    $termFk = isset($_GET['term_fk']) ? (int)$_GET['term_fk'] : null;
 
 // Define searchable columns
 $searchableColumns = [
     'io.outcome_code',
-    'io.outcome_description'
+    'io.outcome_description',
+    't.term_code',
+    't.term_name'
 ];
 
 // Column definitions for ordering (must match DataTables column order)
 $columns = [
     'io.institutional_outcomes_pk',
+    't.term_code',
     'io.outcome_code',
     'io.outcome_description',
     'io.sequence_num',
     'io.is_active',
     'io.created_at',
+    'created_by',
+    'io.updated_at',
+    'updated_by',
     'actions' // Not sortable, placeholder
 ];
 
@@ -49,15 +52,14 @@ $whereParams = [];
 $whereTypes = '';
 $whereClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
 
-// Add term filter if specified
-if ($termFk !== null && $termFk > 0) {
+// Add column-specific searches
+$columnConditions = buildColumnSearchWhere($params['columnSearches'], $columns, $whereParams, $whereTypes);
+if (!empty($columnConditions)) {
     if (!empty($whereClause)) {
-        $whereClause .= ' AND io.term_fk = ?';
+        $whereClause .= ' AND ' . implode(' AND ', $columnConditions);
     } else {
-        $whereClause = 'io.term_fk = ?';
+        $whereClause = implode(' AND ', $columnConditions);
     }
-    $whereParams[] = $termFk;
-    $whereTypes .= 'i';
 }
 
 if (!empty($whereClause)) {
@@ -73,6 +75,7 @@ $recordsTotal = $totalRow['total'];
 $countQuery = "
     SELECT COUNT(*) as total 
     FROM {$dbPrefix}institutional_outcomes io
+    LEFT JOIN {$dbPrefix}terms t ON io.term_fk = t.terms_pk
     {$whereClause}
 ";
 if (!empty($whereParams)) {
@@ -93,8 +96,17 @@ $dataQuery = "
         io.sequence_num,
         io.is_active,
         io.created_at,
-        io.updated_at
+        io.updated_at,
+        io.created_by_fk,
+        io.updated_by_fk,
+        t.term_code,
+        t.term_name,
+        u_created.full_name as created_by_name,
+        u_updated.full_name as updated_by_name
     FROM {$dbPrefix}institutional_outcomes io
+    LEFT JOIN {$dbPrefix}terms t ON io.term_fk = t.terms_pk
+    LEFT JOIN {$dbPrefix}users u_created ON io.created_by_fk = u_created.users_pk
+    LEFT JOIN {$dbPrefix}users u_updated ON io.updated_by_fk = u_updated.users_pk
     {$whereClause}
     ORDER BY {$orderColumn} {$params['orderDir']}
     LIMIT ? OFFSET ?
@@ -125,11 +137,15 @@ foreach ($outcomes as $row) {
     
     $data[] = [
         htmlspecialchars((string)$row['institutional_outcomes_pk']),
-        '<span class="badge bg-primary">' . htmlspecialchars($row['outcome_code']) . '</span>',
+        htmlspecialchars($row['term_name'] ?? 'N/A'),
+        htmlspecialchars($row['outcome_code']),
         htmlspecialchars($descriptionPreview),
         htmlspecialchars((string)$row['sequence_num']),
         '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
         htmlspecialchars($row['created_at'] ?? ''),
+        htmlspecialchars(trim($row['created_by_name'] ?? '') ?: 'System'),
+        htmlspecialchars($row['updated_at'] ?? ''),
+        htmlspecialchars(trim($row['updated_by_name'] ?? '') ?: 'System'),
         '<button class="btn btn-sm btn-info" title="View" onclick=\'viewOutcome(' . $rowJson . ')\'><i class="fas fa-eye"></i></button> ' .
         '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editOutcome(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
         '<button class="btn btn-sm btn-' . $toggleClass . '" title="Toggle Status" onclick="toggleStatus(' . $row['institutional_outcomes_pk'] . ', \'' . htmlspecialchars($row['outcome_code'], ENT_QUOTES) . '\')"><i class="fas fa-' . $toggleIcon . '"></i></button> ' .

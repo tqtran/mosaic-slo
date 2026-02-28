@@ -60,11 +60,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
-                        "INSERT INTO {$dbPrefix}institutional_outcomes (term_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$termFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive],
-                        'issii'
+                        "INSERT INTO {$dbPrefix}institutional_outcomes (term_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at, created_by_fk, updated_by_fk) 
+                         VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                        [$termFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive, $userId, $userId],
+                        'issiiii'
                     );
                     $successMessage = 'Institutional outcome added successfully';
                 } else {
@@ -110,12 +111,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
                         "UPDATE {$dbPrefix}institutional_outcomes 
-                         SET term_fk = ?, outcome_code = ?, outcome_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
+                         SET term_fk = ?, outcome_code = ?, outcome_description = ?, sequence_num = ?, is_active = ?, updated_at = NOW(), updated_by_fk = ?
                          WHERE institutional_outcomes_pk = ?",
-                        [$termFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive, $id],
-                        'issiii'
+                        [$termFk, $outcomeCode, $outcomeDescription, $sequenceNum, $isActive, $userId, $id],
+                        'issiiii'
                     );
                     $successMessage = 'Institutional outcome updated successfully';
                 } else {
@@ -126,12 +128,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'toggle_status':
                 $id = (int)($_POST['outcome_id'] ?? 0);
                 if ($id > 0) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
                         "UPDATE {$dbPrefix}institutional_outcomes 
-                         SET is_active = NOT is_active, updated_at = NOW()
+                         SET is_active = NOT is_active, updated_at = NOW(), updated_by_fk = ?
                          WHERE institutional_outcomes_pk = ?",
-                        [$id],
-                        'i'
+                        [$userId, $id],
+                        'ii'
                     );
                     $successMessage = 'Outcome status updated';
                 }
@@ -158,76 +161,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         );
                         $successMessage = 'Institutional outcome deleted successfully';
                     }
-                }
-                break;
-                
-            case 'import':
-                if (isset($_FILES['outcome_upload']) && $_FILES['outcome_upload']['error'] === UPLOAD_ERR_OK) {
-                    $tmpName = $_FILES['outcome_upload']['tmp_name'];
-                    $handle = fopen($tmpName, 'r');
-                    
-                    if ($handle !== false) {
-                        $headers = fgetcsv($handle); // Skip header row
-                        $imported = 0;
-                        $skipped = 0;
-                        
-                        // Get selected term for import
-                        $selectedTermFk = getSelectedTermFk();
-                        if (!$selectedTermFk) {
-                            $errorMessage = 'No term selected. Please select a term first.';
-                            fclose($handle);
-                            break;
-                        }
-                        
-                        $sequenceNum = 1;
-                        while (($row = fgetcsv($handle)) !== false) {
-                            if (count($row) >= 1 && !empty(trim($row[0]))) {
-                                $outcomeDescription = trim($row[0]);
-                                $outcomeCode = 'ISLO-' . $sequenceNum; // Auto-generate code
-                                
-                                if (!empty($outcomeDescription)) {
-                                    // Check if exists for this term
-                                    $result = $db->query(
-                                        "SELECT institutional_outcomes_pk FROM {$dbPrefix}institutional_outcomes 
-                                         WHERE outcome_code = ? AND term_fk = ?",
-                                        [$outcomeCode, $selectedTermFk],
-                                        'si'
-                                    );
-                                    
-                                    if ($result->rowCount() > 0) {
-                                        // Update existing
-                                        $existing = $result->fetch();
-                                        $db->query(
-                                            "UPDATE {$dbPrefix}institutional_outcomes 
-                                             SET outcome_description = ?, sequence_num = ?, updated_at = NOW()
-                                             WHERE institutional_outcomes_pk = ?",
-                                            [$outcomeDescription, $sequenceNum, $existing['institutional_outcomes_pk']],
-                                            'sii'
-                                        );
-                                    } else {
-                                        // Insert new
-                                        $db->query(
-                                            "INSERT INTO {$dbPrefix}institutional_outcomes (term_fk, outcome_code, outcome_description, sequence_num, is_active, created_at, updated_at) 
-                                             VALUES (?, ?, ?, ?, 1, NOW(), NOW())",
-                                            [$selectedTermFk, $outcomeCode, $outcomeDescription, $sequenceNum],
-                                            'issi'
-                                        );
-                                    }
-                                    $imported++;
-                                    $sequenceNum++;
-                                } else {
-                                    $skipped++;
-                                }
-                            }
-                        }
-                        
-                        fclose($handle);
-                        $successMessage = "Import completed: {$imported} ISLOs imported/updated, {$skipped} skipped";
-                    } else {
-                        $errorMessage = 'Failed to read CSV file';
-                    }
-                } else {
-                    $errorMessage = 'No file uploaded or upload error occurred';
                 }
                 break;
         }
@@ -358,9 +291,6 @@ $theme->showHeader($context);
                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addOutcomeModal">
                         <i class="fas fa-plus"></i> Add Outcome
                     </button>
-                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                        <i class="fas fa-file-upload"></i> Import ISLOs
-                    </button>
                 </div>
             </div>
             <div class="card-body">
@@ -368,14 +298,22 @@ $theme->showHeader($context);
                     <thead>
                         <tr>
                             <th>ID</th>
+                            <th>Term</th>
                             <th>Code</th>
                             <th>Description</th>
                             <th>Sequence</th>
                             <th>Status</th>
                             <th>Created</th>
+                            <th>Created By</th>
+                            <th>Updated</th>
+                            <th>Updated By</th>
                             <th>Actions</th>
                         </tr>
                         <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                             <th></th>
                             <th></th>
                             <th></th>
@@ -482,9 +420,31 @@ $theme->showHeader($context);
                         <label for="editOutcomeDescription" class="form-label">Description</label>
                         <textarea class="form-control" id="editOutcomeDescription" name="outcome_description" rows="4" required></textarea>
                     </div>
-                    <div class="form-check">
+                    <div class="form-check mb-3">
                         <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
                         <label class="form-check-label" for="editIsActive">Active</label>
+                    </div>
+                    <hr>
+                    <h6 class="text-muted mb-3"><i class="fas fa-history"></i> Audit Information</h6>
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <small class="text-muted">Created:</small>
+                            <p class="mb-0" id="editOutcomeCreated"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">Created By:</small>
+                            <p class="mb-0" id="editOutcomeCreatedBy"></p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted">Last Updated:</small>
+                            <p class="mb-0" id="editOutcomeUpdated"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">Updated By:</small>
+                            <p class="mb-0" id="editOutcomeUpdatedBy"></p>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -506,13 +466,27 @@ $theme->showHeader($context);
             </div>
             <div class="modal-body">
                 <div class="row mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <strong>Outcome Code:</strong>
                         <p id="viewOutcomeCode"></p>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <strong>Sequence:</strong>
                         <p id="viewSequenceNum"></p>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>ID:</strong>
+                        <p id="viewOutcomeId"></p>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Term:</strong>
+                        <p id="viewOutcomeTerm"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Status:</strong>
+                        <p id="viewOutcomeStatus"></p>
                     </div>
                 </div>
                 <div class="row mb-3">
@@ -521,69 +495,32 @@ $theme->showHeader($context);
                         <p id="viewOutcomeDescription"></p>
                     </div>
                 </div>
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <strong>Status:</strong>
-                        <p id="viewOutcomeStatus"></p>
-                    </div>
-                    <div class="col-md-6">
-                        <strong>ID:</strong>
-                        <p id="viewOutcomeId"></p>
-                    </div>
-                </div>
                 <hr>
-                <div class="row">
+                <h6 class="text-muted mb-3"><i class="fas fa-history"></i> Audit Information</h6>
+                <div class="row mb-2">
                     <div class="col-md-6">
                         <strong>Created:</strong>
                         <p id="viewOutcomeCreated"></p>
                     </div>
                     <div class="col-md-6">
+                        <strong>Created By:</strong>
+                        <p id="viewOutcomeCreatedBy"></p>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
                         <strong>Last Updated:</strong>
                         <p id="viewOutcomeUpdated"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Updated By:</strong>
+                        <p id="viewOutcomeUpdatedBy"></p>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Upload Modal -->
-<div class="modal fade" id="uploadModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-file-upload"></i> Import ISLOs</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                    <input type="hidden" name="action" value="import">
-                    <div class="mb-3">
-                        <label for="outcomeUpload" class="form-label">Upload CSV File</label>
-                        <input type="file" class="form-control" id="outcomeUpload" name="outcome_upload" accept=".csv" required>
-                        <small class="form-text text-muted">
-                            CSV format: One ISLO description per line (header row optional)<br>
-                            Example file: <code>data/ISLOs.csv</code>
-                        </small>
-                    </div>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> 
-                        <ul class="mb-0 small">
-                            <li>ISLOs will be imported into the currently selected term</li>
-                            <li>Codes will be auto-generated as ISLO-1, ISLO-2, etc.</li>
-                            <li>Existing ISLOs with same codes will be updated</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success"><i class="fas fa-upload"></i> Import</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
@@ -617,13 +554,29 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-    // Setup - add a text input to each header cell (second row)
+    // Setup - add a text input or dropdown to each header cell (second row)
     $('#outcomesTable thead tr:eq(1) th').each(function(i) {
         var title = $('#outcomesTable thead tr:eq(0) th:eq(' + i + ')').text();
-        if (title !== 'Actions') {
-            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+        if (title === 'Actions') {
+            $(this).html('');
+        } else if (title === 'Term') {
+            // Create dropdown for Term column
+            var select = '<select class="form-select form-select-sm"><option value="">All</option>';
+            <?php foreach ($terms as $term): ?>
+            select += '<option value="<?= htmlspecialchars($term['term_code']) ?>"><?= htmlspecialchars($term['term_name']) ?></option>';
+            <?php endforeach; ?>
+            select += '</select>';
+            $(this).html(select);
+        } else if (title === 'Status') {
+            // Create dropdown for Status column
+            var select = '<select class="form-select form-select-sm">';
+            select += '<option value="">All</option>';
+            select += '<option value="Active">Active</option>';
+            select += '<option value="Inactive">Inactive</option>';
+            select += '</select>';
+            $(this).html(select);
         } else {
-            $(this).html(''); // No filter for Actions column
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         }
     });
     
@@ -631,30 +584,29 @@ $(document).ready(function() {
         orderCellsTop: true,
         processing: true,
         serverSide: true,
-        ajax: {
-            url: '<?= BASE_URL ?>administration/institutional_outcomes_data.php',
-            data: function(d) {
-                d.term_fk = $('#termFilter').val();
-            }
-        },
+        ajax: '<?= BASE_URL ?>administration/institutional_outcomes_data.php',
         dom: 'Bfrtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
         columns: [
             { data: 0, name: 'institutional_outcomes_pk' },
-            { data: 1, name: 'outcome_code' },
-            { data: 2, name: 'outcome_description' },
-            { data: 3, name: 'sequence_num' },
-            { data: 4, name: 'is_active' },
-            { data: 5, name: 'created_at' },
-            { data: 6, name: 'actions', orderable: false, searchable: false }
+            { data: 1, name: 'term_code' },
+            { data: 2, name: 'outcome_code' },
+            { data: 3, name: 'outcome_description' },
+            { data: 4, name: 'sequence_num' },
+            { data: 5, name: 'is_active' },
+            { data: 6, name: 'created_at' },
+            { data: 7, name: 'created_by' },
+            { data: 8, name: 'updated_at' },
+            { data: 9, name: 'updated_by' },
+            { data: 10, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             // Apply the search
             this.api().columns().every(function() {
                 var column = this;
-                $('input', this.header()).on('keyup change clear', function() {
+                $('input, select', this.header()).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -670,8 +622,13 @@ function viewOutcome(outcome) {
     $('#viewSequenceNum').text(outcome.sequence_num);
     $('#viewOutcomeStatus').html(outcome.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>');
     $('#viewOutcomeId').text(outcome.institutional_outcomes_pk);
-    $('#viewOutcomeCreated').text(outcome.created_at);
-    $('#viewOutcomeUpdated').text(outcome.updated_at);
+    // Display term_code and term_name if available
+    var termDisplay = outcome.term_code ? (outcome.term_code + (outcome.term_name ? ' - ' + outcome.term_name : '')) : 'N/A';
+    $('#viewOutcomeTerm').text(termDisplay);
+    $('#viewOutcomeCreated').text(outcome.created_at || 'N/A');
+    $('#viewOutcomeCreatedBy').text(outcome.created_by_name || 'System');
+    $('#viewOutcomeUpdated').text(outcome.updated_at || 'N/A');
+    $('#viewOutcomeUpdatedBy').text(outcome.updated_by_name || 'System');
     new bootstrap.Modal(document.getElementById('viewOutcomeModal')).show();
 }
 
@@ -682,6 +639,11 @@ function editOutcome(outcome) {
     $('#editOutcomeDescription').val(outcome.outcome_description);
     $('#editSequenceNum').val(outcome.sequence_num);
     $('#editIsActive').prop('checked', outcome.is_active == 1);
+    // Populate read-only audit info
+    $('#editOutcomeCreated').text(outcome.created_at || 'N/A');
+    $('#editOutcomeCreatedBy').text(outcome.created_by_name || 'System');
+    $('#editOutcomeUpdated').text(outcome.updated_at || 'N/A');
+    $('#editOutcomeUpdatedBy').text(outcome.updated_by_name || 'System');
     new bootstrap.Modal(document.getElementById('editOutcomeModal')).show();
 }
 

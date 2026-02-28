@@ -200,6 +200,14 @@
                     </a>
                 </li>
                 
+                <li class="nav-header">DATA</li>
+                <li class="nav-item">
+                    <a href="<?= BASE_URL ?>administration/imports.php" class="nav-link <?= ($currentPage ?? '') === 'admin_imports' ? 'active' : '' ?>">
+                        <i class="nav-icon bi bi-upload"></i>
+                        <p>Imports</p>
+                    </a>
+                </li>
+                
                 <li class="nav-header">REPORTS</li>
                 <li class="nav-item">
                     <a href="#" class="nav-link disabled">

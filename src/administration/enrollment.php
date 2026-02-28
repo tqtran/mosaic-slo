@@ -83,11 +83,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     if ($studentResult->rowCount() === 0) {
                         // Auto-create student with minimal data
+                        $userId = $_SESSION['user_id'] ?? null;
                         $db->query(
-                            "INSERT INTO {$dbPrefix}students (student_id, created_at, updated_at) 
-                             VALUES (?, NOW(), NOW())",
-                            [$studentCNum],
-                            's'
+                            "INSERT INTO {$dbPrefix}students (student_id, created_at, updated_at, created_by_fk, updated_by_fk) 
+                             VALUES (?, NOW(), NOW(), ?, ?)",
+                            [$studentCNum, $userId, $userId],
+                            'sii'
                         );
                         $studentFk = $db->getInsertId();
                     } else {
@@ -108,11 +109,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $errors[] = 'Enrollment already exists for this student in this term/CRN';
                     } else {
                         // Insert enrollment
+                        $userId = $_SESSION['user_id'] ?? null;
                         $db->query(
-                            "INSERT INTO {$dbPrefix}enrollment (term_code, crn, student_fk, enrollment_status, enrollment_date, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                            [$termCode, $crn, $studentFk, $enrollmentStatus, $enrollmentDate],
-                            'ssiss'
+                            "INSERT INTO {$dbPrefix}enrollment (term_code, crn, student_fk, enrollment_status, enrollment_date, created_at, updated_at, created_by_fk, updated_by_fk) 
+                             VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                            [$termCode, $crn, $studentFk, $enrollmentStatus, $enrollmentDate, $userId, $userId],
+                            'ssissii'
                         );
                         $successMessage = 'Enrollment added successfully';
                     }
@@ -129,12 +131,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $enrollmentDate = trim($_POST['enrollment_date'] ?? date('Y-m-d'));
                 
                 if ($id > 0) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
                         "UPDATE {$dbPrefix}enrollment 
-                         SET enrollment_status = ?, enrollment_date = ?, updated_at = NOW()
+                         SET enrollment_status = ?, enrollment_date = ?, updated_at = NOW(), updated_by_fk = ?
                          WHERE enrollment_pk = ?",
-                        [$enrollmentStatus, $enrollmentDate, $id],
-                        'ssi'
+                        [$enrollmentStatus, $enrollmentDate, $userId, $id],
+                        'ssii'
                     );
                     $successMessage = 'Enrollment updated successfully';
                 } else {
@@ -238,11 +241,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $studentFk = null;
                                 if ($studentResult->rowCount() === 0) {
                                     // Create student with name data from enrollment
+                                    $userId = $_SESSION['user_id'] ?? null;
                                     $db->query(
-                                        "INSERT INTO {$dbPrefix}students (student_id, first_name, last_name, created_at, updated_at) 
-                                         VALUES (?, ?, ?, NOW(), NOW())",
-                                        [$studentId, $firstName, $lastName],
-                                        'sss'
+                                        "INSERT INTO {$dbPrefix}students (student_id, first_name, last_name, created_at, updated_at, created_by_fk, updated_by_fk) 
+                                         VALUES (?, ?, ?, NOW(), NOW(), ?, ?)",
+                                        [$studentId, $firstName, $lastName, $userId, $userId],
+                                        'sssii'
                                     );
                                     $studentFk = $db->getInsertId();
                                 } else {
@@ -273,21 +277,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 if ($enrollResult->rowCount() > 0) {
                                     // Update existing enrollment
                                     $enroll = $enrollResult->fetch();
+                                    $userId = $_SESSION['user_id'] ?? null;
                                     $db->query(
                                         "UPDATE {$dbPrefix}enrollment 
-                                         SET course_fk = ?, enrollment_status = '1', enrollment_date = NOW(), updated_at = NOW() 
+                                         SET course_fk = ?, enrollment_status = '1', enrollment_date = NOW(), updated_at = NOW(), updated_by_fk = ? 
                                          WHERE enrollment_pk = ?",
-                                        [$courseFk, $enroll['enrollment_pk']],
-                                        'ii'
+                                        [$courseFk, $userId, $enroll['enrollment_pk']],
+                                        'iii'
                                     );
                                     $updated++;
                                 } else {
                                     // Insert new enrollment
+                                    $userId = $_SESSION['user_id'] ?? null;
                                     $db->query(
-                                        "INSERT INTO {$dbPrefix}enrollment (term_code, crn, course_fk, student_fk, enrollment_status, enrollment_date, created_at, updated_at) 
-                                         VALUES (?, ?, ?, ?, '1', NOW(), NOW(), NOW())",
-                                        [$validatedTermCode, $sectionId, $courseFk, $studentFk],
-                                        'ssii'
+                                        "INSERT INTO {$dbPrefix}enrollment (term_code, crn, course_fk, student_fk, enrollment_status, enrollment_date, created_at, updated_at, created_by_fk, updated_by_fk) 
+                                         VALUES (?, ?, ?, ?, '1', NOW(), NOW(), NOW(), ?, ?)",
+                                        [$validatedTermCode, $sectionId, $courseFk, $studentFk, $userId, $userId],
+                                        'ssiiii'
                                     );
                                     $imported++;
                                 }
@@ -451,9 +457,6 @@ $theme->showHeader($context);
                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEnrollmentModal">
                         <i class="fas fa-plus"></i> Add Enrollment
                     </button>
-                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                        <i class="fas fa-file-upload"></i> Import Enrollment
-                    </button>
                 </div>
             </div>
             <div class="card-body">
@@ -466,10 +469,16 @@ $theme->showHeader($context);
                             <th>Student C-Number</th>
                             <th>Status</th>
                             <th>Enrollment Date</th>
-                            <th>Last Updated</th>
+                            <th>Created</th>
+                            <th>Created By</th>
+                            <th>Updated</th>
+                            <th>Updated By</th>
                             <th>Actions</th>
                         </tr>
                         <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                             <th></th>
                             <th></th>
                             <th></th>
@@ -587,6 +596,27 @@ $theme->showHeader($context);
                             <input type="date" class="form-control" id="editEnrollmentDate" name="enrollment_date" required>
                         </div>
                     </div>
+                    
+                    <hr>
+                    <h6 class="text-muted mb-3"><i class="fas fa-info-circle"></i> Audit Information</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted"><strong>Created:</strong></small>
+                            <p id="editEnrollmentCreated"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted"><strong>Created By:</strong></small>
+                            <p id="editEnrollmentCreatedBy"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted"><strong>Last Updated:</strong></small>
+                            <p id="editEnrollmentUpdated"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted"><strong>Updated By:</strong></small>
+                            <p id="editEnrollmentUpdatedBy"></p>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -645,53 +675,22 @@ $theme->showHeader($context);
                         <p id="viewEnrollmentCreated"></p>
                     </div>
                     <div class="col-md-6">
+                        <strong>Created By:</strong>
+                        <p id="viewEnrollmentCreatedBy"></p>
+                    </div>
+                    <div class="col-md-6">
                         <strong>Last Updated:</strong>
                         <p id="viewEnrollmentUpdated"></p>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Updated By:</strong>
+                        <p id="viewEnrollmentUpdatedBy"></p>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Upload Modal -->
-<div class="modal fade" id="uploadModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-file-upload"></i> Import Enrollments</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
-                    <input type="hidden" name="action" value="import">
-                    <div class="mb-3">
-                        <label for="enrollmentUpload" class="form-label">Upload CSV File</label>
-                        <input type="file" class="form-control" id="enrollmentUpload" name="enrollment_upload" accept=".csv" required>
-                        <small class="form-text text-muted">CSV format: BannerTerm, TermCode, StudentID, SectionID, FirstName, LastName, PartofTerm, Discipline, CourseID</small>
-                    </div>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle"></i> <strong>Import Details:</strong> 
-                        <ul class="mb-0 mt-2">
-                            <li><strong>BannerTerm:</strong> Must match banner_term in Terms table (e.g., 202533)</li>
-                            <li><strong>TermCode:</strong> Informational only (e.g., 202630)</li>
-                            <li><strong>SectionID:</strong> Course section number (CRN)</li>
-                            <li><strong>StudentID:</strong> Student C-number (e.g., C03212184)</li>
-                            <li>Students are auto-created if they don't exist</li>
-                            <li>Existing enrollments are updated</li>
-                            <li>Missing banner terms will be skipped with warnings</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success"><i class="fas fa-upload"></i> Import</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
@@ -721,7 +720,16 @@ $(document).ready(function() {
     // Setup - add a text input to each header cell (second row)
     $('#enrollmentTable thead tr:eq(1) th').each(function(i) {
         var title = $('#enrollmentTable thead tr:eq(0) th:eq(' + i + ')').text();
-        if (title !== 'Actions') {
+        if (title === 'Status') {
+            var select = '<select class="form-select form-select-sm">';
+            select += '<option value="">All</option>';
+            select += '<option value="enrolled">Enrolled</option>';
+            select += '<option value="completed">Completed</option>';
+            select += '<option value="dropped">Dropped</option>';
+            select += '<option value="withdrawn">Withdrawn</option>';
+            select += '</select>';
+            $(this).html(select);
+        } else if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         } else {
             $(this).html(''); // No filter for Actions column
@@ -749,15 +757,18 @@ $(document).ready(function() {
             { data: 3, name: 'student_id' },
             { data: 4, name: 'enrollment_status' },
             { data: 5, name: 'enrollment_date' },
-            { data: 6, name: 'updated_at' },
-            { data: 7, name: 'actions', orderable: false, searchable: false }
+            { data: 6, name: 'created_at' },
+            { data: 7, name: 'created_by_name' },
+            { data: 8, name: 'updated_at' },
+            { data: 9, name: 'updated_by_name' },
+            { data: 10, name: 'actions', orderable: false, searchable: false }
         ],
-        order: [[6, 'desc']], // Sort by last updated
+        order: [[8, 'desc']], // Sort by last updated
         initComplete: function() {
             // Apply the search
             this.api().columns().every(function() {
                 var column = this;
-                $('input', this.header()).on('keyup change clear', function() {
+                $('input, select', this.header()).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -774,8 +785,10 @@ function viewEnrollment(enroll) {
     $('#viewEnrollmentStatus').html('<span class="badge bg-' + getStatusClass(enroll.enrollment_status) + '">' + enroll.enrollment_status + '</span>');
     $('#viewEnrollmentDate').text(enroll.enrollment_date);
     $('#viewEnrollmentId').text(enroll.enrollment_pk);
-    $('#viewEnrollmentCreated').text(enroll.created_at);
-    $('#viewEnrollmentUpdated').text(enroll.updated_at);
+    $('#viewEnrollmentCreated').text(enroll.created_at || 'N/A');
+    $('#viewEnrollmentCreatedBy').text(enroll.created_by_name || 'System');
+    $('#viewEnrollmentUpdated').text(enroll.updated_at || 'N/A');
+    $('#viewEnrollmentUpdatedBy').text(enroll.updated_by_name || 'System');
     new bootstrap.Modal(document.getElementById('viewEnrollmentModal')).show();
 }
 
@@ -786,6 +799,13 @@ function editEnrollment(enroll) {
     $('#editStudentCNumber').text(enroll.student_id);
     $('#editEnrollmentStatus').val(enroll.enrollment_status);
     $('#editEnrollmentDate').val(enroll.enrollment_date);
+    
+    // Populate audit information
+    $('#editEnrollmentCreated').text(enroll.created_at || 'N/A');
+    $('#editEnrollmentCreatedBy').text(enroll.created_by_name || 'System');
+    $('#editEnrollmentUpdated').text(enroll.updated_at || 'N/A');
+    $('#editEnrollmentUpdatedBy').text(enroll.updated_by_name || 'System');
+    
     new bootstrap.Modal(document.getElementById('editEnrollmentModal')).show();
 }
 

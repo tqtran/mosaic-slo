@@ -44,19 +44,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     if ($programOutcomesFk !== null) {
                         $db->query(
-                            "INSERT INTO {$dbPrefix}student_learning_outcomes (course_fk, program_outcomes_fk, slo_code, slo_description, assessment_method, sequence_num, is_active, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                            [$courseFk, $programOutcomesFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive],
-                            'iisssii'
+                            "INSERT INTO {$dbPrefix}student_learning_outcomes (course_fk, program_outcomes_fk, slo_code, slo_description, assessment_method, sequence_num, is_active, created_at, updated_at, created_by_fk, updated_by_fk) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                            [$courseFk, $programOutcomesFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive, $userId, $userId],
+                            'iisssiii'
                         );
                     } else {
                         $db->query(
-                            "INSERT INTO {$dbPrefix}student_learning_outcomes (course_fk, slo_code, slo_description, assessment_method, sequence_num, is_active, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                            [$courseFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive],
-                            'isssii'
+                            "INSERT INTO {$dbPrefix}student_learning_outcomes (course_fk, slo_code, slo_description, assessment_method, sequence_num, is_active, created_at, updated_at, created_by_fk, updated_by_fk) 
+                             VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                            [$courseFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive, $userId, $userId],
+                            'isssiiii'
                         );
                     }
                     $successMessage = 'SLO added successfully';
@@ -90,13 +91,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
-                    $db->query(
-                        "UPDATE {$dbPrefix}student_learning_outcomes 
-                         SET course_fk = ?, program_outcomes_fk = ?, slo_code = ?, slo_description = ?, assessment_method = ?, sequence_num = ?, is_active = ?, updated_at = NOW()
-                         WHERE student_learning_outcomes_pk = ?",
-                        [$courseFk, $programOutcomesFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive, $id],
-                        'iisssiii'
-                    );
+                    $userId = $_SESSION['user_id'] ?? null;
+                    if ($programOutcomesFk !== null) {
+                        $db->query(
+                            "UPDATE {$dbPrefix}student_learning_outcomes 
+                             SET course_fk = ?, program_outcomes_fk = ?, slo_code = ?, slo_description = ?, assessment_method = ?, sequence_num = ?, is_active = ?, updated_at = NOW(), updated_by_fk = ?
+                             WHERE student_learning_outcomes_pk = ?",
+                            [$courseFk, $programOutcomesFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive, $userId, $id],
+                            'iisssiiii'
+                        );
+                    } else {
+                        $db->query(
+                            "UPDATE {$dbPrefix}student_learning_outcomes 
+                             SET course_fk = ?, program_outcomes_fk = NULL, slo_code = ?, slo_description = ?, assessment_method = ?, sequence_num = ?, is_active = ?, updated_at = NOW(), updated_by_fk = ?
+                             WHERE student_learning_outcomes_pk = ?",
+                            [$courseFk, $sloCode, $sloDescription, $assessmentMethod, $sequenceNum, $isActive, $userId, $id],
+                            'isssiii'
+                        );
+                    }
                     $successMessage = 'SLO updated successfully';
                 } else {
                     $errorMessage = implode('<br>', $errors);
@@ -106,10 +118,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'toggle_status':
                 $id = (int)($_POST['slo_id'] ?? 0);
                 if ($id > 0) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
-                        "UPDATE {$dbPrefix}student_learning_outcomes SET is_active = NOT is_active, updated_at = NOW() WHERE student_learning_outcomes_pk = ?",
-                        [$id],
-                        'i'
+                        "UPDATE {$dbPrefix}student_learning_outcomes SET is_active = NOT is_active, updated_at = NOW(), updated_by_fk = ? WHERE student_learning_outcomes_pk = ?",
+                        [$userId, $id],
+                        'ii'
                     );
                     $successMessage = 'SLO status updated';
                 }
@@ -131,190 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $db->query("DELETE FROM {$dbPrefix}student_learning_outcomes WHERE student_learning_outcomes_pk = ?", [$id], 'i');
                         $successMessage = 'SLO deleted successfully';
                     }
-                }
-                break;
-                
-            case 'import':
-                if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
-                    $errorMessage = 'Please select a valid CSV file';
-                    break;
-                }
-                
-                // Get selected term for auto-creating courses
-                $selectedTermFk = getSelectedTermFk();
-                if (!$selectedTermFk) {
-                    $errorMessage = 'No term selected. Please select a term first.';
-                    break;
-                }
-                
-                $file = $_FILES['csv_file']['tmp_name'];
-                $handle = fopen($file, 'r');
-                
-                if ($handle === false) {
-                    $errorMessage = 'Failed to open CSV file';
-                    break;
-                }
-                
-                // Skip BOM if present
-                $bom = fread($handle, 3);
-                if ($bom !== "\xEF\xBB\xBF") {
-                    rewind($handle);
-                }
-                
-                // Read header
-                $headers = fgetcsv($handle);
-                if ($headers === false) {
-                    $errorMessage = 'Invalid CSV file format';
-                    fclose($handle);
-                    break;
-                }
-                
-                // Expected columns: CRS ID,CRS TITLE,CSLO
-                $imported = 0;
-                $updated = 0;
-                $coursesCreated = 0;
-                $errors = [];
-                $rowNum = 0;
-                
-                // Track max sequence number per course during import
-                $courseMaxSequence = [];
-                
-                // Build course map by course_number (CRS ID)
-                $courseMap = [];
-                $coursesResult = $db->query(
-                    "SELECT courses_pk, course_number FROM {$dbPrefix}courses WHERE is_active = 1"
-                );
-                while ($course = $coursesResult->fetch()) {
-                    $courseMap[$course['course_number']] = $course['courses_pk'];
-                    
-                    // Get max existing sequence for this course
-                    $maxSeqResult = $db->query(
-                        "SELECT COALESCE(MAX(sequence_num), 0) as max_seq 
-                         FROM {$dbPrefix}student_learning_outcomes 
-                         WHERE course_fk = ?",
-                        [$course['courses_pk']],
-                        'i'
-                    );
-                    $maxSeqRow = $maxSeqResult->fetch();
-                    $courseMaxSequence[$course['courses_pk']] = (int)$maxSeqRow['max_seq'];
-                }
-                
-                while (($row = fgetcsv($handle)) !== false) {
-                    $rowNum++;
-                    if (count($row) < 2) continue; // Need at least CRS ID and CSLO
-                    
-                    $data = array_combine($headers, $row);
-                    if ($data === false) continue;
-                    
-                    // Support new format: CRS ID,CRS TITLE,CSLO
-                    $courseId = trim($data['CRS ID'] ?? $data['course_number'] ?? '');
-                    $courseTitle = trim($data['CRS TITLE'] ?? '');
-                    $csloText = trim($data['CSLO'] ?? $data['slo_description'] ?? '');
-                    
-                    if (empty($courseId) || empty($csloText)) {
-                        $errors[] = "Row $rowNum: Missing CRS ID or CSLO";
-                        continue;
-                    }
-                    
-                    // Check if course exists, create if not
-                    if (!isset($courseMap[$courseId])) {
-                        // Auto-create course
-                        if (empty($courseTitle)) {
-                            $courseTitle = $courseId; // Use course ID as title if no title provided
-                        }
-                        
-                        try {
-                            $db->query(
-                                "INSERT INTO {$dbPrefix}courses (term_fk, course_number, course_name, is_active, created_at, updated_at) 
-                                 VALUES (?, ?, ?, 1, NOW(), NOW())",
-                                [$selectedTermFk, $courseId, $courseTitle],
-                                'iss'
-                            );
-                            
-                            $courseFk = $db->getInsertId();
-                            $courseMap[$courseId] = $courseFk;
-                            $courseMaxSequence[$courseFk] = 0; // Initialize sequence for new course
-                            $coursesCreated++;
-                        } catch (\Exception $e) {
-                            $errors[] = "Row $rowNum: Failed to create course '$courseId': " . $e->getMessage();
-                            continue;
-                        }
-                    } else {
-                        $courseFk = $courseMap[$courseId];
-                    }
-                    
-                    // Initialize sequence tracker if not set
-                    if (!isset($courseMaxSequence[$courseFk])) {
-                        $courseMaxSequence[$courseFk] = 0;
-                    }
-                    
-                    // Split CSLO text into separate sentences
-                    // Split on periods followed by space and capital letter, or double space
-                    $sentences = preg_split('/\.\s+(?=[A-Z])/', $csloText);
-                    
-                    foreach ($sentences as $index => $sentence) {
-                        $sentence = trim($sentence);
-                        if (empty($sentence)) continue;
-                        
-                        // Add period back if it was removed
-                        if (!preg_match('/[.!?]$/', $sentence)) {
-                            $sentence .= '.';
-                        }
-                        
-                        // Use tracked sequence number for this course (continues from previous rows)
-                        $courseMaxSequence[$courseFk]++;
-                        $sequenceNum = $courseMaxSequence[$courseFk];
-                        $sloCode = $courseId . '_clso' . $sequenceNum;
-                        
-                        // Check if SLO exists by description (not code, since we're regenerating codes)
-                        $result = $db->query(
-                            "SELECT student_learning_outcomes_pk FROM {$dbPrefix}student_learning_outcomes 
-                             WHERE course_fk = ? AND slo_description = ?",
-                            [$courseFk, $sentence],
-                            'is'
-                        );
-                        $existing = $result->fetch();
-                        
-                        if ($existing) {
-                            // Update existing with new code and sequence
-                            $db->query(
-                                "UPDATE {$dbPrefix}student_learning_outcomes 
-                                 SET slo_code = ?, sequence_num = ?, is_active = 1, updated_at = NOW() 
-                                 WHERE student_learning_outcomes_pk = ?",
-                                [$sloCode, $sequenceNum, $existing['student_learning_outcomes_pk']],
-                                'sii'
-                            );
-                            $updated++;
-                        } else {
-                            // Insert new
-                            $db->query(
-                                "INSERT INTO {$dbPrefix}student_learning_outcomes (course_fk, slo_code, slo_description, sequence_num, is_active, created_at, updated_at) 
-                                 VALUES (?, ?, ?, ?, 1, NOW(), NOW())",
-                                [$courseFk, $sloCode, $sentence, $sequenceNum],
-                                'issi'
-                            );
-                            $imported++;
-                        }
-                    }
-                }
-                
-                fclose($handle);
-                
-                $summary = "$imported CSLOs imported, $updated updated";
-                if ($coursesCreated > 0) {
-                    $summary .= ", $coursesCreated courses created";
-                }
-                
-                if ($imported > 0 || $updated > 0) {
-                    $successMessage = "Import complete: $summary";
-                    if (!empty($errors)) {
-                        $successMessage .= '<br>Warnings: ' . implode('<br>', array_slice($errors, 0, 5));
-                        if (count($errors) > 5) {
-                            $successMessage .= '<br>... and ' . (count($errors) - 5) . ' more';
-                        }
-                    }
-                } else {
-                    $errorMessage = 'No records imported. ' . implode('<br>', $errors);
                 }
                 break;
         }
@@ -450,9 +279,6 @@ $theme->showHeader($context);
                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSLOModal">
                         <i class="fas fa-plus"></i> Add SLO
                     </button>
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadCsvModal">
-                        <i class="fas fa-upload"></i> Import CSLO
-                    </button>
                 </div>
             </div>
             <div class="card-body">
@@ -467,9 +293,17 @@ $theme->showHeader($context);
                             <th>Assessment Method</th>
                             <th>Sequence</th>
                             <th>Status</th>
+                            <th>Created</th>
+                            <th>Created By</th>
+                            <th>Updated</th>
+                            <th>Updated By</th>
                             <th>Actions</th>
                         </tr>
                         <tr>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
                             <th></th>
                             <th></th>
                             <th></th>
@@ -627,6 +461,27 @@ $theme->showHeader($context);
                         <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
                         <label class="form-check-label" for="editIsActive">Active</label>
                     </div>
+                    
+                    <hr>
+                    <h6 class="text-muted mb-3"><i class="fas fa-info-circle"></i> Audit Information</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted"><strong>Created:</strong></small>
+                            <p id="editSLOCreated"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted"><strong>Created By:</strong></small>
+                            <p id="editSLOCreatedBy"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted"><strong>Last Updated:</strong></small>
+                            <p id="editSLOUpdated"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted"><strong>Updated By:</strong></small>
+                            <p id="editSLOUpdatedBy"></p>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -737,6 +592,11 @@ $(document).ready(function() {
                 }
             });
         }
+        // Status column (index 7)
+        else if (title === 'Status') {
+            var select = $('<select class="form-select form-select-sm"><option value="">All</option><option value="Active">Active</option><option value="Inactive">Inactive</option></select>')
+                .appendTo($(this).empty());
+        }
         else if (title !== 'Actions') {
             $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
         } else {
@@ -765,7 +625,11 @@ $(document).ready(function() {
             { data: 5, name: 'assessment_method' },
             { data: 6, name: 'sequence_num' },
             { data: 7, name: 'is_active' },
-            { data: 8, name: 'actions', orderable: false, searchable: false }
+            { data: 8, name: 'created_at' },
+            { data: 9, name: 'created_by_name' },
+            { data: 10, name: 'updated_at' },
+            { data: 11, name: 'updated_by_name' },
+            { data: 12, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
             var api = this.api();
@@ -802,6 +666,13 @@ function editSLO(slo) {
     $('#editAssessmentMethod').val(slo.assessment_method || '');
     $('#editSequenceNum').val(slo.sequence_num);
     $('#editIsActive').prop('checked', slo.is_active == 1);
+    
+    // Populate audit information
+    $('#editSLOCreated').text(slo.created_at || 'N/A');
+    $('#editSLOCreatedBy').text(slo.created_by_name || 'System');
+    $('#editSLOUpdated').text(slo.updated_at || 'N/A');
+    $('#editSLOUpdatedBy').text(slo.updated_by_name || 'System');
+    
     new bootstrap.Modal(document.getElementById('editSLOModal')).show();
 }
 
