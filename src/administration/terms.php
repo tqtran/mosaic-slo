@@ -235,13 +235,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 );
                                 $slos = $slosResult->fetchAll();
                                 
+                                $userId = $_SESSION['user_id'] ?? null;
                                 foreach ($slos as $slo) {
                                     $db->query(
                                         "INSERT INTO {$dbPrefix}student_learning_outcomes 
-                                         (course_fk, slo_code, slo_description, sequence_num, is_active, created_at, updated_at) 
-                                         VALUES (?, ?, ?, ?, ?, NOW(), NOW())",
-                                        [$newCoursePk, $slo['slo_code'], $slo['slo_description'], $slo['sequence_num'], $slo['is_active']],
-                                        'issii'
+                                         (course_fk, slo_code, slo_description, sequence_num, is_active, created_at, updated_at, created_by_fk, updated_by_fk) 
+                                         VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                                        [$newCoursePk, $slo['slo_code'], $slo['slo_description'], $slo['sequence_num'], $slo['is_active'], $userId, $userId],
+                                        'issiii'
                                     );
                                     $copiedSLOs++;
                                 }

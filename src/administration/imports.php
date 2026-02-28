@@ -565,32 +565,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     // Process each sentence as a separate SLO
                     foreach ($sentences as $sloSentence) {
+                        // Skip empty sentences
+                        if (empty($sloSentence)) {
+                            continue;
+                        }
+                        
                         // Add period back if it doesn't end with punctuation
                         if (!preg_match('/[.!?]$/', $sloSentence)) {
                             $sloSentence .= '.';
                         }
                         
-                        // Check if this SLO already exists
+                        // Check if this exact SLO description already exists for this course
                         $existingResult = $db->query(
-                            "SELECT student_learning_outcomes_pk FROM {$dbPrefix}student_learning_outcomes 
+                            "SELECT student_learning_outcomes_pk, slo_code FROM {$dbPrefix}student_learning_outcomes 
                              WHERE course_fk = ? AND slo_description = ?",
                             [$courseFk, $sloSentence],
                             'is'
                         );
                         
-                        if ($existingResult->rowCount() === 0) {
-                            $courseMaxSequence[$courseFk]++;
+                        if ($existingResult->rowCount() > 0) {
+                            // SLO already exists, skip
+                            $updated++;
+                        } else {
+                            // Get fresh max sequence from database to ensure we don't have duplicates
+                            $maxSeqResult = $db->query(
+                                "SELECT COALESCE(MAX(sequence_num), 0) as max_seq 
+                                 FROM {$dbPrefix}student_learning_outcomes 
+                                 WHERE course_fk = ?",
+                                [$courseFk],
+                                'i'
+                            );
+                            $maxSeqRow = $maxSeqResult->fetch();
+                            $nextSequence = (int)$maxSeqRow['max_seq'] + 1;
+                            
+                            // Generate unique slo_code
+                            $sloCode = "CSLO-{$courseId}-{$nextSequence}";
+                            
+                            // Insert new SLO
                             $userId = $_SESSION['user_id'] ?? null;
                             $db->query(
                                 "INSERT INTO {$dbPrefix}student_learning_outcomes 
-                                 (course_fk, slo_description, sequence_num, created_at, updated_at, is_active, created_by_fk, updated_by_fk)
-                                 VALUES (?, ?, ?, NOW(), NOW(), 1, ?, ?)",
-                                [$courseFk, $sloSentence, $courseMaxSequence[$courseFk], $userId, $userId],
-                                'isiii'
+                                 (course_fk, slo_code, slo_description, sequence_num, created_at, updated_at, is_active, created_by_fk, updated_by_fk)
+                                 VALUES (?, ?, ?, ?, NOW(), NOW(), 1, ?, ?)",
+                                [$courseFk, $sloCode, $sloSentence, $nextSequence, $userId, $userId],
+                                'issiii'
                             );
                             $imported++;
-                        } else {
-                            $updated++;
                         }
                     }
                 }
