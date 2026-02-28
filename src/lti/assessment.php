@@ -555,21 +555,22 @@ $theme->showHeader($context);
                                         <td><span class="badge bg-secondary"><?= htmlspecialchars($student['crn']) ?></span></td>
                                         <td>
                                             <div class="btn-group btn-group-sm outcome-buttons" role="group" data-enrollment="<?= $student['enrollment_pk'] ?>">
-                                                <input type="radio" class="btn-check" name="outcome[<?= $student['enrollment_pk'] ?>]" id="met_<?= $student['enrollment_pk'] ?>" value="met" <?= $currentLevel === 'met' ? 'checked' : '' ?>>
+                                                <input type="radio" class="btn-check outcome-radio" name="outcome[<?= $student['enrollment_pk'] ?>]" id="met_<?= $student['enrollment_pk'] ?>" value="met" <?= $currentLevel === 'met' ? 'checked' : '' ?> data-enrollment="<?= $student['enrollment_pk'] ?>">
                                                 <label class="btn btn-outline-success" for="met_<?= $student['enrollment_pk'] ?>">
                                                     <i class="fas fa-check"></i> Met
                                                 </label>
 
-                                                <input type="radio" class="btn-check" name="outcome[<?= $student['enrollment_pk'] ?>]" id="not_met_<?= $student['enrollment_pk'] ?>" value="not_met" <?= $currentLevel === 'not_met' ? 'checked' : '' ?>>
+                                                <input type="radio" class="btn-check outcome-radio" name="outcome[<?= $student['enrollment_pk'] ?>]" id="not_met_<?= $student['enrollment_pk'] ?>" value="not_met" <?= $currentLevel === 'not_met' ? 'checked' : '' ?> data-enrollment="<?= $student['enrollment_pk'] ?>">
                                                 <label class="btn btn-outline-danger" for="not_met_<?= $student['enrollment_pk'] ?>">
                                                     <i class="fas fa-times"></i> Not Met
                                                 </label>
 
-                                                <input type="radio" class="btn-check" name="outcome[<?= $student['enrollment_pk'] ?>]" id="pending_<?= $student['enrollment_pk'] ?>" value="pending" <?= $currentLevel === 'pending' ? 'checked' : '' ?>>
+                                                <input type="radio" class="btn-check outcome-radio" name="outcome[<?= $student['enrollment_pk'] ?>]" id="pending_<?= $student['enrollment_pk'] ?>" value="pending" <?= $currentLevel === 'pending' ? 'checked' : '' ?> data-enrollment="<?= $student['enrollment_pk'] ?>">
                                                 <label class="btn btn-outline-secondary" for="pending_<?= $student['enrollment_pk'] ?>">
                                                     <i class="fas fa-minus"></i> Not Assessed
                                                 </label>
                                             </div>
+                                            <span class="save-indicator ms-2" id="indicator_<?= $student['enrollment_pk'] ?>"></span>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -578,16 +579,17 @@ $theme->showHeader($context);
                     </div>
                 </div>
                 <div class="card-footer">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-save"></i> Save Assessment Data
-                            </button>
-                        </div>
-                        <div class="col-md-6 text-end">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
                             <small class="text-muted">
-                                <i class="fas fa-info-circle"></i> Assessment data is saved to MOSAIC database
+                                <i class="fas fa-info-circle"></i> Assessment data is automatically saved when you select an achievement level.
                             </small>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span id="save-status" class="badge bg-secondary">
+                                <i class="fas fa-circle-notch fa-spin d-none" id="save-spinner"></i>
+                                <span id="save-text">Ready</span>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -602,9 +604,8 @@ $theme->showHeader($context);
             <div class="card-body">
                 <ol class="mb-0">
                     <li><strong>Select Course Section & SLO:</strong> Choose the course section and specific learning outcome you're assessing.</li>
-                    <li><strong>Enter Achievement Levels:</strong> For each student, click the button to indicate whether they Met, did Not Meet, or have Not Assessed the learning outcome.</li>
+                    <li><strong>Enter Achievement Levels:</strong> Click the button to indicate whether each student Met, did Not Meet, or have Not Assessed the learning outcome. <strong>Assessments are saved automatically</strong> when you click.</li>
                     <li><strong>Quick Actions:</strong> Use the buttons above the table to quickly set all students to the same achievement level.</li>
-                    <li><strong>Save:</strong> Click "Save Assessment Data" when complete. You can return later to update assessments.</li>
                 </ol>
             </div>
         </div>
@@ -612,13 +613,101 @@ $theme->showHeader($context);
 </div>
 
 <script>
+// CSRF token for AJAX requests
+const csrfToken = '<?= htmlspecialchars($_SESSION['csrf_token']) ?>';
+const selectedCrn = '<?= htmlspecialchars($selectedCrn) ?>';
+const selectedTermCode = '<?= htmlspecialchars($selectedTermCode) ?>';
+const selectedSloId = <?= $selectedSloId ?>;
+
+// Save individual assessment via AJAX
+function saveAssessment(enrollmentId, achievementLevel) {
+    const indicator = document.getElementById('indicator_' + enrollmentId);
+    const statusBadge = document.getElementById('save-status');
+    const statusText = document.getElementById('save-text');
+    const spinner = document.getElementById('save-spinner');
+    
+    // Show saving indicator
+    if (indicator) {
+        indicator.innerHTML = '<i class="fas fa-circle-notch fa-spin text-primary"></i>';
+    }
+    statusBadge.className = 'badge bg-primary';
+    statusText.textContent = 'Saving...';
+    spinner.classList.remove('d-none');
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+    formData.append('action', 'save_assessments');
+    formData.append('crn', selectedCrn);
+    formData.append('term_code', selectedTermCode);
+    formData.append('slo_id', selectedSloId);
+    formData.append('outcome[' + enrollmentId + ']', achievementLevel);
+    
+    // Send AJAX request
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(html => {
+        // Check if response indicates success (simple check)
+        if (html.includes('Assessment data saved successfully')) {
+            if (indicator) {
+                indicator.innerHTML = '<i class="fas fa-check text-success"></i>';
+                setTimeout(() => {
+                    indicator.innerHTML = '';
+                }, 2000);
+            }
+            statusBadge.className = 'badge bg-success';
+            statusText.textContent = 'Saved';
+            spinner.classList.add('d-none');
+            
+            setTimeout(() => {
+                statusBadge.className = 'badge bg-secondary';
+                statusText.textContent = 'Ready';
+            }, 2000);
+        } else {
+            throw new Error('Save failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving assessment:', error);
+        if (indicator) {
+            indicator.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i>';
+        }
+        statusBadge.className = 'badge bg-danger';
+        statusText.textContent = 'Error';
+        spinner.classList.add('d-none');
+        
+        setTimeout(() => {
+            if (indicator) indicator.innerHTML = '';
+            statusBadge.className = 'badge bg-secondary';
+            statusText.textContent = 'Ready';
+        }, 3000);
+    });
+}
+
+// Attach event listeners to all radio buttons
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.outcome-radio').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            if (this.checked) {
+                const enrollmentId = this.getAttribute('data-enrollment');
+                const achievementLevel = this.value;
+                saveAssessment(enrollmentId, achievementLevel);
+            }
+        });
+    });
+});
+
+// Set all outcomes and save each
 function setAllOutcomes(outcome) {
-    // Set all radio buttons with the specified outcome value
     document.querySelectorAll('.outcome-buttons').forEach(function(btnGroup) {
         const enrollmentId = btnGroup.getAttribute('data-enrollment');
         const radio = document.getElementById(outcome + '_' + enrollmentId);
-        if (radio) {
+        if (radio && !radio.checked) {
             radio.checked = true;
+            saveAssessment(enrollmentId, outcome);
         }
     });
 }
