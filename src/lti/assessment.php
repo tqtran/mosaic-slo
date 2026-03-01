@@ -79,26 +79,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
     
     try {
-        if ($action === 'save_assessments') {
+        if ($action === 'save_method') {
+            // AJAX handler for saving just the assessment method
             $crn = $_POST['crn'] ?? '';
             $termCode = $_POST['term_code'] ?? '';
             $sloId = (int)($_POST['slo_id'] ?? 0);
             $assessmentMethod = trim($_POST['assessment_method'] ?? '');
-            $outcomes = $_POST['outcome'] ?? [];
             
             if (empty($crn) || empty($termCode) || $sloId <= 0) {
-                throw new \Exception('Invalid course section or SLO selected');
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Invalid course section or SLO']);
+                exit;
             }
             
             if (empty($assessmentMethod)) {
-                throw new \Exception('Assessment method is required');
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Assessment method is required']);
+                exit;
             }
             
-            // Get assessor user ID (would be from users table in production)
-            // For now, we'll use NULL since we don't have user provisioning yet
-            $assessorId = null;
-            
-            // Save or update the assessment method for this section/SLO combination
             $userId = $_SESSION['user_id'] ?? null;
             $methodExists = $db->query(
                 "SELECT section_slo_methods_pk FROM {$dbPrefix}section_slo_methods 
@@ -126,6 +125,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'ssisii'
                 );
             }
+            
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => 'Assessment method saved']);
+            exit;
+            
+        } elseif ($action === 'save_assessments') {
+            $crn = $_POST['crn'] ?? '';
+            $termCode = $_POST['term_code'] ?? '';
+            $sloId = (int)($_POST['slo_id'] ?? 0);
+            $outcomes = $_POST['outcome'] ?? [];
+            
+            if (empty($crn) || empty($termCode) || $sloId <= 0) {
+                throw new \Exception('Invalid course section or SLO selected');
+            }
+            
+            // Get assessor user ID (would be from users table in production)
+            // For now, we'll use NULL since we don't have user provisioning yet
+            $assessorId = null;
             
             $saved = 0;
             $skipped = 0;
@@ -186,11 +203,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'skipped' => $skipped
             ]);
             
-            $successMessage = "Assessment data saved successfully! {$saved} student(s) assessed.";
-            
+            $message = "{$saved} student(s) assessed";
             if ($skipped > 0) {
-                $successMessage .= " ({$skipped} skipped due to invalid data)";
+                $message .= " ({$skipped} skipped)";
             }
+            
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => $message, 'saved' => $saved, 'skipped' => $skipped]);
+            exit;
         }
     } catch (\Exception $e) {
         $errorMessage = 'Failed to save assessments: ' . htmlspecialchars($e->getMessage());
@@ -202,6 +222,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $e->getFile(),
             $e->getLine()
         );
+        
+        // Return JSON for AJAX requests
+        if ($action === 'save_assessments' || $action === 'save_method') {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+        
+        $errorMessage = 'Failed to save assessments: ' . htmlspecialchars($e->getMessage());
         
         if (DEBUG_MODE) {
             $errorMessage .= '<br><br><strong>Debug Information:</strong><br>';
@@ -408,6 +438,52 @@ ob_start();
         border-radius: 3px;
         font-size: 0.875rem;
     }
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+    }
+    .toast {
+        min-width: 250px;
+        background: white;
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        margin-bottom: 10px;
+        overflow: hidden;
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.3s ease;
+    }
+    .toast.show {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    .toast-header {
+        padding: 10px 15px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .toast-body {
+        padding: 10px 15px;
+    }
+    .toast.success .toast-header {
+        background-color: #d4edda;
+        color: #155724;
+        border-color: #c3e6cb;
+    }
+    .toast.error .toast-header {
+        background-color: #f8d7da;
+        color: #721c24;
+        border-color: #f5c6cb;
+    }
+    .toast.info .toast-header {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border-color: #bee5eb;
+    }
 </style>
 <?php
 $customStyles = ob_get_clean();
@@ -432,15 +508,9 @@ $theme->showHeader($context);
     <div class="container-fluid">
         <div class="row align-items-center">
             <div class="col-md-8">
-                <p class="mb-0 mt-2">
-                    <span class="lti-badge"><i class="fas fa-link"></i> LTI Launch</span>
-                    <?php if ($ltiCourseNumber): ?>
-                        <strong class="ms-3"><?= htmlspecialchars($ltiCourseNumber) ?></strong>
-                    <?php endif; ?>
-                </p>
                 <?php if ($ltiCourseName): ?>
-                    <p class="mb-0 mt-1">
-                        <small><?= htmlspecialchars($ltiCourseName) ?></small>
+                    <p class="mb-0">
+                        <?= htmlspecialchars($ltiCourseName) ?>
                     </p>
                 <?php endif; ?>
             </div>
@@ -574,27 +644,22 @@ $theme->showHeader($context);
                         <table class="table table-striped table-hover mb-0">
                             <thead>
                                 <tr>
-                                    <th style="width: 50px">#</th>
                                     <th>Student ID</th>
                                     <th>Student Name</th>
-                                    <th>CRN</th>
                                     <th>Achievement Level</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php 
-                                $index = 1; 
                                 foreach ($students as $student): 
                                     // Get current achievement level (enum from database)
                                     $currentLevel = $student['achievement_level'] ?: 'pending';
                                 ?>
                                     <tr class="student-row">
-                                        <td><?= $index++ ?></td>
-                                        <td><code><?= htmlspecialchars($student['student_id']) ?></code></td>
+                                        <td><?= htmlspecialchars($student['student_id']) ?></td>
                                         <td>
                                             <strong><?= htmlspecialchars($student['first_name']) ?> <?= htmlspecialchars($student['last_name']) ?></strong>
                                         </td>
-                                        <td><span class="badge bg-secondary"><?= htmlspecialchars($student['crn']) ?></span></td>
                                         <td>
                                             <div class="btn-group btn-group-sm outcome-buttons" role="group" data-enrollment="<?= $student['enrollment_pk'] ?>">
                                                 <input type="radio" class="btn-check outcome-radio" name="outcome[<?= $student['enrollment_pk'] ?>]" id="met_<?= $student['enrollment_pk'] ?>" value="met" <?= $currentLevel === 'met' ? 'checked' : '' ?> data-enrollment="<?= $student['enrollment_pk'] ?>">
@@ -701,12 +766,45 @@ $theme->showHeader($context);
     <?php endif; ?>
 </div>
 
+<!-- Toast Container -->
+<div id="toast-container" class="toast-container"></div>
+
 <script>
 // CSRF token for AJAX requests
 const csrfToken = '<?= htmlspecialchars($_SESSION['csrf_token']) ?>';
 const selectedCrn = '<?= htmlspecialchars($selectedCrn) ?>';
 const selectedTermCode = '<?= htmlspecialchars($selectedTermCode) ?>';
 const selectedSloId = <?= $selectedSloId ?>;
+
+// Toast notification system
+function showToast(message, type = 'info', duration = 3000) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    const icon = type === 'success' ? 'fa-check-circle' : 
+                 type === 'error' ? 'fa-exclamation-circle' : 
+                 'fa-info-circle';
+    
+    toast.innerHTML = `
+        <div class="toast-header">
+            <i class="fas ${icon} me-2"></i>
+            <strong class="me-auto">${type.charAt(0).toUpperCase() + type.slice(1)}</strong>
+        </div>
+        <div class="toast-body">${message}</div>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Trigger animation
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Auto-remove
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
 
 // Save individual assessment via AJAX
 function saveAssessment(enrollmentId, achievementLevel) {
@@ -723,10 +821,16 @@ function saveAssessment(enrollmentId, achievementLevel) {
         method: 'POST',
         body: formData
     })
-    .then(response => response.text())
-    .then(html => {
-        // Check if response indicates success (simple check)
-        if (html.includes('Assessment data saved successfully')) {
+    .then(response => {
+        // Parse JSON regardless of status code
+        return response.json().then(data => ({
+            ok: response.ok,
+            status: response.status,
+            data: data
+        }));
+    })
+    .then(({ok, status, data}) => {
+        if (ok && data.success) {
             if (indicator) {
                 indicator.innerHTML = '<i class="fas fa-check text-success"></i>';
                 setTimeout(() => {
@@ -741,8 +845,9 @@ function saveAssessment(enrollmentId, achievementLevel) {
                 statusBadge.className = 'badge bg-secondary';
                 statusText.textContent = 'Ready';
             }, 2000);
+            showToast('Assessment saved successfully', 'success', 2000);
         } else {
-            throw new Error('Save failed');
+            throw new Error(data.message || 'Save failed');
         }
     })
     .catch(error => {
@@ -753,12 +858,50 @@ function saveAssessment(enrollmentId, achievementLevel) {
         statusBadge.className = 'badge bg-danger';
         statusText.textContent = 'Error';
         spinner.classList.add('d-none');
+        showToast(error.message || 'Error saving assessment', 'error', 3000);
         
         setTimeout(() => {
             if (indicator) indicator.innerHTML = '';
             statusBadge.className = 'badge bg-secondary';
             statusText.textContent = 'Ready';
         }, 3000);
+    });
+}
+
+// Save assessment method when changed
+function saveAssessmentMethod(assessmentMethod) {
+    const formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+    formData.append('action', 'save_method');
+    formData.append('crn', selectedCrn);
+    formData.append('term_code', selectedTermCode);
+    formData.append('slo_id', selectedSloId);
+    formData.append('assessment_method', assessmentMethod);
+
+    showToast('Saving assessment method...', 'info', 2000);
+
+    fetch('', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        // Parse JSON regardless of status code
+        return response.json().then(data => ({
+            ok: response.ok,
+            status: response.status,
+            data: data
+        }));
+    })
+    .then(({ok, status, data}) => {
+        if (ok && data.success) {
+            showToast('Assessment method saved: ' + assessmentMethod, 'success', 3000);
+        } else {
+            showToast('Error: ' + (data.message || 'Failed to save'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving method:', error);
+        showToast(error.message || 'Error saving assessment method', 'error');
     });
 }
 
@@ -773,6 +916,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    
+    // Assessment method dropdown change handler
+    const methodSelect = document.getElementById('assessment_method');
+    if (methodSelect) {
+        methodSelect.addEventListener('change', function() {
+            if (this.value) {
+                saveAssessmentMethod(this.value);
+            }
+        });
+    }
 });
 
 // Set all outcomes and save each
