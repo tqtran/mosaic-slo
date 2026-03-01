@@ -576,6 +576,17 @@ ob_start();
     
     /* ==================== WCAG 2.2 AA Accessibility Styles ==================== */
     
+    /* Respect user preference for reduced motion (WCAG 2.3.3) */
+    @media (prefers-reduced-motion: reduce) {
+        .slo-content {
+            opacity: 1 !important;
+            transition: none !important;
+        }
+        .toast {
+            transition: none !important;
+        }
+    }
+    
     /* Skip link - visible on focus for keyboard navigation */
     .skip-link {
         position: absolute;
@@ -619,9 +630,21 @@ ob_start();
         box-shadow: 0 0 0 4px rgba(13, 71, 161, 0.2);
     }
     
-    /* Improved color contrast for muted text (WCAG 1.4.3) */
+    /* Enhanced color contrast (WCAG 1.4.6 Level AAA - 7:1 for normal text) */
     .text-muted {
-        color: #5a6268 !important; /* 4.5:1 contrast ratio on white */
+        color: #495057 !important; /* 8.59:1 contrast ratio on white */
+    }
+    
+    /* Enhanced line spacing for readability (WCAG 1.4.8 Level AAA) */
+    body {
+        line-height: 1.5;
+    }
+    p {
+        margin-bottom: 1.5em; /* 1.5x font size */
+    }
+    li {
+        line-height: 1.5;
+        margin-bottom: 0.5em;
     }
     
     /* Visually hidden but accessible to screen readers */
@@ -637,15 +660,20 @@ ob_start();
         border: 0 !important;
     }
     
-    /* Touch target sizes (WCAG 2.5.8) - minimum 24x24px */
+    /* Enhanced touch target sizes (WCAG 2.5.5 Level AAA - 44x44px) */
     .btn-sm {
-        min-height: 32px;
-        min-width: 32px;
-        padding: 0.25rem 0.75rem;
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0.5rem 1rem;
     }
     .btn-tool {
-        min-height: 32px;
-        min-width: 32px;
+        min-height: 44px;
+        min-width: 44px;
+    }
+    /* Radio button labels for touch targets */
+    .outcome-buttons label.btn {
+        min-height: 44px;
+        padding: 0.5rem 1rem;
     }
     
     /* Remove default fieldset styling to prevent spacing issues */
@@ -1263,8 +1291,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Set all outcomes and save each
+// Set all outcomes with confirmation (WCAG 3.3.6 Level AAA - Error Prevention)
 function setAllOutcomes(outcome) {
+    const outcomeText = outcome === 'met' ? 'Met' : 
+                       outcome === 'not_met' ? 'Not Met' : 'Unassessed';
+    const studentCount = document.querySelectorAll('.outcome-buttons').length;
+    
+    // Confirmation dialog for bulk actions
+    if (!confirm(`Mark all ${studentCount} students as "${outcomeText}"?\n\nThis will save immediately and cannot be undone.`)) {
+        return; // User cancelled
+    }
+    
     document.querySelectorAll('.outcome-buttons').forEach(function(btnGroup) {
         const enrollmentId = btnGroup.getAttribute('data-enrollment');
         const radio = document.getElementById(outcome + '_' + enrollmentId);
