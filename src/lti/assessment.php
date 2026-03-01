@@ -472,8 +472,12 @@ ob_start();
         background: linear-gradient(135deg, var(--accent-blue), var(--brand-teal));
         color: white;
         padding: 20px;
-        margin-bottom: 30px;
+        margin: -1rem -1rem 30px -1rem;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .lti-header h2 {
+        color: white;
+        margin: 0;
     }
     .student-row:hover {
         background-color: #f8f9fa;
@@ -562,10 +566,6 @@ ob_start();
         color: inherit;
         font-size: 1.2rem;
     }
-    #instructionsChevron {
-        color: #0c5460;
-        transition: transform 0.3s ease;
-    }
     .slo-content {
         opacity: 0;
         transition: opacity 0.5s ease-in;
@@ -583,15 +583,17 @@ use Mosaic\Core\ThemeLoader;
 use Mosaic\Core\ThemeContext;
 
 $context = new ThemeContext([
-    'layout' => 'default',
+    'layout' => 'embedded',
     'pageTitle' => 'SLO Assessment Entry - ' . SITE_NAME,
     'customCss' => $customStyles
 ]);
 
-// Use LTI-specific theme (lightweight for iframe embedding)
-$theme = ThemeLoader::getActiveTheme(null, 'lti');
+// Use embedded layout for iframe embedding with AdminLTE support
+$theme = ThemeLoader::getActiveTheme(null, 'embedded');
 $theme->showHeader($context);
 ?>
+
+<h1 class="mb-4">SLO Assessment Entry</h1>
 
 <div class="lti-header">
     <div class="container-fluid">
@@ -646,22 +648,24 @@ $theme->showHeader($context);
         </div>
     <?php else: ?>
         <!-- Instructions Card -->
-        <div class="card card-info card-outline mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#instructionsCollapse" style="cursor: pointer;">
-                <h3 class="card-title mb-0"><i class="fas fa-question-circle"></i> Instructions</h3>
-                <i class="fas fa-chevron-up" id="instructionsChevron"></i>
-            </div>
-            <div id="instructionsCollapse" class="collapse show">
-                <div class="card-body">
-                    <ol class="mb-2">
-                        <li><strong>Select Course SLO:</strong> Choose the specific learning outcome you're assessing.</li>
-                        <li><strong>Choose Assessment Type:</strong> Select the type of assessment used (Quiz, Exam, Project, etc.). This is saved per SLO and will be remembered for this course section.</li>
-                        <li><strong>Enter Achievement Levels:</strong> Click the button to indicate whether each student Met, did Not Meet, or have Not Assessed the learning outcome.</li>
-                        <li><strong>Quick Actions:</strong> Use the buttons above the table to quickly set all students to the same achievement level.</li>
-                        <li><strong>Continuous Improvement Strategies (Optional):</strong> Check any strategies you've implemented or plan to implement.</li>
-                    </ol>
-                    <p class="mb-0 text-muted"><i class="fas fa-info-circle"></i> <em>Note: Looking for the save button? All changes are saved automatically.</em></p>
+        <div class="card card-info card-outline mb-3" id="instructions-card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-question-circle"></i> Instructions</h3>
+                <div class="card-tools">
+                    <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse">
+                        <i class="fas fa-minus"></i>
+                    </button>
                 </div>
+            </div>
+            <div class="card-body">
+                <ol class="mb-2">
+                    <li><strong>Select Course SLO:</strong> Choose the specific learning outcome you're assessing.</li>
+                    <li><strong>Choose Assessment Type:</strong> Select the type of assessment used (Quiz, Exam, Project, etc.). This is saved per SLO and will be remembered for this course section.</li>
+                    <li><strong>Enter Achievement Levels:</strong> Click the button to indicate whether each student Met, did Not Meet, or have Not Assessed the learning outcome.</li>
+                    <li><strong>Quick Actions:</strong> Use the buttons above the table to quickly set all students to the same achievement level.</li>
+                    <li><strong>Continuous Improvement Strategies (Optional):</strong> Check any strategies you've implemented or plan to implement.</li>
+                </ol>
+                <p class="mb-0 text-muted"><i class="fas fa-info-circle"></i> <em>Note: Looking for the save button? All changes are saved automatically.</em></p>
             </div>
         </div>
 
@@ -1111,20 +1115,6 @@ document.addEventListener('DOMContentLoaded', function() {
             saveImprovementStrategies();
         });
     });
-    
-    // Instructions collapse icon rotation
-    const instructionsCollapse = document.getElementById('instructionsCollapse');
-    const instructionsChevron = document.getElementById('instructionsChevron');
-    if (instructionsCollapse && instructionsChevron) {
-        instructionsCollapse.addEventListener('show.bs.collapse', function() {
-            instructionsChevron.classList.remove('fa-chevron-down');
-            instructionsChevron.classList.add('fa-chevron-up');
-        });
-        instructionsCollapse.addEventListener('hide.bs.collapse', function() {
-            instructionsChevron.classList.remove('fa-chevron-up');
-            instructionsChevron.classList.add('fa-chevron-down');
-        });
-    }
 });
 
 // Set all outcomes and save each
