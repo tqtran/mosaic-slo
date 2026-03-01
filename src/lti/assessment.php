@@ -98,6 +98,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // For now, we'll use NULL since we don't have user provisioning yet
             $assessorId = null;
             
+            // Save or update the assessment method for this section/SLO combination
+            $userId = $_SESSION['user_id'] ?? null;
+            $methodExists = $db->query(
+                "SELECT section_slo_methods_pk FROM {$dbPrefix}section_slo_methods 
+                 WHERE crn = ? AND term_code = ? AND student_learning_outcome_fk = ?",
+                [$crn, $termCode, $sloId],
+                'ssi'
+            );
+            
+            if ($methodExists->rowCount() > 0) {
+                // Update existing method
+                $db->query(
+                    "UPDATE {$dbPrefix}section_slo_methods 
+                     SET assessment_method = ?, assessed_date = CURDATE(), updated_at = NOW(), updated_by_fk = ?
+                     WHERE crn = ? AND term_code = ? AND student_learning_outcome_fk = ?",
+                    [$assessmentMethod, $userId, $crn, $termCode, $sloId],
+                    'sissi'
+                );
+            } else {
+                // Insert new method record
+                $db->query(
+                    "INSERT INTO {$dbPrefix}section_slo_methods 
+                     (crn, term_code, student_learning_outcome_fk, assessment_method, assessed_date, created_at, updated_at, created_by_fk, updated_by_fk)
+                     VALUES (?, ?, ?, ?, CURDATE(), NOW(), NOW(), ?, ?)",
+                    [$crn, $termCode, $sloId, $assessmentMethod, $userId, $userId],
+                    'ssisii'
+                );
+            }
+            
             $saved = 0;
             $skipped = 0;
             
@@ -128,21 +157,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $row = $existing->fetch();
                     $db->query(
                         "UPDATE {$dbPrefix}assessments 
-                         SET achievement_level = ?, assessment_method = ?, assessed_date = CURDATE(), 
+                         SET achievement_level = ?, assessed_date = CURDATE(), 
                              updated_at = NOW(), assessed_by_fk = ?
                          WHERE assessments_pk = ?",
-                        [$achievementLevel, $assessmentMethod, $assessorId, $row['assessments_pk']],
-                        'ssii'
+                        [$achievementLevel, $assessorId, $row['assessments_pk']],
+                        'sii'
                     );
                 } else {
                     // Insert new assessment
                     $db->query(
                         "INSERT INTO {$dbPrefix}assessments 
-                         (enrollment_fk, student_learning_outcome_fk, achievement_level, assessment_method,
+                         (enrollment_fk, student_learning_outcome_fk, achievement_level,
                           assessed_date, is_finalized, assessed_by_fk, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, CURDATE(), FALSE, ?, NOW(), NOW())",
-                        [$enrollmentId, $sloId, $achievementLevel, $assessmentMethod, $assessorId],
-                        'iissi'
+                         VALUES (?, ?, ?, CURDATE(), FALSE, ?, NOW(), NOW())",
+                        [$enrollmentId, $sloId, $achievementLevel, $assessorId],
+                        'iisi'
                     );
                 }
                 
@@ -303,6 +332,21 @@ if ($selectedCrn && $selectedTermCode) {
     }
     
     $students = $studentsResult->fetchAll();
+}
+
+// Get current assessment method for this section/SLO if it exists
+$currentAssessmentMethod = '';
+if ($selectedCrn && $selectedTermCode && $selectedSloId > 0) {
+    $methodQuery = "
+        SELECT assessment_method
+        FROM {$dbPrefix}section_slo_methods
+        WHERE crn = ? AND term_code = ? AND student_learning_outcome_fk = ?
+    ";
+    $methodResult = $db->query($methodQuery, [$selectedCrn, $selectedTermCode, $selectedSloId], 'ssi');
+    $methodRow = $methodResult->fetch();
+    if ($methodRow) {
+        $currentAssessmentMethod = $methodRow['assessment_method'];
+    }
 }
 
 // Get selected course section details
@@ -489,11 +533,18 @@ $theme->showHeader($context);
                                 $assessmentTypes = explode(',', $config->get('app.assessment_types', 'Quiz,Exam,Project,Assignment'));
                                 foreach ($assessmentTypes as $type):
                                     $type = trim($type);
+                                    $selected = ($type === $currentAssessmentMethod) ? ' selected' : '';
                                 ?>
-                                    <option value="<?= htmlspecialchars($type) ?>"><?= htmlspecialchars($type) ?></option>
+                                    <option value="<?= htmlspecialchars($type) ?>"<?= $selected ?>><?= htmlspecialchars($type) ?></option>
                                 <?php endforeach; ?>
                             </select>
-                            <small class="form-text text-muted">This will be saved with all assessments below.</small>
+                            <small class="form-text text-muted">
+                                <?php if ($currentAssessmentMethod): ?>
+                                    Currently: <strong><?= htmlspecialchars($currentAssessmentMethod) ?></strong>
+                                <?php else: ?>
+                                    This will be saved with all assessments below.
+                                <?php endif; ?>
+                            </small>
                         </div>
                     </div>
                 </div>

@@ -11,6 +11,7 @@ DROP TABLE IF EXISTS tbl_lti_nonces;
 DROP TABLE IF EXISTS tbl_lti_consumers;
 DROP TABLE IF EXISTS tbl_user_roles;
 DROP TABLE IF EXISTS tbl_roles;
+DROP TABLE IF EXISTS tbl_section_slo_methods;
 DROP TABLE IF EXISTS tbl_assessments;
 DROP TABLE IF EXISTS tbl_enrollment;
 DROP TABLE IF EXISTS tbl_students;
@@ -301,7 +302,6 @@ CREATE TABLE tbl_assessments (
     assessments_pk INT AUTO_INCREMENT PRIMARY KEY,
     enrollment_fk INT NOT NULL,
     student_learning_outcome_fk INT NOT NULL,
-    assessment_method VARCHAR(100) COMMENT 'Type of assessment: Quiz, Exam, Project, etc.',
     score_value DECIMAL(5,2),
     achievement_level ENUM('met', 'partially_met', 'not_met', 'pending') DEFAULT 'pending',
     notes TEXT,
@@ -318,6 +318,29 @@ CREATE TABLE tbl_assessments (
     INDEX idx_achievement_level (achievement_level),
     INDEX idx_assessed_date (assessed_date),
     INDEX idx_is_finalized (is_finalized)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- SLO Assessment Methods per Section
+-- Tracks which assessment method was used to assess a specific SLO in a specific section
+CREATE TABLE tbl_section_slo_methods (
+    section_slo_methods_pk INT AUTO_INCREMENT PRIMARY KEY,
+    crn VARCHAR(20) NOT NULL COMMENT 'Course Reference Number',
+    term_code VARCHAR(50) NOT NULL COMMENT 'Term code from enrollment',
+    student_learning_outcome_fk INT NOT NULL,
+    assessment_method VARCHAR(100) NOT NULL COMMENT 'Type of assessment: Quiz, Exam, Project, etc.',
+    assessed_date DATE COMMENT 'Date this assessment was administered',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by_fk INT,
+    updated_by_fk INT,
+    FOREIGN KEY (student_learning_outcome_fk) REFERENCES tbl_student_learning_outcomes(student_learning_outcomes_pk) ON DELETE CASCADE,
+    FOREIGN KEY (created_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    UNIQUE KEY unique_section_slo (crn, term_code, student_learning_outcome_fk),
+    INDEX idx_crn (crn),
+    INDEX idx_term_code (term_code),
+    INDEX idx_student_learning_outcome_fk (student_learning_outcome_fk),
+    INDEX idx_assessed_date (assessed_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================================
