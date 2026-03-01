@@ -598,9 +598,9 @@ $theme->showHeader($context);
         <div class="row align-items-center">
             <div class="col-md-8">
                 <?php if ($ltiCourseName): ?>
-                    <p class="mb-0">
+                    <h2 class="mb-0">
                         <?= htmlspecialchars($ltiCourseName) ?>
-                    </p>
+                    </h2>
                 <?php endif; ?>
             </div>
             <div class="col-md-4 text-end">
@@ -671,14 +671,15 @@ $theme->showHeader($context);
                 <h3 class="card-title"><i class="fas fa-tasks"></i> Select Student Learning Outcome</h3>
             </div>
             <div class="card-body">
-                <div class="d-flex flex-wrap gap-2">
+                <div class="row g-2">
                     <?php foreach ($slos as $slo): ?>
-                        <a href="?crn=<?= urlencode($selectedCrn) ?>&term_code=<?= urlencode($selectedTermCode) ?>&slo_id=<?= $slo['student_learning_outcomes_pk'] ?>" 
-                           class="btn slo-button <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'btn-primary' : 'btn-outline-primary' ?>"
-                           style="flex: 0 0 calc((100% - 1.5rem) / 4);">
-                            <strong><?= htmlspecialchars($slo['slo_code']) ?></strong>
-                            <small class="slo-description mt-1"><?= htmlspecialchars($slo['slo_description']) ?></small>
-                        </a>
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex">
+                            <a href="?crn=<?= urlencode($selectedCrn) ?>&term_code=<?= urlencode($selectedTermCode) ?>&slo_id=<?= $slo['student_learning_outcomes_pk'] ?>" 
+                               class="btn slo-button <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'btn-primary' : 'btn-outline-primary' ?> w-100 h-100">
+                                <strong><?= htmlspecialchars($slo['slo_code']) ?></strong>
+                                <small class="slo-description mt-1"><?= htmlspecialchars($slo['slo_description']) ?></small>
+                            </a>
+                        </div>
                     <?php endforeach; ?>
                 </div>
             </div>
@@ -1144,6 +1145,7 @@ document.getElementById('selectAllStrategies')?.addEventListener('click', functi
     document.querySelectorAll('.improvement-strategy-checkbox').forEach(function(checkbox) {
         checkbox.checked = true;
     });
+    saveImprovementStrategies();
 });
 
 // Select none improvement strategies
@@ -1152,6 +1154,7 @@ document.getElementById('selectNoneStrategies')?.addEventListener('click', funct
     document.querySelectorAll('.improvement-strategy-checkbox').forEach(function(checkbox) {
         checkbox.checked = false;
     });
+    saveImprovementStrategies();
 });
 </script>
 

@@ -425,7 +425,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     );
                                     $imported++;
                                 } else {
-                                    // Enrollment already exists, skip update
+                                    // Enrollment already exists, update timestamp
+                                    $userId = $_SESSION['user_id'] ?? null;
+                                    $db->query(
+                                        "UPDATE {$dbPrefix}enrollment 
+                                         SET updated_at = NOW(), updated_by_fk = ?
+                                         WHERE student_fk = ? AND course_fk = ? AND term_code = ? AND crn = ?",
+                                        [$userId, $studentFk, $courseFk, $validatedTermCode, $sectionId],
+                                        'iiiss'
+                                    );
                                     $updated++;
                                 }
                             }
@@ -584,14 +592,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         // Check if this exact SLO description already exists for this course
                         $existingResult = $db->query(
-                            "SELECT student_learning_outcomes_pk, slo_code FROM {$dbPrefix}student_learning_outcomes 
+                            "SELECT student_learning_outcomes_pk, slo_code, sequence_num FROM {$dbPrefix}student_learning_outcomes 
                              WHERE course_fk = ? AND slo_description = ?",
                             [$courseFk, $sloSentence],
                             'is'
                         );
                         
                         if ($existingResult->rowCount() > 0) {
-                            // SLO already exists, skip
+                            // SLO already exists, update it
+                            $existing = $existingResult->fetch();
+                            $userId = $_SESSION['user_id'] ?? null;
+                            $db->query(
+                                "UPDATE {$dbPrefix}student_learning_outcomes 
+                                 SET is_active = 1, updated_at = NOW(), updated_by_fk = ?
+                                 WHERE student_learning_outcomes_pk = ?",
+                                [$userId, $existing['student_learning_outcomes_pk']],
+                                'ii'
+                            );
                             $updated++;
                         } else {
                             // Get fresh max sequence from database to ensure we don't have duplicates
@@ -624,7 +641,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 fclose($handle);
                 $msg = "CSLO import completed: {$imported} imported";
-                if ($updated > 0) $msg .= ", {$updated} duplicates skipped";
+                if ($updated > 0) $msg .= ", {$updated} updated";
                 if ($coursesCreated > 0) $msg .= ", {$coursesCreated} courses auto-created";
                 $successMessage = $msg;
                 
@@ -659,6 +676,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $headers = fgetcsv($handle);
                 $imported = 0;
+                $updated = 0;
                 $skipped = 0;
                 $errors = [];
                 
@@ -776,12 +794,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'iii'
                             );
                             $imported++;
+                        } else {
+                            // Mapping already exists, mark as updated
+                            $updated++;
                         }
                     }
                 }
                 
                 fclose($handle);
                 $msg = "Program-Course mapping import completed: {$imported} mappings created";
+                if ($updated > 0) $msg .= ", {$updated} existing";
                 if ($skipped > 0) $msg .= ", {$skipped} skipped";
                 if ($programsCreated > 0) $msg .= ", {$programsCreated} programs auto-created";
                 if ($coursesCreated > 0) $msg .= ", {$coursesCreated} courses auto-created";
