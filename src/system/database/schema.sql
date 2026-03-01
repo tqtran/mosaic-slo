@@ -301,6 +301,7 @@ CREATE TABLE tbl_assessments (
     assessments_pk INT AUTO_INCREMENT PRIMARY KEY,
     enrollment_fk INT NOT NULL,
     student_learning_outcome_fk INT NOT NULL,
+    assessment_method VARCHAR(100) COMMENT 'Type of assessment: Quiz, Exam, Project, etc.',
     score_value DECIMAL(5,2),
     achievement_level ENUM('met', 'partially_met', 'not_met', 'pending') DEFAULT 'pending',
     notes TEXT,

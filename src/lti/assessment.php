@@ -83,10 +83,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $crn = $_POST['crn'] ?? '';
             $termCode = $_POST['term_code'] ?? '';
             $sloId = (int)($_POST['slo_id'] ?? 0);
+            $assessmentMethod = trim($_POST['assessment_method'] ?? '');
             $outcomes = $_POST['outcome'] ?? [];
             
             if (empty($crn) || empty($termCode) || $sloId <= 0) {
                 throw new \Exception('Invalid course section or SLO selected');
+            }
+            
+            if (empty($assessmentMethod)) {
+                throw new \Exception('Assessment method is required');
             }
             
             // Get assessor user ID (would be from users table in production)
@@ -123,21 +128,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $row = $existing->fetch();
                     $db->query(
                         "UPDATE {$dbPrefix}assessments 
-                         SET achievement_level = ?, assessed_date = CURDATE(), 
+                         SET achievement_level = ?, assessment_method = ?, assessed_date = CURDATE(), 
                              updated_at = NOW(), assessed_by_fk = ?
                          WHERE assessments_pk = ?",
-                        [$achievementLevel, $assessorId, $row['assessments_pk']],
-                        'sii'
+                        [$achievementLevel, $assessmentMethod, $assessorId, $row['assessments_pk']],
+                        'ssii'
                     );
                 } else {
                     // Insert new assessment
                     $db->query(
                         "INSERT INTO {$dbPrefix}assessments 
-                         (enrollment_fk, student_learning_outcome_fk, achievement_level, 
+                         (enrollment_fk, student_learning_outcome_fk, achievement_level, assessment_method,
                           assessed_date, is_finalized, assessed_by_fk, created_at, updated_at)
-                         VALUES (?, ?, ?, CURDATE(), FALSE, ?, NOW(), NOW())",
-                        [$enrollmentId, $sloId, $achievementLevel, $assessorId],
-                        'iisi'
+                         VALUES (?, ?, ?, ?, CURDATE(), FALSE, ?, NOW(), NOW())",
+                        [$enrollmentId, $sloId, $achievementLevel, $assessmentMethod, $assessorId],
+                        'iissi'
                     );
                 }
                 
@@ -383,9 +388,6 @@ $theme->showHeader($context);
     <div class="container-fluid">
         <div class="row align-items-center">
             <div class="col-md-8">
-                <h1 class="mb-0">
-                    <i class="fas fa-clipboard-check"></i> SLO Assessment Entry
-                </h1>
                 <p class="mb-0 mt-2">
                     <span class="lti-badge"><i class="fas fa-link"></i> LTI Launch</span>
                     <?php if ($ltiCourseNumber): ?>
@@ -472,6 +474,31 @@ $theme->showHeader($context);
             <input type="hidden" name="term_code" value="<?= htmlspecialchars($selectedTermCode) ?>">
             <input type="hidden" name="slo_id" value="<?= $selectedSloId ?>">
 
+            <!-- Assessment Method Selection -->
+            <div class="card card-info card-outline mb-3">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-clipboard-list"></i> Assessment Method</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="assessment_method" class="form-label">What type of assessment are you recording?</label>
+                            <select class="form-select" id="assessment_method" name="assessment_method" required>
+                                <option value="">-- Select Assessment Type --</option>
+                                <?php
+                                $assessmentTypes = explode(',', $config->get('app.assessment_types', 'Quiz,Exam,Project,Assignment'));
+                                foreach ($assessmentTypes as $type):
+                                    $type = trim($type);
+                                ?>
+                                    <option value="<?= htmlspecialchars($type) ?>"><?= htmlspecialchars($type) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small class="form-text text-muted">This will be saved with all assessments below.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-header bg-primary text-white">
                     <h3 class="card-title">
@@ -484,6 +511,9 @@ $theme->showHeader($context);
                             </button>
                             <button type="button" class="btn btn-sm btn-danger" onclick="setAllOutcomes('not_met')">
                                 <i class="fas fa-times"></i> All Not Met
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="setAllOutcomes('pending')">
+                                <i class="fas fa-circle"></i> All Unassessed
                             </button>
                         </div>
                     </div>
@@ -570,6 +600,53 @@ $theme->showHeader($context);
                 </ol>
             </div>
         </div>
+    <?php endif; ?>
+    
+    <?php if (defined('DEBUG_MODE') && DEBUG_MODE === true): ?>
+    <!-- Debug Information -->
+    <div class="card card-warning card-outline mt-4">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-bug"></i> Debug Information</h3>
+        </div>
+        <div class="card-body">
+            <h5>LTI Session Data</h5>
+            <pre><?php print_r([
+                'lti_authenticated' => $_SESSION['lti_authenticated'] ?? false,
+                'lti_is_instructor' => $_SESSION['lti_is_instructor'] ?? false,
+                'lti_full_name' => $ltiUserName,
+                'lti_user_email' => $ltiUserEmail,
+                'lti_course_number' => $ltiCourseNumber,
+                'lti_course_name' => $ltiCourseName,
+                'lti_crn' => $ltiCrn,
+                'lti_term_id' => $ltiTermId,
+                'lti_academic_year' => $ltiAcademicYear,
+                'lti_term_number' => $ltiTermNumber,
+            ]); ?></pre>
+            
+            <h5>Course Sections Available</h5>
+            <pre><?php print_r($courseSections); ?></pre>
+            
+            <h5>Selected Course Data</h5>
+            <pre><?php print_r([
+                'selectedCrn' => $selectedCrn,
+                'selectedTermCode' => $selectedTermCode,
+                'courseFkForSlo' => $courseFkForSlo,
+                'courseNumber' => $courseNumber,
+            ]); ?></pre>
+            
+            <h5>Student Learning Outcomes (SLOs)</h5>
+            <pre><?php print_r($slos); ?></pre>
+            
+            <h5>Selected SLO</h5>
+            <pre><?php print_r(['selectedSloId' => $selectedSloId]); ?></pre>
+            
+            <h5>Enrolled Students</h5>
+            <pre><?php print_r($students); ?></pre>
+            
+            <h5>Database Prefix</h5>
+            <pre><?php echo htmlspecialchars($dbPrefix); ?></pre>
+        </div>
+    </div>
     <?php endif; ?>
 </div>
 

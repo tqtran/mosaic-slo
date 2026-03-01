@@ -109,6 +109,13 @@ app:
   # @default: Associate of Arts (AA),Associate of Science (AS),Associate in Arts for Transfer (AA-T),Associate in Science for Transfer (AS-T),Bachelor of Science (BS),Bachelor of Applied Science (BAS),Certificate of Achievement (16 or more semester units),Certificate of Achievement (8-15.5 semester units),Local Certificate (fewer than 8 semester units),Noncredit Certificate of Completion,Noncredit Certificate of Competency
   # @help: Comma-separated list of degree types (California Community College standard degree types)
   degree_types: Associate of Arts (AA),Associate of Science (AS),Associate in Arts for Transfer (AA-T),Associate in Science for Transfer (AS-T),Bachelor of Science (BS),Bachelor of Applied Science (BAS),Certificate of Achievement (16 or more semester units),Certificate of Achievement (8-15.5 semester units),Local Certificate (fewer than 8 semester units),Noncredit Certificate of Completion,Noncredit Certificate of Competency
+  
+  # @label: Assessment Types
+  # @description: Available assessment methods for SLO evaluation
+  # @required: false
+  # @type: string
+  # @help: Comma-separated list of assessment types (e.g., Quiz, Exam, Project, Assignment)
+  assessment_types: Quiz,Exam,Midterm Exam,Final Exam,Project,Assignment,Presentation,Lab Report,Essay,Discussion,Homework,Capstone,Portfolio,Performance Assessment,Practical Exam
 
 # Theme Configuration
 theme:

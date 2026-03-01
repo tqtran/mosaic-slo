@@ -701,7 +701,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                     $configContent .= "  name: " . $site_name . "\n";
                                     $configContent .= "  timezone: " . ($templateDefaults['timezone'] ?? 'America/Los_Angeles') . "\n";
                                     $configContent .= "  base_url: " . $base_url . "\n";
-                                    $configContent .= "  debug_mode: " . ($templateDefaults['debug_mode'] ?? 'true') . "\n\n";
+                                    $configContent .= "  debug_mode: " . ($templateDefaults['debug_mode'] ?? 'true') . "\n";
+                                    $configContent .= "  degree_types: " . ($templateDefaults['degree_types'] ?? 'Associate of Arts (AA),Associate of Science (AS),Associate in Arts for Transfer (AA-T),Associate in Science for Transfer (AS-T),Bachelor of Science (BS),Bachelor of Applied Science (BAS),Certificate of Achievement (16 or more semester units),Certificate of Achievement (8-15.5 semester units),Local Certificate (fewer than 8 semester units),Noncredit Certificate of Completion,Noncredit Certificate of Competency') . "\n";
+                                    $configContent .= "  assessment_types: " . ($templateDefaults['assessment_types'] ?? 'Quiz,Exam,Midterm Exam,Final Exam,Project,Assignment,Presentation,Lab Report,Essay,Discussion,Homework,Capstone,Portfolio,Performance Assessment,Practical Exam') . "\n\n";
                                     $configContent .= "# Theme Configuration\n";
                                     $configContent .= "# Available themes: theme-default, theme-adminlte, theme-metis\n";
                                     $configContent .= "theme:\n";
