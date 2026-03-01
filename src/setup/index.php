@@ -705,7 +705,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['setup_submit'])) {
                                     $configContent .= "# Theme Configuration\n";
                                     $configContent .= "# Available themes: theme-default, theme-adminlte, theme-metis\n";
                                     $configContent .= "theme:\n";
-                                    $configContent .= "  active_theme: " . ($templateDefaults['active_theme'] ?? 'theme-adminlte') . "\n\n";
+                                    $configContent .= "  active_theme: " . ($templateDefaults['active_theme'] ?? 'theme-default') . "\n";
+                                    $configContent .= "  admin_theme: " . ($templateDefaults['admin_theme'] ?? 'theme-adminlte') . "\n";
+                                    $configContent .= "  lti_theme: " . ($templateDefaults['lti_theme'] ?? 'theme-default') . "\n\n";
                                     $configContent .= "# Email configuration for notifications\n";
                                     $configContent .= "email:\n";
                                     $configContent .= "  method: " . $mail_method . "\n";

@@ -85,11 +85,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
-                        "INSERT INTO {$dbPrefix}sections (course_fk, term_fk, section_id, crn, instructor_name, max_enrollment, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                        [$courseFk, $termFk, $sectionId, $crn, $instructorName, $maxEnrollment, $isActive],
-                        'iisssii'
+                        "INSERT INTO {$dbPrefix}sections (course_fk, term_fk, section_id, crn, instructor_name, max_enrollment, is_active, created_at, updated_at, created_by_fk, updated_by_fk) 
+                         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                        [$courseFk, $termFk, $sectionId, $crn, $instructorName, $maxEnrollment, $isActive, $userId, $userId],
+                        'iisssiiii'
                     );
                     $successMessage = 'Section added successfully';
                 } else {
@@ -156,12 +157,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
                         "UPDATE {$dbPrefix}sections 
-                         SET course_fk = ?, term_fk = ?, section_id = ?, crn = ?, instructor_name = ?, max_enrollment = ?, is_active = ?, updated_at = NOW()
+                         SET course_fk = ?, term_fk = ?, section_id = ?, crn = ?, instructor_name = ?, max_enrollment = ?, is_active = ?, updated_at = NOW(), updated_by_fk = ?
                          WHERE sections_pk = ?",
-                        [$courseFk, $termFk, $sectionId, $crn, $instructorName, $maxEnrollment, $isActive, $id],
-                        'iisssiii'
+                        [$courseFk, $termFk, $sectionId, $crn, $instructorName, $maxEnrollment, $isActive, $userId, $id],
+                        'iisssiiii'
                     );
                     $successMessage = 'Section updated successfully';
                 } else {
@@ -172,12 +174,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'toggle_status':
                 $id = (int)($_POST['section_id'] ?? 0);
                 if ($id > 0) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
                         "UPDATE {$dbPrefix}sections 
-                         SET is_active = NOT is_active, updated_at = NOW()
+                         SET is_active = NOT is_active, updated_at = NOW(), updated_by_fk = ?
                          WHERE sections_pk = ?",
-                        [$id],
-                        'i'
+                        [$userId, $id],
+                        'ii'
                     );
                     $successMessage = 'Section status updated';
                 }
@@ -306,21 +309,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     if ($existing) {
                         // Update existing
+                        $userId = $_SESSION['user_id'] ?? null;
                         $db->query(
                             "UPDATE {$dbPrefix}sections 
-                             SET crn = ?, instructor_name = ?, max_enrollment = ?, is_active = ?, updated_at = NOW() 
+                             SET crn = ?, instructor_name = ?, max_enrollment = ?, is_active = ?, updated_at = NOW(), updated_by_fk = ? 
                              WHERE sections_pk = ?",
-                            [$crn, $instructorName, $maxEnrollment, $isActive, $existing['sections_pk']],
-                            'ssiii'
+                            [$crn, $instructorName, $maxEnrollment, $isActive, $userId, $existing['sections_pk']],
+                            'ssiiii'
                         );
                         $updated++;
                     } else {
                         // Insert new
+                        $userId = $_SESSION['user_id'] ?? null;
                         $db->query(
-                            "INSERT INTO {$dbPrefix}sections (course_fk, term_fk, section_id, crn, instructor_name, max_enrollment, is_active, created_at, updated_at) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                            [$courseFk, $termFk, $sectionId, $crn, $instructorName, $maxEnrollment, $isActive],
-                            'iisssii'
+                            "INSERT INTO {$dbPrefix}sections (course_fk, term_fk, section_id, crn, instructor_name, max_enrollment, is_active, created_at, updated_at, created_by_fk, updated_by_fk) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                            [$courseFk, $termFk, $sectionId, $crn, $instructorName, $maxEnrollment, $isActive, $userId, $userId],
+                            'iisssiiii'
                         );
                         $imported++;
                     }
@@ -430,7 +435,7 @@ $context = new ThemeContext([
     ]
 ]);
 
-$theme = ThemeLoader::getActiveTheme();
+$theme = ThemeLoader::getActiveTheme(null, 'admin');
 $theme->showHeader($context);
 ?>
 

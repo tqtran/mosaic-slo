@@ -7,9 +7,18 @@
  */
 function render_message_page(string $type, string $title, string $message, string $icon = ''): void {
     $siteName = defined('SITE_NAME') ? SITE_NAME : 'MOSAIC';
-    $pageTitle = $title . ' - ' . $siteName;
-    $bodyClass = 'bg-light';
-    require __DIR__ . '/header.php';
+    
+    // Load theme system
+    require_once __DIR__ . '/../Core/ThemeLoader.php';
+    require_once __DIR__ . '/../Core/ThemeContext.php';
+    
+    $context = new \Mosaic\Core\ThemeContext([
+        'layout' => 'default',
+        'pageTitle' => $title . ' - ' . $siteName
+    ]);
+    
+    $theme = \Mosaic\Core\ThemeLoader::getActiveTheme();
+    $theme->showHeader($context);
     
     $iconClass = $icon ?: ($type === 'error' ? 'fa-times-circle text-danger' : 'fa-check-circle text-success');
     ?>
@@ -31,5 +40,5 @@ function render_message_page(string $type, string $title, string $message, strin
     </div>
     
     <?php
-    require __DIR__ . '/footer.php';
+    $theme->showFooter($context);
 }

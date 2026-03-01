@@ -60,11 +60,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if (empty($errors)) {
                     $passwordHash = password_hash($password, PASSWORD_ARGON2ID);
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
-                        "INSERT INTO {$dbPrefix}users (full_name, email, password_hash, is_active, created_at, updated_at) 
-                         VALUES (?, ?, ?, ?, NOW(), NOW())",
-                        [$fullName, $email, $passwordHash, $isActive],
-                        'sssi'
+                        "INSERT INTO {$dbPrefix}users (full_name, email, password_hash, is_active, created_at, updated_at, created_by_fk, updated_by_fk) 
+                         VALUES (?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                        [$fullName, $email, $passwordHash, $isActive, $userId, $userId],
+                        'sssiii'
                     );
                     $successMessage = 'User added successfully';
                 } else {
@@ -112,20 +113,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             break;
                         }
                         $passwordHash = password_hash($password, PASSWORD_ARGON2ID);
+                        $userId = $_SESSION['user_id'] ?? null;
                         $db->query(
                             "UPDATE {$dbPrefix}users 
-                             SET full_name = ?, email = ?, password_hash = ?, is_active = ?, updated_at = NOW()
+                             SET full_name = ?, email = ?, password_hash = ?, is_active = ?, updated_at = NOW(), updated_by_fk = ?
                              WHERE users_pk = ?",
-                            [$fullName, $email, $passwordHash, $isActive, $id],
-                            'sssii'
+                            [$fullName, $email, $passwordHash, $isActive, $userId, $id],
+                            'sssiii'
                         );
                     } else {
+                        $userId = $_SESSION['user_id'] ?? null;
                         $db->query(
                             "UPDATE {$dbPrefix}users 
-                             SET full_name = ?, email = ?, is_active = ?, updated_at = NOW()
+                             SET full_name = ?, email = ?, is_active = ?, updated_at = NOW(), updated_by_fk = ?
                              WHERE users_pk = ?",
-                            [$fullName, $email, $isActive, $id],
-                            'ssii'
+                            [$fullName, $email, $isActive, $userId, $id],
+                            'ssiii'
                         );
                     }
                     $successMessage = 'User updated successfully';
@@ -137,10 +140,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'toggle_status':
                 $id = (int)($_POST['users_pk'] ?? 0);
                 if ($id > 0) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
-                        "UPDATE {$dbPrefix}users SET is_active = NOT is_active, updated_at = NOW() WHERE users_pk = ?",
-                        [$id],
-                        'i'
+                        "UPDATE {$dbPrefix}users SET is_active = NOT is_active, updated_at = NOW(), updated_by_fk = ? WHERE users_pk = ?",
+                        [$userId, $id],
+                        'ii'
                     );
                     $successMessage = 'User status updated';
                 }
@@ -198,7 +202,7 @@ $context = new ThemeContext([
     ]
 ]);
 
-$theme = ThemeLoader::getActiveTheme();
+$theme = ThemeLoader::getActiveTheme(null, 'admin');
 $theme->showHeader($context);
 ?>
 

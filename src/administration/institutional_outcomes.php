@@ -245,7 +245,7 @@ $context = new ThemeContext([
     ]
 ]);
 
-$theme = ThemeLoader::getActiveTheme();
+$theme = ThemeLoader::getActiveTheme(null, 'admin');
 $theme->showHeader($context);
 ?>
 

@@ -13,6 +13,7 @@ require_once __DIR__ . '/../system/includes/init.php';
 $successMessage = '';
 $errorMessage = '';
 $importStats = [];
+$activeTab = 'islo'; // Default to ISLO tab
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // CSRF validation
@@ -22,6 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     $importType = $_POST['import_type'] ?? '';
+    // Normalize import type to match tab IDs (replace underscores with hyphens)
+    $activeTab = str_replace('_', '-', $importType);
     
     try {
         switch ($importType) {
@@ -58,12 +61,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     
                                     if ($result->rowCount() > 0) {
                                         $existing = $result->fetch();
+                                        $userId = $_SESSION['user_id'] ?? null;
                                         $db->query(
                                             "UPDATE {$dbPrefix}institutional_outcomes 
-                                             SET outcome_description = ?, sequence_num = ?, updated_at = NOW()
+                                             SET outcome_description = ?, sequence_num = ?, updated_at = NOW(), updated_by_fk = ?
                                              WHERE institutional_outcomes_pk = ?",
-                                            [$outcomeDescription, $sequenceNum, $existing['institutional_outcomes_pk']],
-                                            'sii'
+                                            [$outcomeDescription, $sequenceNum, $userId, $existing['institutional_outcomes_pk']],
+                                            'siii'
                                         );
                                     } else {
                                         $userId = $_SESSION['user_id'] ?? null;
@@ -225,12 +229,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 
                                 if ($result->rowCount() > 0) {
                                     $existing = $result->fetch();
+                                    $userId = $_SESSION['user_id'] ?? null;
                                     $db->query(
                                         "UPDATE {$dbPrefix}program_outcomes 
-                                         SET outcome_code = ?, sequence_num = ?, is_active = 1, updated_at = NOW()
+                                         SET outcome_code = ?, sequence_num = ?, is_active = 1, updated_at = NOW(), updated_by_fk = ?
                                          WHERE program_outcomes_pk = ?",
-                                        [$outcomeCode, $sequenceNum, $existing['program_outcomes_pk']],
-                                        'sii'
+                                        [$outcomeCode, $sequenceNum, $userId, $existing['program_outcomes_pk']],
+                                        'siii'
                                     );
                                     $updated++;
                                 } else {
@@ -387,14 +392,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     
                                     // Update student name if provided and currently empty
                                     if (!empty($firstName) || !empty($lastName)) {
+                                        $userId = $_SESSION['user_id'] ?? null;
                                         $db->query(
                                             "UPDATE {$dbPrefix}students 
                                              SET first_name = CASE WHEN (first_name IS NULL OR first_name = '') AND ? != '' THEN ? ELSE first_name END,
                                                  last_name = CASE WHEN (last_name IS NULL OR last_name = '') AND ? != '' THEN ? ELSE last_name END,
-                                                 updated_at = NOW()
+                                                 updated_at = NOW(),
+                                                 updated_by_fk = ?
                                              WHERE students_pk = ?",
-                                            [$firstName, $firstName, $lastName, $lastName, $studentFk],
-                                            'ssssi'
+                                            [$firstName, $firstName, $lastName, $lastName, $userId, $studentFk],
+                                            'ssssii'
                                         );
                                     }
                                 }
@@ -819,7 +826,7 @@ $context = new ThemeContext([
     ]
 ]);
 
-$theme = ThemeLoader::getActiveTheme();
+$theme = ThemeLoader::getActiveTheme(null, 'admin');
 $theme->showHeader($context);
 ?>
 
@@ -854,27 +861,27 @@ $theme->showHeader($context);
                 <div class="card-header p-0 pt-1 border-bottom-0">
                     <ul class="nav nav-tabs" role="tablist">
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#islo-tab" role="tab">
+                            <a class="nav-link <?= $activeTab === 'islo' ? 'active' : '' ?>" data-bs-toggle="tab" href="#islo-tab" role="tab">
                                 <i class="fas fa-graduation-cap"></i> ISLO
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#pslo-tab" role="tab">
+                            <a class="nav-link <?= $activeTab === 'pslo' ? 'active' : '' ?>" data-bs-toggle="tab" href="#pslo-tab" role="tab">
                                 <i class="fas fa-certificate"></i> PSLO
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#cslo-tab" role="tab">
+                            <a class="nav-link <?= $activeTab === 'cslo' ? 'active' : '' ?>" data-bs-toggle="tab" href="#cslo-tab" role="tab">
                                 <i class="fas fa-list-check"></i> CSLO
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#pslo-map-tab" role="tab">
+                            <a class="nav-link <?= $activeTab === 'pslo-map' ? 'active' : '' ?>" data-bs-toggle="tab" href="#pslo-map-tab" role="tab">
                                 <i class="fas fa-diagram-project"></i> PSLO Mapping
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#enrollment-tab" role="tab">
+                            <a class="nav-link <?= $activeTab === 'enrollment' ? 'active' : '' ?>" data-bs-toggle="tab" href="#enrollment-tab" role="tab">
                                 <i class="fas fa-user-check"></i> Enrollment
                             </a>
                         </li>
@@ -883,7 +890,7 @@ $theme->showHeader($context);
                 <div class="card-body">
                     <div class="tab-content">
                         <!-- ISLO Import -->
-                        <div class="tab-pane fade show active" id="islo-tab" role="tabpanel">
+                        <div class="tab-pane fade <?= $activeTab === 'islo' ? 'show active' : '' ?>" id="islo-tab" role="tabpanel">
                             <h4>Import Institutional Student Learning Outcomes</h4>
                             <p>Upload a CSV file with ISLO data. Format: One outcome per line (outcome description only)</p>
                             
@@ -904,7 +911,7 @@ $theme->showHeader($context);
                         </div>
                         
                         <!-- PSLO Import -->
-                        <div class="tab-pane fade" id="pslo-tab" role="tabpanel">
+                        <div class="tab-pane fade <?= $activeTab === 'pslo' ? 'show active' : '' ?>" id="pslo-tab" role="tabpanel">
                             <h4>Import Program Student Learning Outcomes</h4>
                             <p>Upload a CSV file with PSLO data. Format: Program Code, Program, seq, PSLOID, Program Outcome</p>
                             
@@ -925,7 +932,7 @@ $theme->showHeader($context);
                         </div>
                         
                         <!-- CSLO Import -->
-                        <div class="tab-pane fade" id="cslo-tab" role="tabpanel">
+                        <div class="tab-pane fade <?= $activeTab === 'cslo' ? 'show active' : '' ?>" id="cslo-tab" role="tabpanel">
                             <h4>Import Course Student Learning Outcomes</h4>
                             <p>Upload a CSV file with CSLO data. Format: CRS ID, CRS TITLE, CSLO</p>
                             
@@ -945,7 +952,7 @@ $theme->showHeader($context);
                         </div>
                         
                         <!-- PSLO Mapping Import -->
-                        <div class="tab-pane fade" id="pslo-map-tab" role="tabpanel">
+                        <div class="tab-pane fade <?= $activeTab === 'pslo-map' ? 'show active' : '' ?>" id="pslo-map-tab" role="tabpanel">
                             <h4>Import Program-Course Mappings</h4>
                             <p>Upload a CSV file to map courses to programs. Format: ProgramID, Program, Course</p>
                             
@@ -965,7 +972,7 @@ $theme->showHeader($context);
                         </div>
                         
                         <!-- Enrollment Import -->
-                        <div class="tab-pane fade" id="enrollment-tab" role="tabpanel">
+                        <div class="tab-pane fade <?= $activeTab === 'enrollment' ? 'show active' : '' ?>" id="enrollment-tab" role="tabpanel">
                             <h4>Import Enrollment Data</h4>
                             <p>Upload a CSV file with enrollment data. Format: BannerTerm, TermCode, StudentID, SectionID, FirstName, LastName, PartofTerm, Discipline, CourseID</p>
                             

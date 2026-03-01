@@ -303,11 +303,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             if (empty($errors)) {
+                $userId = $_SESSION['user_id'] ?? null;
                 $db->query(
-                    "INSERT INTO {$dbPrefix}terms (banner_term, term_code, term_name, academic_year, start_date, end_date, is_active, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())",
-                    [$bannerTerm, $termCode, $termName, $academicYear, $startDate, $endDate, $isActive],
-                    'ssssssi'
+                    "INSERT INTO {$dbPrefix}terms (banner_term, term_code, term_name, academic_year, start_date, end_date, is_active, created_at, updated_at, created_by_fk, updated_by_fk)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                    [$bannerTerm, $termCode, $termName, $academicYear, $startDate, $endDate, $isActive, $userId, $userId],
+                    'sssssiii'
                 );
                 $successMessage = 'Term added successfully';
             } else {
@@ -363,12 +364,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             
             if (empty($errors)) {
+                $userId = $_SESSION['user_id'] ?? null;
                 $db->query(
                     "UPDATE {$dbPrefix}terms 
-                     SET banner_term = ?, term_code = ?, term_name = ?, academic_year = ?, start_date = ?, end_date = ?, is_active = ?, updated_at = NOW()
+                     SET banner_term = ?, term_code = ?, term_name = ?, academic_year = ?, start_date = ?, end_date = ?, is_active = ?, updated_at = NOW(), updated_by_fk = ?
                      WHERE terms_pk = ?",
-                    [$bannerTerm, $termCode, $termName, $academicYear, $startDate, $endDate, $isActive, $termsPk],
-                    'sssssii'
+                    [$bannerTerm, $termCode, $termName, $academicYear, $startDate, $endDate, $isActive, $userId, $termsPk],
+                    'ssssssiii'
                 );
                 $successMessage = 'Term updated successfully';
             } else {
@@ -377,10 +379,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'toggle') {
             $termsPk = (int)($_POST['terms_pk'] ?? 0);
             if ($termsPk > 0) {
+                $userId = $_SESSION['user_id'] ?? null;
                 $db->query(
-                    "UPDATE {$dbPrefix}terms SET is_active = NOT is_active, updated_at = NOW() WHERE terms_pk = ?",
-                    [$termsPk],
-                    'i'
+                    "UPDATE {$dbPrefix}terms SET is_active = NOT is_active, updated_at = NOW(), updated_by_fk = ? WHERE terms_pk = ?",
+                    [$userId, $termsPk],
+                    'ii'
                 );
                 $successMessage = 'Term status toggled successfully';
             }
@@ -519,7 +522,7 @@ $context = new ThemeContext([
     ]
 ]);
 
-$theme = ThemeLoader::getActiveTheme();
+$theme = ThemeLoader::getActiveTheme(null, 'admin');
 $theme->showHeader($context);
 ?>
 

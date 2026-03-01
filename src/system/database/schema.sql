@@ -80,6 +80,10 @@ CREATE TABLE tbl_terms (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by_fk INT,
+    updated_by_fk INT,
+    FOREIGN KEY (created_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by_fk) REFERENCES tbl_users(users_pk) ON DELETE SET NULL,
     INDEX idx_banner_term (banner_term),
     INDEX idx_term_code (term_code),
     INDEX idx_is_active (is_active)

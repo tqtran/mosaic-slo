@@ -25,21 +25,23 @@ class ThemeLoader
 {
     private static ?Theme $activeTheme = null;
     private static ?string $activeThemeId = null;
+    private static array $themeCache = []; // Cache multiple theme instances
     
     /**
      * Get the active theme instance
      * 
      * @param string|null $themeId Override theme ID (for demos/testing)
+     * @param string|null $context Context hint: 'admin', 'lti', or 'default'
      * @return Theme Active theme instance
      */
-    public static function getActiveTheme(?string $themeId = null): Theme
+    public static function getActiveTheme(?string $themeId = null, ?string $context = null): Theme
     {
         // Use provided theme ID or determine active theme
-        $requestedThemeId = $themeId ?? self::determineActiveTheme();
+        $requestedThemeId = $themeId ?? self::determineActiveTheme($context);
         
-        // Return cached instance if same theme
-        if (self::$activeTheme && self::$activeThemeId === $requestedThemeId) {
-            return self::$activeTheme;
+        // Return cached instance if exists
+        if (isset(self::$themeCache[$requestedThemeId])) {
+            return self::$themeCache[$requestedThemeId];
         }
         
         // Build path to theme plugin
@@ -53,34 +55,48 @@ class ThemeLoader
         // Load theme renderer class (REQUIRED for all themes)
         $themeClass = self::loadThemeClass($requestedThemeId, $pluginPath);
         
-        self::$activeTheme = new $themeClass($pluginPath);
+        $theme = new $themeClass($pluginPath);
+        
+        // Cache the instance
+        self::$themeCache[$requestedThemeId] = $theme;
+        
+        // Also set as active theme (for backward compatibility)
+        self::$activeTheme = $theme;
         self::$activeThemeId = $requestedThemeId;
         
-        return self::$activeTheme;
+        return $theme;
     }
     
-    /**
-     * Determine which theme is active
-     * 
-     * @return string Active theme ID
-     */
     /**
      * Determine which theme to use
      * 
      * Priority:
-     * 1. config.yaml 'theme.active_theme' setting
-     * 2. Database (when PluginManager exists)
-     * 3. Fallback to 'theme-default'
+     * 1. Context-specific theme from config (admin_theme, lti_theme)
+     * 2. config.yaml 'theme.active_theme' setting
+     * 3. Database (when PluginManager exists)
+     * 4. Fallback to 'theme-default'
      * 
+     * @param string|null $context Context hint: 'admin', 'lti', or null for default
      * @return string Theme plugin ID
      */
-    private static function determineActiveTheme(): string
+    private static function determineActiveTheme(?string $context = null): string
     {
         // Try config.yaml first
         $configPath = dirname(__DIR__, 2) . '/config/config.yaml';
         if (file_exists($configPath)) {
             try {
                 $config = Config::getInstance($configPath);
+                
+                // Try context-specific theme first
+                if ($context) {
+                    $contextKey = "theme.{$context}_theme";
+                    $contextTheme = $config->get($contextKey);
+                    if ($contextTheme) {
+                        return $contextTheme;
+                    }
+                }
+                
+                // Fall back to active_theme
                 $activeTheme = $config->get('theme.active_theme');
                 if ($activeTheme) {
                     return $activeTheme;

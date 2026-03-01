@@ -112,14 +112,32 @@ app:
 
 # Theme Configuration
 theme:
-  # @label: Active Theme
-  # @description: Theme plugin to use for frontend rendering
+  # @label: Default Theme
+  # @description: Default theme for public pages
   # @required: false
   # @type: select
-  # @options: theme-default|Default (Bootstrap 5 - Minimal),theme-adminlte|AdminLTE 4 (Recommended for Admin),theme-metis|Metis Material Design
+  # @options: theme-default|Default (Bootstrap 5 - Minimal),theme-adminlte|AdminLTE 4,theme-metis|Metis Material Design
+  # @default: theme-default
+  # @help: Used for login, error pages, and other public pages
+  active_theme: theme-default
+  
+  # @label: Admin Theme
+  # @description: Theme for administrative dashboard and tools
+  # @required: false
+  # @type: select
+  # @options: theme-default|Default (Bootstrap 5 - Minimal),theme-adminlte|AdminLTE 4 (Recommended),theme-metis|Metis Material Design
   # @default: theme-adminlte
-  # @help: Use theme-adminlte for admin interface with sidebar navigation
-  active_theme: theme-adminlte
+  # @help: Use theme-adminlte for full admin interface with sidebar navigation
+  admin_theme: theme-adminlte
+  
+  # @label: LTI Theme
+  # @description: Theme for LTI-embedded pages (iframe context)
+  # @required: false
+  # @type: select
+  # @options: theme-default|Default (Bootstrap 5 - Minimal),theme-adminlte|AdminLTE 4,theme-metis|Metis Material Design
+  # @default: theme-default
+  # @help: Lightweight theme for LTI tools embedded in LMS iframes
+  lti_theme: theme-default
 
 # Email Configuration
 email:

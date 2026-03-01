@@ -91,14 +91,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 if (empty($errors)) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
                         "UPDATE {$dbPrefix}assessments 
                          SET enrollment_fk = ?, student_learning_outcome_fk = ?, score_value = ?, 
                              achievement_level = ?, assessment_method = ?, notes = ?, 
-                             assessed_date = ?, is_finalized = ?, updated_at = NOW()
+                             assessed_date = ?, is_finalized = ?, updated_at = NOW(), updated_by_fk = ?
                          WHERE assessments_pk = ?",
-                        [$enrollmentFk, $sloFk, $scoreValue, $achievementLevel, $assessmentMethod, $notes, $assessedDate, $isFinalized, $id],
-                        'iidssssii'
+                        [$enrollmentFk, $sloFk, $scoreValue, $achievementLevel, $assessmentMethod, $notes, $assessedDate, $isFinalized, $userId, $id],
+                        'iidssssiii'
                     );
                     $successMessage = 'Assessment updated successfully';
                 } else {
@@ -109,12 +110,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'toggle':
                 $id = (int)($_POST['assessments_pk'] ?? 0);
                 if ($id > 0) {
+                    $userId = $_SESSION['user_id'] ?? null;
                     $db->query(
                         "UPDATE {$dbPrefix}assessments 
-                         SET is_finalized = NOT is_finalized, updated_at = NOW()
+                         SET is_finalized = NOT is_finalized, updated_at = NOW(), updated_by_fk = ?
                          WHERE assessments_pk = ?",
-                        [$id],
-                        'i'
+                        [$userId, $id],
+                        'ii'
                     );
                     $successMessage = 'Assessment status toggled successfully';
                 }
@@ -236,13 +238,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     
                     if ($existing) {
                         // Update existing
+                        $userId = $_SESSION['user_id'] ?? null;
                         $db->query(
                             "UPDATE {$dbPrefix}assessments 
                              SET score_value = ?, achievement_level = ?, assessment_method = ?, 
-                                 notes = ?, assessed_date = ?, is_finalized = ?, updated_at = NOW() 
+                                 notes = ?, assessed_date = ?, is_finalized = ?, updated_at = NOW(), updated_by_fk = ? 
                              WHERE assessments_pk = ?",
-                            [$scoreValue, $achievementLevel, $assessmentMethod, $notes, $assessedDate, $isFinalized ? 1 : 0, $existing['assessments_pk']],
-                            'dssssii'
+                            [$scoreValue, $achievementLevel, $assessmentMethod, $notes, $assessedDate, $isFinalized ? 1 : 0, $userId, $existing['assessments_pk']],
+                            'dssssiii'
                         );
                         $updated++;
                     } else {
@@ -390,7 +393,7 @@ $context = new ThemeContext([
     ]
 ]);
 
-$theme = ThemeLoader::getActiveTheme();
+$theme = ThemeLoader::getActiveTheme(null, 'admin');
 $theme->showHeader($context);
 ?>
 

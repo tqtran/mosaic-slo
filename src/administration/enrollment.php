@@ -254,14 +254,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $student = $studentResult->fetch();
                                     $studentFk = $student['students_pk'];
                                     if (!empty($firstName) || !empty($lastName)) {
+                                        $userId = $_SESSION['user_id'] ?? null;
                                         $db->query(
                                             "UPDATE {$dbPrefix}students 
                                              SET first_name = COALESCE(NULLIF(first_name, ''), ?), 
                                                  last_name = COALESCE(NULLIF(last_name, ''), ?), 
-                                                 updated_at = NOW() 
+                                                 updated_at = NOW(), 
+                                                 updated_by_fk = ? 
                                              WHERE students_pk = ?",
-                                            [$firstName, $lastName, $studentFk],
-                                            'ssi'
+                                            [$firstName, $lastName, $userId, $studentFk],
+                                            'ssii'
                                         );
                                     }
                                 }
@@ -411,7 +413,7 @@ $context = new ThemeContext([
     ]
 ]);
 
-$theme = ThemeLoader::getActiveTheme();
+$theme = ThemeLoader::getActiveTheme(null, 'admin');
 $theme->showHeader($context);
 ?>
 

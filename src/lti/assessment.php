@@ -11,8 +11,9 @@ declare(strict_types=1);
  * @package Mosaic
  */
 
-// Security headers
-header('X-Frame-Options: ALLOWALL'); // LTI launches in iframe
+// Security headers for LTI embedding
+// Allow embedding in iframes from any origin (required for LMS integration)
+header("Content-Security-Policy: frame-ancestors *");
 header('X-Content-Type-Options: nosniff');
 header('X-XSS-Protection: 1; mode=block');
 
@@ -373,7 +374,8 @@ $context = new ThemeContext([
     'customCss' => $customStyles
 ]);
 
-$theme = ThemeLoader::getActiveTheme();
+// Use LTI-specific theme (lightweight for iframe embedding)
+$theme = ThemeLoader::getActiveTheme(null, 'lti');
 $theme->showHeader($context);
 ?>
 
@@ -426,57 +428,16 @@ $theme->showHeader($context);
         </div>
     <?php endif; ?>
 
-    <?php if ($ltiCrn || $ltiTermId): ?>
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle"></i> <strong>LTI Context:</strong>
-            <?php if ($ltiCrn): ?>
-                CRN: <strong><?= htmlspecialchars($ltiCrn) ?></strong>
-            <?php endif; ?>
-            <?php if ($ltiTermId): ?>
-                <?= $ltiCrn ? ' | ' : '' ?>Term ID: <strong><?= htmlspecialchars($ltiTermId) ?></strong>
-            <?php endif; ?>
-            <?php if ($ltiAcademicYear): ?>
-                (Year: <?= htmlspecialchars($ltiAcademicYear) ?><?= $ltiTermNumber ? ', Term: ' . htmlspecialchars($ltiTermNumber) : '' ?>)
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
-
     <?php if (empty($courseSections)): ?>
         <div class="alert alert-warning">
             <i class="fas fa-exclamation-triangle"></i>
             <strong>No Course Sections Available</strong><br>
             No active course sections found. Please contact your administrator to set up course sections in MOSAIC.
         </div>
-    <?php elseif (empty($slos)): ?>
-        <div class="alert alert-warning">
-            <i class="fas fa-exclamation-triangle"></i>
-            <strong>No SLOs Defined</strong><br>
-            No Student Learning Outcomes are defined for this course. Please contact your administrator.
-        </div>
     <?php elseif (empty($students)): ?>
-        <!-- SLO Selection -->
-        <div class="card card-primary card-outline mb-4">
-            <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-graduation-cap"></i> Select Student Learning Outcome</h3>
-            </div>
-            <div class="card-body">
-                <div class="btn-group d-flex flex-wrap gap-2" role="group">
-                    <?php foreach ($slos as $slo): ?>
-                        <a href="?crn=<?= urlencode($selectedCrn) ?>&term_code=<?= urlencode($selectedTermCode) ?>&slo_id=<?= $slo['student_learning_outcomes_pk'] ?>" 
-                           class="btn <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'btn-primary' : 'btn-outline-primary' ?> flex-fill"
-                           style="min-width: 120px;">
-                            <strong><?= htmlspecialchars($slo['slo_code']) ?></strong><br>
-                            <small><?= htmlspecialchars(substr($slo['slo_description'], 0, 50)) ?><?= strlen($slo['slo_description']) > 50 ? '...' : '' ?></small>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </div>
-        
         <div class="alert alert-info">
             <i class="fas fa-info-circle"></i>
-            <strong>No Students Enrolled</strong><br>
-            No students are currently enrolled in this course section. Students must be enrolled before assessments can be entered.
+            No students are currently enrolled in this course section.
         </div>
     <?php else: ?>
         <!-- SLO Selection Buttons -->
@@ -621,20 +582,6 @@ const selectedSloId = <?= $selectedSloId ?>;
 
 // Save individual assessment via AJAX
 function saveAssessment(enrollmentId, achievementLevel) {
-    const indicator = document.getElementById('indicator_' + enrollmentId);
-    const statusBadge = document.getElementById('save-status');
-    const statusText = document.getElementById('save-text');
-    const spinner = document.getElementById('save-spinner');
-    
-    // Show saving indicator
-    if (indicator) {
-        indicator.innerHTML = '<i class="fas fa-circle-notch fa-spin text-primary"></i>';
-    }
-    statusBadge.className = 'badge bg-primary';
-    statusText.textContent = 'Saving...';
-    spinner.classList.remove('d-none');
-    
-    // Prepare form data
     const formData = new FormData();
     formData.append('csrf_token', csrfToken);
     formData.append('action', 'save_assessments');
