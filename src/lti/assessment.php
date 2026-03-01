@@ -484,6 +484,18 @@ ob_start();
         color: #0c5460;
         border-color: #bee5eb;
     }
+    .slo-description {
+        line-height: 1.4;
+    }
+    .btn.slo-button {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 10px 15px;
+        white-space: normal;
+        height: auto;
+    }
 </style>
 <?php
 $customStyles = ob_get_clean();
@@ -562,21 +574,16 @@ $theme->showHeader($context);
                 <h3 class="card-title"><i class="fas fa-tasks"></i> Select Student Learning Outcome</h3>
             </div>
             <div class="card-body">
-                <div class="btn-group d-flex flex-wrap gap-2" role="group">
+                <div class="d-flex flex-wrap gap-2">
                     <?php foreach ($slos as $slo): ?>
                         <a href="?crn=<?= urlencode($selectedCrn) ?>&term_code=<?= urlencode($selectedTermCode) ?>&slo_id=<?= $slo['student_learning_outcomes_pk'] ?>" 
-                           class="btn <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'btn-primary' : 'btn-outline-primary' ?> flex-fill"
-                           style="min-width: 120px;">
-                            <strong><?= htmlspecialchars($slo['slo_code']) ?></strong><br>
-                            <small><?= htmlspecialchars(substr($slo['slo_description'], 0, 50)) ?><?= strlen($slo['slo_description']) > 50 ? '...' : '' ?></small>
+                           class="btn slo-button <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'btn-primary' : 'btn-outline-primary' ?>"
+                           style="flex: 0 0 calc((100% - 1.5rem) / 4);">
+                            <strong><?= htmlspecialchars($slo['slo_code']) ?></strong>
+                            <small class="slo-description mt-1"><?= htmlspecialchars($slo['slo_description']) ?></small>
                         </a>
                     <?php endforeach; ?>
                 </div>
-                <?php if ($selectedSlo): ?>
-                    <div class="alert alert-info mt-3 mb-0">
-                        <strong><?= htmlspecialchars($selectedSlo['slo_code']) ?>:</strong> <?= htmlspecialchars($selectedSlo['slo_description']) ?>
-                    </div>
-                <?php endif; ?>
             </div>
         </div>
 
@@ -710,7 +717,8 @@ $theme->showHeader($context);
             </div>
             <div class="card-body">
                 <ol class="mb-0">
-                    <li><strong>Select Course Section & SLO:</strong> Choose the course section and specific learning outcome you're assessing.</li>
+                    <li><strong>Select Course SLO:</strong> Choose the specific learning outcome you're assessing.</li>
+                    <li><strong>Choose Assessment Type:</strong> Select the type of assessment used (Quiz, Exam, Project, etc.). This is saved per SLO and will be remembered for this course section.</li>
                     <li><strong>Enter Achievement Levels:</strong> Click the button to indicate whether each student Met, did Not Meet, or have Not Assessed the learning outcome. <strong>Assessments are saved automatically</strong> when you click.</li>
                     <li><strong>Quick Actions:</strong> Use the buttons above the table to quickly set all students to the same achievement level.</li>
                 </ol>
