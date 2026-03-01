@@ -140,10 +140,7 @@ try {
             htmlspecialchars(trim($row['created_by_name'] ?? '') ?: 'System'),
             htmlspecialchars($row['updated_at'] ?? ''),
             htmlspecialchars(trim($row['updated_by_name'] ?? '') ?: 'System'),
-            '<button class="btn btn-sm btn-info" title="View" onclick=\'viewProgram(' . $rowJson . ')\'><i class="fas fa-eye"></i></button> ' .
-            '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editProgram(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
-            '<button class="btn btn-sm btn-' . $toggleClass . '" title="Toggle Status" onclick="toggleStatus(' . $row['programs_pk'] . ', \'' . htmlspecialchars($row['program_name'], ENT_QUOTES) . '\')"><i class="fas fa-' . $toggleIcon . '"></i></button> ' .
-            '<button class="btn btn-sm btn-danger" title="Delete" onclick="deleteProgram(' . $row['programs_pk'] . ', \'' . htmlspecialchars($row['program_name'], ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
+            '<button class="btn btn-warning" title="Edit" onclick=\'editProgram(' . $rowJson . ')\' aria-label="Edit program ' . htmlspecialchars($row['program_name'], ENT_QUOTES) . '"><i class="fas fa-edit" aria-hidden="true"></i></button>'
         ];
     }
 

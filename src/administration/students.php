@@ -181,7 +181,7 @@ $theme->showHeader($context);
             <div class="col-sm-12">
                 <ol class="breadcrumb float-sm-end">
                     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                    <li class="breadcrumb-item active">Students</li>
+                    <li class="breadcrumb-item active" aria-current="page">Students</li>
                 </ol>
             </div>
         </div>
@@ -193,42 +193,43 @@ $theme->showHeader($context);
         
         <?php if ($successMessage): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle"></i> <?= $successMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-check-circle" aria-hidden="true"></i> <?= $successMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
         
         <?php if ($errorMessage): ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle"></i> <?= $errorMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-exclamation-circle" aria-hidden="true"></i> <?= $errorMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
 
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-table"></i> Students <small class="text-muted">(Encrypted Data)</small></h3>
+                <h2 class="card-title"><i class="fas fa-table" aria-hidden="true"></i> Students <small class="text-muted">(Encrypted Data)</small></h2>
                 <div class="card-tools">
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal">
-                        <i class="fas fa-plus"></i> Add Student
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal" aria-label="Add new student">
+                        <i class="fas fa-plus" aria-hidden="true"></i> Add Student
                     </button>
                 </div>
             </div>
             <div class="card-body">
-                <table id="studentsTable" class="table table-bordered table-striped">
+                <table id="studentsTable" class="table table-bordered table-striped" aria-label="Students data table">
+                    <caption class="visually-hidden">List of students with filtering and sorting capabilities</caption>
                     <thead>
                         <tr>
-                            <th>PK</th>
-                            <th>Student ID</th>
-                            <th>First Name</th>
-                            <th>Last Name</th>
-                            <th>Email</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Created By</th>
-                            <th>Updated</th>
-                            <th>Updated By</th>
-                            <th>Actions</th>
+                            <th scope="col">PK</th>
+                            <th scope="col">Student ID</th>
+                            <th scope="col">First Name</th>
+                            <th scope="col">Last Name</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Created By</th>
+                            <th scope="col">Updated</th>
+                            <th scope="col">Updated By</th>
+                            <th scope="col">Actions</th>
                         </tr>
                         <tr>
                             <th></th>
@@ -252,12 +253,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Add Student Modal -->
-<div class="modal fade" id="addStudentModal" tabindex="-1">
+<div class="modal fade" id="addStudentModal" tabindex="-1" aria-labelledby="addStudentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-plus"></i> Add Student</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="addStudentModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Student</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -265,19 +266,19 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="add">
                     
                     <div class="mb-3">
-                        <label for="studentId" class="form-label">Student ID <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="studentId" name="student_id" maxlength="255" required>
-                        <small class="form-text text-muted">Unique student identifier</small>
+                        <label for="studentId" class="form-label">Student ID <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="text" class="form-control" id="studentId" name="student_id" maxlength="255" required aria-required="true" aria-describedby="studentIdHelp">
+                        <small id="studentIdHelp" class="form-text text-muted">Unique student identifier</small>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="firstName" class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="firstName" name="student_first_name" maxlength="255" required>
+                            <label for="firstName" class="form-label">First Name <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="text" class="form-control" id="firstName" name="student_first_name" maxlength="255" required aria-required="true">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="lastName" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="lastName" name="student_last_name" maxlength="255" required>
+                            <label for="lastName" class="form-label">Last Name <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="text" class="form-control" id="lastName" name="student_last_name" maxlength="255" required aria-required="true">
                         </div>
                     </div>
                     
@@ -293,7 +294,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
                 </div>
             </form>
         </div>
@@ -301,12 +302,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Edit Student Modal -->
-<div class="modal fade" id="editStudentModal" tabindex="-1">
+<div class="modal fade" id="editStudentModal" tabindex="-1" aria-labelledby="editStudentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Student</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="editStudentModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Student</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -315,19 +316,19 @@ $theme->showHeader($context);
                     <input type="hidden" name="student_pk" id="editStudentPk">
                     
                     <div class="mb-3">
-                        <label for="editStudentId" class="form-label">Student ID <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="editStudentId" name="student_id" maxlength="255" required>
-                        <small class="form-text text-muted">Unique student identifier</small>
+                        <label for="editStudentId" class="form-label">Student ID <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="text" class="form-control" id="editStudentId" name="student_id" maxlength="255" required aria-required="true" aria-describedby="editStudentIdHelp">
+                        <small id="editStudentIdHelp" class="form-text text-muted">Unique student identifier</small>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="editFirstName" class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="editFirstName" name="student_first_name" maxlength="255" required>
+                            <label for="editFirstName" class="form-label">First Name <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="text" class="form-control" id="editFirstName" name="student_first_name" maxlength="255" required aria-required="true">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="editLastName" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="editLastName" name="student_last_name" maxlength="255" required>
+                            <label for="editLastName" class="form-label">Last Name <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="text" class="form-control" id="editLastName" name="student_last_name" maxlength="255" required aria-required="true">
                         </div>
                     </div>
                     
@@ -342,7 +343,7 @@ $theme->showHeader($context);
                     </div>
                     
                     <hr>
-                    <h6 class="text-muted mb-3"><i class="fas fa-info-circle"></i> Audit Information</h6>
+                    <h3 class="text-muted mb-3"><i class="fas fa-info-circle" aria-hidden="true"></i> Audit Information</h3>
                     <div class="row">
                         <div class="col-md-6">
                             <small class="text-muted"><strong>Created:</strong></small>
@@ -364,20 +365,20 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<form id="toggleStatusForm" method="POST" style="display: none;">
+<form id="toggleStatusForm" method="POST" style="display: none;" aria-label="Toggle student status">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
     <input type="hidden" name="action" value="toggle_status">
     <input type="hidden" name="student_pk" id="toggleStudentPk">
 </form>
 
-<form id="deleteForm" method="POST" style="display: none;">
+<form id="deleteForm" method="POST" style="display: none;" aria-label="Delete student">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
     <input type="hidden" name="action" value="delete">
     <input type="hidden" name="student_pk" id="deleteStudentPk">
@@ -397,17 +398,18 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
+    // Create filter inputs with proper ARIA labels
     $('#studentsTable thead tr:eq(1) th').each(function(i) {
         var title = $('#studentsTable thead tr:eq(0) th:eq(' + i + ')').text();
         if (title === 'Status') {
-            var select = '<select class="form-select form-select-sm">';
+            var select = '<select class="form-select form-select-sm" aria-label="Filter by ' + title + '">';
             select += '<option value="">All</option>';
             select += '<option value="Active">Active</option>';
             select += '<option value="Inactive">Inactive</option>';
             select += '</select>';
             $(this).html(select);
         } else if (title !== 'Actions') {
-            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" aria-label="Filter by ' + title + '" />');
         } else {
             $(this).html('');
         }
@@ -419,7 +421,13 @@ $(document).ready(function() {
         serverSide: true,
         ajax: '<?= BASE_URL ?>administration/students_data.php',
         dom: 'Bfrtip',
-        buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
+        buttons: [
+            {extend: 'copy', text: 'Copy', attr: {'aria-label': 'Copy table data to clipboard'}},
+            {extend: 'csv', text: 'CSV', attr: {'aria-label': 'Export table data as CSV'}},
+            {extend: 'excel', text: 'Excel', attr: {'aria-label': 'Export table data as Excel'}},
+            {extend: 'pdf', text: 'PDF', attr: {'aria-label': 'Export table data as PDF'}},
+            {extend: 'print', text: 'Print', attr: {'aria-label': 'Print table data'}}
+        ],
         columns: [
             { data: 0, name: 'students_pk' },
             { data: 1, name: 'student_id' },

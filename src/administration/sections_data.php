@@ -123,10 +123,7 @@ foreach ($sections as $row) {
         htmlspecialchars($row['instructor_name'] ?? 'N/A'),
         htmlspecialchars($row['max_enrollment'] ?? 'N/A'),
         '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
-        '<button class="btn btn-sm btn-info" title="View" onclick=\'viewSection(' . $rowJson . ')\'><i class="fas fa-eye"></i></button> ' .
-        '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editSection(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
-        '<button class="btn btn-sm btn-' . $toggleClass . '" title="Toggle Status" onclick="toggleStatus(' . $row['sections_pk'] . ', \'' . htmlspecialchars($sectionLabel, ENT_QUOTES) . '\')"><i class="fas fa-' . $toggleIcon . '"></i></button> ' .
-        '<button class="btn btn-sm btn-danger" title="Delete" onclick="deleteSection(' . $row['sections_pk'] . ', \'' . htmlspecialchars($sectionLabel, ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
+        '<button class="btn btn-warning" title="Edit" onclick=\'editSection(' . $rowJson . ')\' aria-label="Edit section ' . htmlspecialchars($sectionLabel, ENT_QUOTES) . '"><i class="fas fa-edit" aria-hidden="true"></i></button>'
     ];
 }
 

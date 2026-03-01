@@ -170,14 +170,8 @@ while ($row = $result->fetch()) {
     ]);
     
     $actions = '
-        <button type="button" class="btn btn-sm btn-primary" onclick=\'editAssessment(' . $rowData . ')\' title="Edit">
-            <i class="fas fa-edit"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-warning" onclick="toggleStatus(' . $row['assessments_pk'] . ', \'' . $row['assessments_pk'] . '\')" title="Toggle Status">
-            <i class="fas fa-toggle-on"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-danger" onclick="deleteAssessment(' . $row['assessments_pk'] . ', \'' . $row['assessments_pk'] . '\')" title="Delete">
-            <i class="fas fa-trash"></i>
+        <button type="button" class="btn btn-warning" onclick=\'editAssessment(' . $rowData . ')\' title="Edit" aria-label="Edit assessment ' . $row['assessments_pk'] . '">
+            <i class="fas fa-edit" aria-hidden="true"></i>
         </button>
     ';
     

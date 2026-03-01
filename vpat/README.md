@@ -23,9 +23,9 @@ Our VPATs document conformance to:
 **Last Updated:** February 28, 2026
 
 **Summary:**
-- ✅ Full Level A conformance (35/35 applicable criteria)
-- ✅ Full Level AA conformance (25/25 applicable criteria)
-- ✅ Substantial Level AAA conformance (40/47 applicable criteria)
+- [OK] Full Level A conformance (35/35 applicable criteria)
+- [OK] Full Level AA conformance (25/25 applicable criteria)
+- [OK] Substantial Level AAA conformance (38/47 full support, 5 partial support)
 
 **Key Features:**
 - Enhanced contrast ratios (8.59:1)
@@ -34,6 +34,46 @@ Our VPATs document conformance to:
 - Screen reader compatible
 - Motion reduction support
 - Confirmation dialogs for bulk actions
+
+### [Admin Interface VPAT](admin-interface-vpat.md)
+
+**Component:** Administrative Dashboard and CRUD Pages  
+**Status:** WCAG 2.2 Level AA Compliant + Partial Level AAA  
+**Last Updated:** March 1, 2026
+
+**Summary:**
+- [OK] Full Level A conformance (30/30 applicable criteria)
+- [OK] Full Level AA conformance (24/24 applicable criteria)
+- [OK] Substantial Level AAA conformance (25/35 full support, 7 partial support)
+
+**Pages Covered:**
+- Shared layout (header, sidebar, footer)
+- Dashboard with statistics
+- 11 CRUD management pages (students, programs, courses, terms, sections, outcomes, enrollment, assessments, users)
+
+**Key Features:**
+- Enhanced contrast ratios (8.59:1)
+- Large touch targets (44x44px minimum)
+- Complete keyboard navigation with skip links
+- Screen reader compatible with ARIA landmarks
+- Consistent navigation patterns
+- Error prevention with confirmation dialogs
+
+## Implementation Guide
+
+### [Admin Accessibility Guide](admin-accessibility-guide.md)
+
+**Developer Resource:** Implementation patterns and code examples  
+**Purpose:** Ensure all new admin pages maintain WCAG 2.2 Level AA compliance  
+**Last Updated:** March 1, 2026
+
+**Contents:**
+- Accessibility checklist for admin pages
+- Code patterns for common components
+- DataTables accessibility requirements
+- Modal dialog accessibility
+- Form validation patterns
+- ARIA implementation examples
 
 ## Using These VPATs
 
@@ -52,6 +92,8 @@ Use the VPAT to:
 - Identify areas for improvement
 - Maintain accessibility during updates
 - Document accessibility decisions
+
+Refer to the [Admin Accessibility Guide](admin-accessibility-guide.md) for implementation patterns and code examples.
 
 ## VPAT Updates
 

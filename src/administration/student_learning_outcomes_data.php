@@ -162,9 +162,7 @@ try {
             htmlspecialchars(trim($row['created_by_name'] ?? '') ?: 'System'),
             htmlspecialchars($row['updated_at'] ?? ''),
             htmlspecialchars(trim($row['updated_by_name'] ?? '') ?: 'System'),
-            '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editSLO(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
-            '<button class="btn btn-sm btn-' . $toggleClass . '" title="Toggle Status" onclick="toggleStatus(' . $row['student_learning_outcomes_pk'] . ', \'' . htmlspecialchars($row['slo_code'], ENT_QUOTES) . '\')"><i class="fas fa-' . $toggleIcon . '"></i></button> ' .
-            '<button class="btn btn-sm btn-danger" title="Delete" onclick="deleteSLO(' . $row['student_learning_outcomes_pk'] . ', \'' . htmlspecialchars($row['slo_code'], ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
+            '<button class="btn btn-warning" title="Edit" onclick=\'editSLO(' . $rowJson . ')\' aria-label="Edit SLO ' . htmlspecialchars($row['slo_code'], ENT_QUOTES) . '"><i class="fas fa-edit" aria-hidden="true"></i></button>'
         ];
     }
 

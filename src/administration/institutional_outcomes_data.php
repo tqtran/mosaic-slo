@@ -146,10 +146,7 @@ foreach ($outcomes as $row) {
         htmlspecialchars(trim($row['created_by_name'] ?? '') ?: 'System'),
         htmlspecialchars($row['updated_at'] ?? ''),
         htmlspecialchars(trim($row['updated_by_name'] ?? '') ?: 'System'),
-        '<button class="btn btn-sm btn-info" title="View" onclick=\'viewOutcome(' . $rowJson . ')\'><i class="fas fa-eye"></i></button> ' .
-        '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editOutcome(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
-        '<button class="btn btn-sm btn-' . $toggleClass . '" title="Toggle Status" onclick="toggleStatus(' . $row['institutional_outcomes_pk'] . ', \'' . htmlspecialchars($row['outcome_code'], ENT_QUOTES) . '\')"><i class="fas fa-' . $toggleIcon . '"></i></button> ' .
-        '<button class="btn btn-sm btn-danger" title="Delete" onclick="deleteOutcome(' . $row['institutional_outcomes_pk'] . ', \'' . htmlspecialchars($row['outcome_code'], ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
+        '<button class="btn btn-warning" title="Edit" onclick=\'editOutcome(' . $rowJson . ')\' aria-label="Edit outcome ' . htmlspecialchars($row['outcome_code'], ENT_QUOTES) . '"><i class="fas fa-edit" aria-hidden="true"></i></button>'
     ];
 }
 

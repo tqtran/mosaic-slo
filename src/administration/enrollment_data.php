@@ -199,9 +199,7 @@ try {
             htmlspecialchars(trim($row['created_by_name'] ?? '') ?: 'System'),
             htmlspecialchars($row['updated_at'] ?? ''),
             htmlspecialchars(trim($row['updated_by_name'] ?? '') ?: 'System'),
-            '<button class="btn btn-sm btn-info" title="View" onclick=\'viewEnrollment(' . $rowJson . ')\'><i class="fas fa-eye"></i></button> ' .
-            '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editEnrollment(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
-            '<button class="btn btn-sm btn-danger" title="Delete" onclick="deleteEnrollment(' . $row['enrollment_pk'] . ', \'' . htmlspecialchars($row['student_id'], ENT_QUOTES) . '\', \'' . htmlspecialchars($row['crn'], ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
+            '<button class="btn btn-warning" title="Edit" onclick=\'editEnrollment(' . $rowJson . ')\' aria-label="Edit enrollment for ' . htmlspecialchars($row['student_id'], ENT_QUOTES) . '"><i class="fas fa-edit" aria-hidden="true"></i></button>'
         ];
     }
 

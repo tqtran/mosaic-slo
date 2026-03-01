@@ -110,14 +110,8 @@ try {
         
         // Action buttons
         $actions = '
-            <button type="button" class="btn btn-sm btn-primary" onclick=\'editTerm(' . $termJson . ')\' title="Edit">
-                <i class="fas fa-edit"></i>
-            </button>
-            <button type="button" class="btn btn-sm btn-warning" onclick="toggleStatus(' . $row['terms_pk'] . ', \'' . htmlspecialchars($row['term_code'], ENT_QUOTES) . '\')" title="Toggle Status">
-                <i class="fas fa-toggle-on"></i>
-            </button>
-            <button type="button" class="btn btn-sm btn-danger" onclick="deleteTerm(' . $row['terms_pk'] . ', \'' . htmlspecialchars($row['term_code'], ENT_QUOTES) . '\')" title="Delete">
-                <i class="fas fa-trash"></i>
+            <button type="button" class="btn btn-warning" onclick=\'editTerm(' . $termJson . ')\' title="Edit" aria-label="Edit term ' . htmlspecialchars($row['term_code'], ENT_QUOTES) . '">
+                <i class="fas fa-edit" aria-hidden="true"></i>
             </button>
         ';
         

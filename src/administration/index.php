@@ -165,208 +165,212 @@ $theme->showHeader($context);
 ?>
 
 <!-- Term Statistics -->
-<div class="row mb-3">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="fas fa-chart-bar"></i> Term Statistics
-                    <?php if ($selectedTermFk): ?>
-                        - <?= $selectedTermName ?> (<?= $selectedTermCode ?>)
+<section aria-labelledby="term-stats-heading">
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h2 id="term-stats-heading" class="card-title">
+                        <i class="fas fa-chart-bar" aria-hidden="true"></i> Term Statistics
+                        <?php if ($selectedTermFk): ?>
+                            - <?= $selectedTermName ?> (<?= $selectedTermCode ?>)
+                        <?php endif; ?>
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <?php if (!$selectedTermFk): ?>
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                            No term selected. Please select a term from the dropdown in the header to view statistics.
+                        </div>
+                    <?php else: ?>
+                        <div class="row">
+                            <div class="col-lg-3 col-6">
+                                <div class="small-box bg-info" role="region" aria-label="Programs statistic">
+                                    <div class="inner">
+                                        <h3><?= number_format($stats['programs']) ?></h3>
+                                        <p>Programs</p>
+                                    </div>
+                                    <div class="icon" aria-hidden="true">
+                                        <i class="fas fa-graduation-cap"></i>
+                                    </div>
+                                    <a href="<?= BASE_URL ?>administration/programs.php" class="small-box-footer" aria-label="View programs page">
+                                        View Programs <i class="fas fa-arrow-circle-right" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-3 col-6">
+                                <div class="small-box bg-warning" role="region" aria-label="Students statistic">
+                                    <div class="inner">
+                                        <h3><?= number_format($stats['students']) ?></h3>
+                                        <p>Students</p>
+                                    </div>
+                                    <div class="icon" aria-hidden="true">
+                                        <i class="fas fa-user-graduate"></i>
+                                    </div>
+                                    <a href="<?= BASE_URL ?>administration/students.php" class="small-box-footer" aria-label="View students page">
+                                        View Students <i class="fas fa-arrow-circle-right" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-3 col-6">
+                                <div class="small-box bg-success" role="region" aria-label="Courses statistic">
+                                    <div class="inner">
+                                        <h3><?= number_format($stats['courses']) ?></h3>
+                                        <p>Courses</p>
+                                    </div>
+                                    <div class="icon" aria-hidden="true">
+                                        <i class="fas fa-book"></i>
+                                    </div>
+                                    <a href="<?= BASE_URL ?>administration/courses.php" class="small-box-footer" aria-label="View courses page">
+                                        View Courses <i class="fas fa-arrow-circle-right" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-3 col-6">
+                                <div class="small-box bg-danger" role="region" aria-label="Enrollments statistic">
+                                    <div class="inner">
+                                        <h3><?= number_format($stats['enrollments']) ?></h3>
+                                        <p>Enrollments</p>
+                                    </div>
+                                    <div class="icon" aria-hidden="true">
+                                        <i class="fas fa-user-check"></i>
+                                    </div>
+                                    <a href="<?= BASE_URL ?>administration/enrollment.php" class="small-box-footer" aria-label="View enrollments page">
+                                        View Enrollments <i class="fas fa-arrow-circle-right" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-lg-3 col-6">
+                                <div class="small-box bg-primary" role="region" aria-label="Institutional outcomes statistic">
+                                    <div class="inner">
+                                        <h3><?= number_format($stats['institutional_outcomes']) ?></h3>
+                                        <p>Institutional Outcomes</p>
+                                    </div>
+                                    <div class="icon" aria-hidden="true">
+                                        <i class="fas fa-flag"></i>
+                                    </div>
+                                    <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="small-box-footer" aria-label="View institutional outcomes page">
+                                        View ISLOs <i class="fas fa-arrow-circle-right" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-3 col-6">
+                                <div class="small-box bg-secondary" role="region" aria-label="Program outcomes statistic">
+                                    <div class="inner">
+                                        <h3><?= number_format($stats['program_outcomes']) ?></h3>
+                                        <p>Program Outcomes</p>
+                                    </div>
+                                    <div class="icon" aria-hidden="true">
+                                        <i class="fas fa-bullseye"></i>
+                                    </div>
+                                    <a href="<?= BASE_URL ?>administration/program_outcomes.php" class="small-box-footer" aria-label="View program outcomes page">
+                                        View PSLOs <i class="fas fa-arrow-circle-right" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-3 col-6">
+                                <div class="small-box bg-teal" role="region" aria-label="Student learning outcomes statistic">
+                                    <div class="inner">
+                                        <h3><?= number_format($stats['student_learning_outcomes']) ?></h3>
+                                        <p>Student Learning Outcomes</p>
+                                    </div>
+                                    <div class="icon" aria-hidden="true">
+                                        <i class="fas fa-tasks"></i>
+                                    </div>
+                                    <a href="<?= BASE_URL ?>administration/student_learning_outcomes.php" class="small-box-footer" aria-label="View student learning outcomes page">
+                                        View CSLOs <i class="fas fa-arrow-circle-right" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div class="col-lg-3 col-6">
+                                <div class="small-box bg-indigo" role="region" aria-label="Assessments statistic">
+                                    <div class="inner">
+                                        <h3><?= number_format($stats['assessments']) ?></h3>
+                                        <p>Assessments</p>
+                                    </div>
+                                    <div class="icon" aria-hidden="true">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </div>
+                                    <a href="<?= BASE_URL ?>administration/assessments.php" class="small-box-footer" aria-label="View assessments page">
+                                        View Assessments <i class="fas fa-arrow-circle-right" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                     <?php endif; ?>
-                </h3>
-            </div>
-            <div class="card-body">
-                <?php if (!$selectedTermFk): ?>
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        No term selected. Please select a term from the dropdown in the header to view statistics.
-                    </div>
-                <?php else: ?>
-                    <div class="row">
-                        <div class="col-lg-3 col-6">
-                            <div class="small-box bg-info">
-                                <div class="inner">
-                                    <h3><?= number_format($stats['programs']) ?></h3>
-                                    <p>Programs</p>
-                                </div>
-                                <div class="icon">
-                                    <i class="fas fa-graduation-cap"></i>
-                                </div>
-                                <a href="<?= BASE_URL ?>administration/programs.php" class="small-box-footer">
-                                    View Programs <i class="fas fa-arrow-circle-right"></i>
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-3 col-6">
-                            <div class="small-box bg-warning">
-                                <div class="inner">
-                                    <h3><?= number_format($stats['students']) ?></h3>
-                                    <p>Students</p>
-                                </div>
-                                <div class="icon">
-                                    <i class="fas fa-user-graduate"></i>
-                                </div>
-                                <a href="<?= BASE_URL ?>administration/students.php" class="small-box-footer">
-                                    View Students <i class="fas fa-arrow-circle-right"></i>
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-3 col-6">
-                            <div class="small-box bg-success">
-                                <div class="inner">
-                                    <h3><?= number_format($stats['courses']) ?></h3>
-                                    <p>Courses</p>
-                                </div>
-                                <div class="icon">
-                                    <i class="fas fa-book"></i>
-                                </div>
-                                <a href="<?= BASE_URL ?>administration/courses.php" class="small-box-footer">
-                                    View Courses <i class="fas fa-arrow-circle-right"></i>
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-3 col-6">
-                            <div class="small-box bg-danger">
-                                <div class="inner">
-                                    <h3><?= number_format($stats['enrollments']) ?></h3>
-                                    <p>Enrollments</p>
-                                </div>
-                                <div class="icon">
-                                    <i class="fas fa-user-check"></i>
-                                </div>
-                                <a href="<?= BASE_URL ?>administration/enrollment.php" class="small-box-footer">
-                                    View Enrollments <i class="fas fa-arrow-circle-right"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-lg-3 col-6">
-                            <div class="small-box bg-primary">
-                                <div class="inner">
-                                    <h3><?= number_format($stats['institutional_outcomes']) ?></h3>
-                                    <p>Institutional Outcomes</p>
-                                </div>
-                                <div class="icon">
-                                    <i class="fas fa-flag"></i>
-                                </div>
-                                <a href="<?= BASE_URL ?>administration/institutional_outcomes.php" class="small-box-footer">
-                                    View ISLOs <i class="fas fa-arrow-circle-right"></i>
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-3 col-6">
-                            <div class="small-box bg-secondary">
-                                <div class="inner">
-                                    <h3><?= number_format($stats['program_outcomes']) ?></h3>
-                                    <p>Program Outcomes</p>
-                                </div>
-                                <div class="icon">
-                                    <i class="fas fa-bullseye"></i>
-                                </div>
-                                <a href="<?= BASE_URL ?>administration/program_outcomes.php" class="small-box-footer">
-                                    View PSLOs <i class="fas fa-arrow-circle-right"></i>
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-3 col-6">
-                            <div class="small-box bg-teal">
-                                <div class="inner">
-                                    <h3><?= number_format($stats['student_learning_outcomes']) ?></h3>
-                                    <p>Student Learning Outcomes</p>
-                                </div>
-                                <div class="icon">
-                                    <i class="fas fa-tasks"></i>
-                                </div>
-                                <a href="<?= BASE_URL ?>administration/student_learning_outcomes.php" class="small-box-footer">
-                                    View CSLOs <i class="fas fa-arrow-circle-right"></i>
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-3 col-6">
-                            <div class="small-box bg-indigo">
-                                <div class="inner">
-                                    <h3><?= number_format($stats['assessments']) ?></h3>
-                                    <p>Assessments</p>
-                                </div>
-                                <div class="icon">
-                                    <i class="fas fa-clipboard-check"></i>
-                                </div>
-                                <a href="<?= BASE_URL ?>administration/assessments.php" class="small-box-footer">
-                                    View Assessments <i class="fas fa-arrow-circle-right"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
-</div>
+</section>
 
 <!-- System Status -->
-<div class="row">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="fas fa-server"></i> System Status
-                </h3>
-            </div>
-            <div class="card-body">
-                <dl class="row">
-                    <dt class="col-sm-4">Application Version:</dt>
-                    <dd class="col-sm-8"><?= htmlspecialchars($appVersion) ?></dd>
-                    
-                    <dt class="col-sm-4">PHP Version:</dt>
-                    <dd class="col-sm-8"><?= PHP_VERSION ?></dd>
-                    
-                    <dt class="col-sm-4">Database:</dt>
-                    <dd class="col-sm-8">
-                        <?php
-                        try {
-                            $dbVersion = 'Unknown';
-                            $driver = $db->getDriver();
-                            
-                            if ($driver === 'mssql' || $driver === 'sqlsrv') {
-                                $stmt = $db->query("SELECT @@VERSION as version");
-                                $row = $stmt->fetch();
-                                if ($row) {
-                                    // MSSQL version string is very long, extract just the main version
-                                    preg_match('/Microsoft SQL Server (\d{4}|[\d\.]+)/', $row['version'], $matches);
-                                    $dbVersion = $matches[0] ?? 'MS SQL Server';
+<section aria-labelledby="system-status-heading">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h2 id="system-status-heading" class="card-title">
+                        <i class="fas fa-server" aria-hidden="true"></i> System Status
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Application Version:</dt>
+                        <dd class="col-sm-8"><?= htmlspecialchars($appVersion) ?></dd>
+                        
+                        <dt class="col-sm-4">PHP Version:</dt>
+                        <dd class="col-sm-8"><?= PHP_VERSION ?></dd>
+                        
+                        <dt class="col-sm-4">Database:</dt>
+                        <dd class="col-sm-8">
+                            <?php
+                            try {
+                                $dbVersion = 'Unknown';
+                                $driver = $db->getDriver();
+                                
+                                if ($driver === 'mssql' || $driver === 'sqlsrv') {
+                                    $stmt = $db->query("SELECT @@VERSION as version");
+                                    $row = $stmt->fetch();
+                                    if ($row) {
+                                        // MSSQL version string is very long, extract just the main version
+                                        preg_match('/Microsoft SQL Server (\d{4}|[\d\.]+)/', $row['version'], $matches);
+                                        $dbVersion = $matches[0] ?? 'MS SQL Server';
+                                    }
+                                } else {
+                                    $stmt = $db->query("SELECT VERSION() as version");
+                                    $row = $stmt->fetch();
+                                    if ($row) {
+                                        // MySQL version, extract just version number
+                                        preg_match('/^([\d\.]+)/', $row['version'], $matches);
+                                        $dbVersion = 'MySQL ' . ($matches[1] ?? $row['version']);
+                                    }
                                 }
-                            } else {
-                                $stmt = $db->query("SELECT VERSION() as version");
-                                $row = $stmt->fetch();
-                                if ($row) {
-                                    // MySQL version, extract just version number
-                                    preg_match('/^([\d\.]+)/', $row['version'], $matches);
-                                    $dbVersion = 'MySQL ' . ($matches[1] ?? $row['version']);
-                                }
+                                
+                                echo htmlspecialchars($dbVersion) . ' <span class="badge badge-success">Connected</span>';
+                            } catch (Exception $e) {
+                                echo 'Error <span class="badge badge-danger">FAIL</span>';
                             }
-                            
-                            echo htmlspecialchars($dbVersion) . ' <span class="badge badge-success">Connected</span>';
-                        } catch (Exception $e) {
-                            echo 'Error <span class="badge badge-danger">FAIL</span>';
-                        }
-                        ?>
-                    </dd>
-                    
-                    <dt class="col-sm-4">Email Method:</dt>
-                    <dd class="col-sm-8"><?= htmlspecialchars($config->get('email.method', 'disabled')) ?></dd>
-                </dl>
+                            ?>
+                        </dd>
+                        
+                        <dt class="col-sm-4">Email Method:</dt>
+                        <dd class="col-sm-8"><?= htmlspecialchars($config->get('email.method', 'disabled')) ?></dd>
+                    </dl>
+                </div>
             </div>
         </div>
     </div>
-</div>
+</section>
 
 <?php $theme->showFooter($context); ?>

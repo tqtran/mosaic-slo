@@ -215,7 +215,7 @@ $theme->showHeader($context);
             <div class="col-sm-12">
                 <ol class="breadcrumb float-sm-end">
                     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                    <li class="breadcrumb-item active">Users</li>
+                    <li class="breadcrumb-item active" aria-current="page">Users</li>
                 </ol>
             </div>
         </div>
@@ -227,37 +227,38 @@ $theme->showHeader($context);
         
         <?php if ($successMessage): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle"></i> <?= $successMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-check-circle" aria-hidden="true"></i> <?= $successMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
         
         <?php if ($errorMessage): ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle"></i> <?= $errorMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-exclamation-circle" aria-hidden="true"></i> <?= $errorMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
 
         <!-- Users Table -->
         <div class="card shadow-sm">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-table"></i> System Users</h3>
+                <h2 class="card-title"><i class="fas fa-table" aria-hidden="true"></i> System Users</h2>
                 <div class="card-tools">
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                        <i class="fas fa-plus"></i> Add User
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal" aria-label="Add new user">
+                        <i class="fas fa-plus" aria-hidden="true"></i> Add User
                     </button>
                 </div>
             </div>
             <div class="card-body">
-                <table id="usersTable" class="table table-bordered table-striped table-hover">
+                <table id="usersTable" class="table table-bordered table-striped table-hover" aria-label="System users data table">
+                    <caption class="visually-hidden">List of system users with filtering and sorting capabilities</caption>
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Full Name</th>
-                            <th>Email</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th scope="col">ID</th>
+                            <th scope="col">Full Name</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Actions</th>
                         </tr>
                         <tr>
                             <th></th>
@@ -274,29 +275,29 @@ $theme->showHeader($context);
 </div>
 
 <!-- Add User Modal -->
-<div class="modal fade" id="addUserModal" tabindex="-1">
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                 <input type="hidden" name="action" value="add">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="fas fa-user-plus"></i> Add User</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="addUserModalLabel"><i class="fas fa-user-plus" aria-hidden="true"></i> Add User</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-                        <input type="email" class="form-control" id="email" name="email" required>
+                        <label for="email" class="form-label">Email <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="email" class="form-control" id="email" name="email" required aria-required="true">
                     </div>
                     <div class="mb-3">
-                        <label for="fullName" class="form-label">Full Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="fullName" name="full_name" required>
+                        <label for="fullName" class="form-label">Full Name <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="text" class="form-control" id="fullName" name="full_name" required aria-required="true">
                     </div>
                     <div class="mb-3">
-                        <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" id="password" name="password" required minlength="8">
-                        <small class="form-text text-muted">Minimum 8 characters</small>
+                        <label for="password" class="form-label">Password <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="password" class="form-control" id="password" name="password" required aria-required="true" minlength="8" aria-describedby="passwordHelp">
+                        <small id="passwordHelp" class="form-text text-muted">Minimum 8 characters</small>
                     </div>
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
@@ -305,7 +306,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Add User</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Add User</button>
                 </div>
             </form>
         </div>
@@ -313,7 +314,7 @@ $theme->showHeader($context);
 </div>
 
 <!-- Edit User Modal -->
-<div class="modal fade" id="editUserModal" tabindex="-1">
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST">
@@ -321,22 +322,22 @@ $theme->showHeader($context);
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="users_pk" id="editUserPk">
                 <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title"><i class="fas fa-edit"></i> Edit User</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title" id="editUserModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close dialog"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="editEmail" class="form-label">Email <span class="text-danger">*</span></label>
-                        <input type="email" class="form-control" id="editEmail" name="email" required>
+                        <label for="editEmail" class="form-label">Email <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="email" class="form-control" id="editEmail" name="email" required aria-required="true">
                     </div>
                     <div class="mb-3">
-                        <label for="editFullName" class="form-label">Full Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="editFullName" name="full_name" required>
+                        <label for="editFullName" class="form-label">Full Name <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="text" class="form-control" id="editFullName" name="full_name" required aria-required="true">
                     </div>
                     <div class="mb-3">
                         <label for="editPassword" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="editPassword" name="password" minlength="8">
-                        <small class="form-text text-muted">Leave blank to keep existing password. Minimum 8 characters if changing.</small>
+                        <input type="password" class="form-control" id="editPassword" name="password" minlength="8" aria-describedby="editPasswordHelp">
+                        <small id="editPasswordHelp" class="form-text text-muted">Leave blank to keep existing password. Minimum 8 characters if changing.</small>
                     </div>
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
@@ -345,7 +346,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
                 </div>
             </form>
         </div>

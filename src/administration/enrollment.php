@@ -427,7 +427,7 @@ $theme->showHeader($context);
             <div class="col-sm-12">
                 <ol class="breadcrumb float-sm-end">
                     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                    <li class="breadcrumb-item active">Enrollment</li>
+                    <li class="breadcrumb-item active" aria-current="page">Enrollment</li>
                 </ol>
             </div>
         </div>
@@ -439,43 +439,44 @@ $theme->showHeader($context);
         
         <?php if ($successMessage): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle"></i> <?= $successMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-check-circle" aria-hidden="true"></i> <?= $successMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
         
         <?php if ($errorMessage): ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle"></i> <?= $errorMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-exclamation-circle" aria-hidden="true"></i> <?= $errorMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
 
         <!-- Enrollment Table -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-table"></i> Student Enrollments</h3>
+                <h2 class="card-title"><i class="fas fa-table" aria-hidden="true"></i> Student Enrollments</h2>
                 <div class="card-tools">
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEnrollmentModal">
-                        <i class="fas fa-plus"></i> Add Enrollment
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addEnrollmentModal" aria-label="Add new enrollment">
+                        <i class="fas fa-plus" aria-hidden="true"></i> Add Enrollment
                     </button>
                 </div>
             </div>
             <div class="card-body">
-                <table id="enrollmentTable" class="table table-bordered table-striped">
+                <table id="enrollmentTable" class="table table-bordered table-striped" aria-label="Student enrollments data table">
+                    <caption class="visually-hidden">List of student enrollments with filtering and sorting capabilities</caption>
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Term Code</th>
-                            <th>CRN</th>
-                            <th>Student C-Number</th>
-                            <th>Status</th>
-                            <th>Enrollment Date</th>
-                            <th>Created</th>
-                            <th>Created By</th>
-                            <th>Updated</th>
-                            <th>Updated By</th>
-                            <th>Actions</th>
+                            <th scope="col">ID</th>
+                            <th scope="col">Term Code</th>
+                            <th scope="col">CRN</th>
+                            <th scope="col">Student C-Number</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Enrollment Date</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Created By</th>
+                            <th scope="col">Updated</th>
+                            <th scope="col">Updated By</th>
+                            <th scope="col">Actions</th>
                         </tr>
                         <tr>
                             <th></th>
@@ -501,12 +502,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Add Enrollment Modal -->
-<div class="modal fade" id="addEnrollmentModal" tabindex="-1">
+<div class="modal fade" id="addEnrollmentModal" tabindex="-1" aria-labelledby="addEnrollmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-plus"></i> Add Enrollment</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="addEnrollmentModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Enrollment</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -514,24 +515,24 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="add">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="termCode" class="form-label">Term Code</label>
-                            <input type="text" class="form-control" id="termCode" name="term_code" maxlength="20" required placeholder="e.g., FA2024">
-                            <small class="form-text text-muted">Term identifier</small>
+                            <label for="termCode" class="form-label">Term Code <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="text" class="form-control" id="termCode" name="term_code" maxlength="20" required aria-required="true" placeholder="e.g., FA2024" aria-describedby="termCodeHelp">
+                            <small id="termCodeHelp" class="form-text text-muted">Term identifier</small>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="crn" class="form-label">CRN</label>
-                            <input type="text" class="form-control" id="crn" name="crn" maxlength="20" required placeholder="e.g., 10001">
-                            <small class="form-text text-muted">Course Reference Number</small>
+                            <label for="crn" class="form-label">CRN <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="text" class="form-control" id="crn" name="crn" maxlength="20" required aria-required="true" placeholder="e.g., 10001" aria-describedby="crnHelp">
+                            <small id="crnHelp" class="form-text text-muted">Course Reference Number</small>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="studentCNumber" class="form-label">Student C-Number</label>
-                        <input type="text" class="form-control" id="studentCNumber" name="student_c_number" maxlength="20" required placeholder="e.g., C00001001">
+                        <label for="studentCNumber" class="form-label">Student C-Number <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="text" class="form-control" id="studentCNumber" name="student_c_number" maxlength="20" required aria-required="true" placeholder="e.g., C00001001">
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="enrollmentStatus" class="form-label">Status</label>
-                            <select class="form-select" id="enrollmentStatus" name="enrollment_status" required>
+                            <label for="enrollmentStatus" class="form-label">Status <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="enrollmentStatus" name="enrollment_status" required aria-required="true">
                                 <option value="enrolled">Enrolled</option>
                                 <option value="completed">Completed</option>
                                 <option value="dropped">Dropped</option>
@@ -539,14 +540,14 @@ $theme->showHeader($context);
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="enrollmentDate" class="form-label">Enrollment Date</label>
-                            <input type="date" class="form-control" id="enrollmentDate" name="enrollment_date" value="<?= date('Y-m-d') ?>" required>
+                            <label for="enrollmentDate" class="form-label">Enrollment Date <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="date" class="form-control" id="enrollmentDate" name="enrollment_date" value="<?= date('Y-m-d') ?>" required aria-required="true">
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
                 </div>
             </form>
         </div>
@@ -554,12 +555,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Edit Enrollment Modal -->
-<div class="modal fade" id="editEnrollmentModal" tabindex="-1">
+<div class="modal fade" id="editEnrollmentModal" tabindex="-1" aria-labelledby="editEnrollmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Enrollment</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="editEnrollmentModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Enrollment</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -585,8 +586,8 @@ $theme->showHeader($context);
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="editEnrollmentStatus" class="form-label">Status</label>
-                            <select class="form-select" id="editEnrollmentStatus" name="enrollment_status" required>
+                            <label for="editEnrollmentStatus" class="form-label">Status <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="editEnrollmentStatus" name="enrollment_status" required aria-required="true">
                                 <option value="enrolled">Enrolled</option>
                                 <option value="completed">Completed</option>
                                 <option value="dropped">Dropped</option>
@@ -594,13 +595,13 @@ $theme->showHeader($context);
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="editEnrollmentDate" class="form-label">Enrollment Date</label>
-                            <input type="date" class="form-control" id="editEnrollmentDate" name="enrollment_date" required>
+                            <label for="editEnrollmentDate" class="form-label">Enrollment Date <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="date" class="form-control" id="editEnrollmentDate" name="enrollment_date" required aria-required="true">
                         </div>
                     </div>
                     
                     <hr>
-                    <h6 class="text-muted mb-3"><i class="fas fa-info-circle"></i> Audit Information</h6>
+                    <h3 class="text-muted mb-3"><i class="fas fa-info-circle" aria-hidden="true"></i> Audit Information</h3>
                     <div class="row">
                         <div class="col-md-6">
                             <small class="text-muted"><strong>Created:</strong></small>
@@ -622,7 +623,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
                 </div>
             </form>
         </div>

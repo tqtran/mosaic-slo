@@ -49,7 +49,7 @@ The terms used in the Conformance Level information are defined as follows:
 | **1.2.1 Audio-only and Video-only (Prerecorded)** | Not Applicable | No audio or video content present. |
 | **1.2.2 Captions (Prerecorded)** | Not Applicable | No audio or video content present. |
 | **1.2.3 Audio Description or Media Alternative (Prerecorded)** | Not Applicable | No audio or video content present. |
-| **1.3.1 Info and Relationships** | Supports | Semantic HTML used throughout (header, main, footer, nav). Tables use proper th/scope. Forms use labels and fieldsets. Headings follow H1→H2 hierarchy. |
+| **1.3.1 Info and Relationships** | Supports | Semantic HTML used throughout (header, main, footer, nav). Tables use proper th/scope. Forms use labels and fieldsets. Headings follow H1->H2 hierarchy. |
 | **1.3.2 Meaningful Sequence** | Supports | Reading order is logical and follows visual order. Skip link allows bypassing repeated content. |
 | **1.3.3 Sensory Characteristics** | Supports | Instructions do not rely solely on shape, size, visual location, orientation, or sound. Text describes functionality. |
 | **1.4.1 Use of Color** | Supports | Color is not used as the only means of conveying information. Success/error states include icons and text. |

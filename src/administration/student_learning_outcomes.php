@@ -248,7 +248,7 @@ $theme->showHeader($context);
             <div class="col-sm-12">
                 <ol class="breadcrumb float-sm-end">
                     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                    <li class="breadcrumb-item active">Student Learning Outcomes</li>
+                    <li class="breadcrumb-item active" aria-current="page">Student Learning Outcomes</li>
                 </ol>
             </div>
         </div>
@@ -260,44 +260,45 @@ $theme->showHeader($context);
         
         <?php if ($successMessage): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle"></i> <?= $successMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-check-circle" aria-hidden="true"></i> <?= $successMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
         
         <?php if ($errorMessage): ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle"></i> <?= $errorMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-exclamation-circle" aria-hidden="true"></i> <?= $errorMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
 
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-table"></i> Student Learning Outcomes</h3>
+                <h2 class="card-title"><i class="fas fa-table" aria-hidden="true"></i> Student Learning Outcomes</h2>
                 <div class="card-tools">
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSLOModal">
-                        <i class="fas fa-plus"></i> Add SLO
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSLOModal" aria-label="Add new student learning outcome">
+                        <i class="fas fa-plus" aria-hidden="true"></i> Add SLO
                     </button>
                 </div>
             </div>
             <div class="card-body">
-                <table id="slosTable" class="table table-bordered table-striped">
+                <table id="slosTable" class="table table-bordered table-striped" aria-label="Student learning outcomes data table">
+                    <caption class="visually-hidden">List of student learning outcomes with filtering and sorting capabilities</caption>
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Course</th>
-                            <th>Program Outcome</th>
-                            <th>Code</th>
-                            <th>Description</th>
-                            <th>Assessment Method</th>
-                            <th>Sequence</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Created By</th>
-                            <th>Updated</th>
-                            <th>Updated By</th>
-                            <th>Actions</th>
+                            <th scope="col">ID</th>
+                            <th scope="col">Course</th>
+                            <th scope="col">Program Outcome</th>
+                            <th scope="col">Code</th>
+                            <th scope="col">Description</th>
+                            <th scope="col">Assessment Method</th>
+                            <th scope="col">Sequence</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Created By</th>
+                            <th scope="col">Updated</th>
+                            <th scope="col">Updated By</th>
+                            <th scope="col">Actions</th>
                         </tr>
                         <tr>
                             <th></th>
@@ -323,12 +324,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Add SLO Modal -->
-<div class="modal fade" id="addSLOModal" tabindex="-1">
+<div class="modal fade" id="addSLOModal" tabindex="-1" aria-labelledby="addSLOModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-plus"></i> Add Student Learning Outcome</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="addSLOModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Student Learning Outcome</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -336,8 +337,8 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="add">
                     
                     <div class="mb-3">
-                        <label for="courseFk" class="form-label">Course</label>
-                        <select class="form-select" id="courseFk" name="course_fk" required>
+                        <label for="courseFk" class="form-label">Course <span class="text-danger" aria-label="required">*</span></label>
+                        <select class="form-select" id="courseFk" name="course_fk" required aria-required="true">
                             <option value="">Select Course</option>
                             <?php foreach ($courses as $course): ?>
                                 <option value="<?= $course['courses_pk'] ?>">
@@ -362,8 +363,8 @@ $theme->showHeader($context);
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="sloCode" class="form-label">SLO Code</label>
-                            <input type="text" class="form-control" id="sloCode" name="slo_code" maxlength="50" required>
+                            <label for="sloCode" class="form-label">SLO Code <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="text" class="form-control" id="sloCode" name="slo_code" maxlength="50" required aria-required="true">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="sequenceNum" class="form-label">Sequence Number</label>
@@ -372,8 +373,8 @@ $theme->showHeader($context);
                     </div>
                     
                     <div class="mb-3">
-                        <label for="sloDescription" class="form-label">SLO Description</label>
-                        <textarea class="form-control" id="sloDescription" name="slo_description" rows="4" required></textarea>
+                        <label for="sloDescription" class="form-label">SLO Description <span class="text-danger" aria-label="required">*</span></label>
+                        <textarea class="form-control" id="sloDescription" name="slo_description" rows="4" required aria-required="true"></textarea>
                     </div>
                     
                     <div class="mb-3">
@@ -389,7 +390,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
                 </div>
             </form>
         </div>
@@ -397,12 +398,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Edit SLO Modal -->
-<div class="modal fade" id="editSLOModal" tabindex="-1">
+<div class="modal fade" id="editSLOModal" tabindex="-1" aria-labelledby="editSLOModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Student Learning Outcome</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="editSLOModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Student Learning Outcome</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -411,8 +412,8 @@ $theme->showHeader($context);
                     <input type="hidden" name="slo_id" id="editSLOId">
                     
                     <div class="mb-3">
-                        <label for="editCourseFk" class="form-label">Course</label>
-                        <select class="form-select" id="editCourseFk" name="course_fk" required>
+                        <label for="editCourseFk" class="form-label">Course <span class="text-danger" aria-label="required">*</span></label>
+                        <select class="form-select" id="editCourseFk" name="course_fk" required aria-required="true">
                             <option value="">Select Course</option>
                             <?php foreach ($courses as $course): ?>
                                 <option value="<?= $course['courses_pk'] ?>">
@@ -437,8 +438,8 @@ $theme->showHeader($context);
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="editSLOCode" class="form-label">SLO Code</label>
-                            <input type="text" class="form-control" id="editSLOCode" name="slo_code" maxlength="50" required>
+                            <label for="editSLOCode" class="form-label">SLO Code <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="text" class="form-control" id="editSLOCode" name="slo_code" maxlength="50" required aria-required="true">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="editSequenceNum" class="form-label">Sequence Number</label>
@@ -447,8 +448,8 @@ $theme->showHeader($context);
                     </div>
                     
                     <div class="mb-3">
-                        <label for="editSLODescription" class="form-label">SLO Description</label>
-                        <textarea class="form-control" id="editSLODescription" name="slo_description" rows="4" required></textarea>
+                        <label for="editSLODescription" class="form-label">SLO Description <span class="text-danger" aria-label="required">*</span></label>
+                        <textarea class="form-control" id="editSLODescription" name="slo_description" rows="4" required aria-required="true"></textarea>
                     </div>
                     
                     <div class="mb-3">
@@ -463,7 +464,7 @@ $theme->showHeader($context);
                     </div>
                     
                     <hr>
-                    <h6 class="text-muted mb-3"><i class="fas fa-info-circle"></i> Audit Information</h6>
+                    <h3 class="text-muted mb-3"><i class="fas fa-info-circle" aria-hidden="true"></i> Audit Information</h3>
                     <div class="row">
                         <div class="col-md-6">
                             <small class="text-muted"><strong>Created:</strong></small>
@@ -485,7 +486,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
                 </div>
             </form>
         </div>

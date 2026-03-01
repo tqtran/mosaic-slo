@@ -449,7 +449,7 @@ $theme->showHeader($context);
             <div class="col-sm-12">
                 <ol class="breadcrumb float-sm-end">
                     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                    <li class="breadcrumb-item active">Sections</li>
+                    <li class="breadcrumb-item active" aria-current="page">Sections</li>
                 </ol>
             </div>
         </div>
@@ -461,28 +461,28 @@ $theme->showHeader($context);
         
         <?php if ($successMessage): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle"></i> <?= $successMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-check-circle" aria-hidden="true"></i> <?= $successMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
         
         <?php if ($errorMessage): ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle"></i> <?= $errorMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-exclamation-circle" aria-hidden="true"></i> <?= $errorMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
 
         <!-- Sections Table -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-chalkboard-teacher"></i> Course Sections</h3>
+                <h2 class="card-title"><i class="fas fa-chalkboard-teacher" aria-hidden="true"></i> Course Sections</h2>
                 <div class="card-tools">
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSectionModal">
-                        <i class="fas fa-plus"></i> Add Section
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSectionModal" aria-label="Add new section">
+                        <i class="fas fa-plus" aria-hidden="true"></i> Add Section
                     </button>
-                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                        <i class="fas fa-file-upload"></i> Import CSV
+                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#uploadModal" aria-label="Import sections from CSV">
+                        <i class="fas fa-file-upload" aria-hidden="true"></i> Import CSV
                     </button>
                 </div>
             </div>
@@ -508,16 +508,17 @@ $theme->showHeader($context);
                         </select>
                     </div>
                 </div>
-                <table id="sectionsTable" class="table table-bordered table-striped">
+                <table id="sectionsTable" class="table table-bordered table-striped" aria-label="Course sections data table">
+                    <caption class="visually-hidden">List of course sections with filtering and sorting capabilities</caption>
                     <thead>
                         <tr>
-                            <th>CRN</th>
-                            <th>Course</th>
-                            <th>Section</th>
-                            <th>Instructor</th>
-                            <th>Max Enrollment</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th scope="col">CRN</th>
+                            <th scope="col">Course</th>
+                            <th scope="col">Section</th>
+                            <th scope="col">Instructor</th>
+                            <th scope="col">Max Enrollment</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -530,12 +531,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Add Section Modal -->
-<div class="modal fade" id="addSectionModal" tabindex="-1">
+<div class="modal fade" id="addSectionModal" tabindex="-1" aria-labelledby="addSectionModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-plus"></i> Add Section</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="addSectionModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Section</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -543,8 +544,8 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="add">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="courseFk" class="form-label">Course</label>
-                            <select class="form-select" id="courseFk" name="course_fk" required>
+                            <label for="courseFk" class="form-label">Course <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="courseFk" name="course_fk" required aria-required="true">
                                 <option value="">Select Course</option>
                                 <?php foreach ($courses as $course): ?>
                                     <option value="<?= $course['courses_pk'] ?>">
@@ -554,8 +555,8 @@ $theme->showHeader($context);
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="termFk" class="form-label">Term</label>
-                            <select class="form-select" id="termFk" name="term_fk" required>
+                            <label for="termFk" class="form-label">Term <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="termFk" name="term_fk" required aria-required="true">
                                 <?php foreach ($terms as $term): ?>
                                     <option value="<?= $term['terms_pk'] ?>" <?= $term['terms_pk'] == $selectedTermFk ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($term['term_code'] . ' - ' . $term['term_name']) ?>
@@ -566,9 +567,9 @@ $theme->showHeader($context);
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="sectionId" class="form-label">Section ID</label>
-                            <input type="text" class="form-control" id="sectionId" name="section_id" maxlength="20" required>
-                            <small class="form-text text-muted">e.g., 01, 02, A, B</small>
+                            <label for="sectionId" class="form-label">Section ID <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="text" class="form-control" id="sectionId" name="section_id" maxlength="20" required aria-required="true" aria-describedby="sectionIdHelp">
+                            <small id="sectionIdHelp" class="form-text text-muted">e.g., 01, 02, A, B</small>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="crn" class="form-label">CRN</label>
@@ -593,7 +594,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
                 </div>
             </form>
         </div>
@@ -601,12 +602,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Edit Section Modal -->
-<div class="modal fade" id="editSectionModal" tabindex="-1">
+<div class="modal fade" id="editSectionModal" tabindex="-1" aria-labelledby="editSectionModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Section</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="editSectionModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Section</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -615,8 +616,8 @@ $theme->showHeader($context);
                     <input type="hidden" name="section_id" id="editSectionId">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="editCourseFk" class="form-label">Course</label>
-                            <select class="form-select" id="editCourseFk" name="course_fk" required>
+                            <label for="editCourseFk" class="form-label">Course <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="editCourseFk" name="course_fk" required aria-required="true">
                                 <option value="">Select Course</option>
                                 <?php foreach ($courses as $course): ?>
                                     <option value="<?= $course['courses_pk'] ?>">
@@ -626,8 +627,8 @@ $theme->showHeader($context);
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="editTermFk" class="form-label">Term</label>
-                            <select class="form-select" id="editTermFk" name="term_fk" required>
+                            <label for="editTermFk" class="form-label">Term <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="editTermFk" name="term_fk" required aria-required="true">
                                 <?php foreach ($terms as $term): ?>
                                     <option value="<?= $term['terms_pk'] ?>">
                                         <?= htmlspecialchars($term['term_code'] . ' - ' . $term['term_name']) ?>
@@ -638,8 +639,8 @@ $theme->showHeader($context);
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="editSectionIdValue" class="form-label">Section ID</label>
-                            <input type="text" class="form-control" id="editSectionIdValue" name="section_id_value" maxlength="20" required>
+                            <label for="editSectionIdValue" class="form-label">Section ID <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="text" class="form-control" id="editSectionIdValue" name="section_id_value" maxlength="20" required aria-required="true">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="editCrn" class="form-label">CRN</label>
@@ -663,7 +664,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
                 </div>
             </form>
         </div>

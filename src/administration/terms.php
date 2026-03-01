@@ -536,7 +536,7 @@ $theme->showHeader($context);
             <div class="col-sm-12">
                 <ol class="breadcrumb float-sm-end">
                     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                    <li class="breadcrumb-item active">Terms</li>
+                    <li class="breadcrumb-item active" aria-current="page">Terms</li>
                 </ol>
             </div>
         </div>
@@ -548,48 +548,49 @@ $theme->showHeader($context);
         
         <?php if ($successMessage): ?>
         <div class="alert alert-success alert-dismissible fade show">
-            <i class="fas fa-check-circle"></i> <?= $successMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-check-circle" aria-hidden="true"></i> <?= $successMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
         
         <?php if ($errorMessage): ?>
         <div class="alert alert-danger alert-dismissible fade show">
-            <i class="fas fa-exclamation-circle"></i> <?= $errorMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-exclamation-circle" aria-hidden="true"></i> <?= $errorMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
         
         <!-- Terms Table -->
         <div class="card shadow-sm mt-4">
             <div class="card-header">
-                <h3 class="card-title">
-                    <i class="fas fa-calendar-week"></i> Academic Terms
-                </h3>
+                <h2 class="card-title">
+                    <i class="fas fa-calendar-week" aria-hidden="true"></i> Academic Terms
+                </h2>
                 <div class="card-tools">
-                    <button type="button" class="btn btn-primary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#addTermModal">
-                        <i class="fas fa-plus"></i> Add Term
+                    <button type="button" class="btn btn-primary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#addTermModal" aria-label="Add new term">
+                        <i class="fas fa-plus" aria-hidden="true"></i> Add Term
                     </button>
-                    <button type="button" class="btn btn-warning btn-sm me-1" data-bs-toggle="modal" data-bs-target="#copyTermModal">
-                        <i class="fas fa-copy"></i> Copy Term Data
+                    <button type="button" class="btn btn-warning btn-sm me-1" data-bs-toggle="modal" data-bs-target="#copyTermModal" aria-label="Copy term data">
+                        <i class="fas fa-copy" aria-hidden="true"></i> Copy Term Data
                     </button>
-                    <button type="button" class="btn btn-danger btn-sm me-1" data-bs-toggle="modal" data-bs-target="#clearTermModal">
-                        <i class="fas fa-trash"></i> Clear Term Data
+                    <button type="button" class="btn btn-danger btn-sm me-1" data-bs-toggle="modal" data-bs-target="#clearTermModal" aria-label="Clear term data">
+                        <i class="fas fa-trash" aria-hidden="true"></i> Clear Term Data
                     </button>
                 </div>
             </div>
             <div class="card-body">
-                <table id="termsTable" class="table table-bordered table-striped table-hover">
+                <table id="termsTable" class="table table-bordered table-striped table-hover" aria-label="Academic terms data table">
+                    <caption class="visually-hidden">List of academic terms with filtering and sorting capabilities</caption>
                     <thead>
                         <tr>
-                            <th>Banner Term</th>
-                            <th>Term Code</th>
-                            <th>Term Name</th>
-                            <th>Academic Year</th>
-                            <th>Start Date</th>
-                            <th>End Date</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th scope="col">Banner Term</th>
+                            <th scope="col">Term Code</th>
+                            <th scope="col">Term Name</th>
+                            <th scope="col">Academic Year</th>
+                            <th scope="col">Start Date</th>
+                            <th scope="col">End Date</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Actions</th>
                         </tr>
                         <tr>
                             <th></th>
@@ -610,12 +611,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Add Term Modal -->
-<div class="modal fade" id="addTermModal" tabindex="-1">
+<div class="modal fade" id="addTermModal" tabindex="-1" aria-labelledby="addTermModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-plus"></i> Add Term</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="addTermModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Term</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -623,20 +624,20 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="add">
                     
                     <div class="mb-3">
-                        <label for="banner_term" class="form-label">Banner Term <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="banner_term" name="banner_term" maxlength="20" required placeholder="e.g., 202533">
-                        <small class="text-muted">Banner system term code</small>
+                        <label for="banner_term" class="form-label">Banner Term <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="text" class="form-control" id="banner_term" name="banner_term" maxlength="20" required aria-required="true" placeholder="e.g., 202533" aria-describedby="bannerTermHelp">
+                        <small id="bannerTermHelp" class="text-muted">Banner system term code</small>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="term_code" class="form-label">Term Code <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="term_code" name="term_code" maxlength="50" required placeholder="e.g., 202630">
-                        <small class="text-muted">Institutional term code</small>
+                        <label for="term_code" class="form-label">Term Code <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="text" class="form-control" id="term_code" name="term_code" maxlength="50" required aria-required="true" placeholder="e.g., 202630" aria-describedby="termCodeHelp">
+                        <small id="termCodeHelp" class="text-muted">Institutional term code</small>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="term_name" class="form-label">Term Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="term_name" name="term_name" maxlength="100" required placeholder="e.g., Spring 2026">
+                        <label for="term_name" class="form-label">Term Name <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="text" class="form-control" id="term_name" name="term_name" maxlength="100" required aria-required="true" placeholder="e.g., Spring 2026">
                     </div>
                     
                     <div class="mb-3">
@@ -665,7 +666,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
                 </div>
             </form>
         </div>
@@ -673,12 +674,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Edit Term Modal -->
-<div class="modal fade" id="editTermModal" tabindex="-1">
+<div class="modal fade" id="editTermModal" tabindex="-1" aria-labelledby="editTermModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Term</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="editTermModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Term</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -687,20 +688,20 @@ $theme->showHeader($context);
                     <input type="hidden" name="terms_pk" id="edit_terms_pk">
                     
                     <div class="mb-3">
-                        <label for="edit_banner_term" class="form-label">Banner Term <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="edit_banner_term" name="banner_term" maxlength="20" required>
-                        <small class="text-muted">Banner system term code (e.g., 202533)</small>
+                        <label for="edit_banner_term" class="form-label">Banner Term <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="text" class="form-control" id="edit_banner_term" name="banner_term" maxlength="20" required aria-required="true" aria-describedby="editBannerTermHelp">
+                        <small id="editBannerTermHelp" class="text-muted">Banner system term code (e.g., 202533)</small>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="edit_term_code" class="form-label">Term Code <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="edit_term_code" name="term_code" maxlength="50" required>
-                        <small class="text-muted">Institutional term code (e.g., 202630)</small>
+                        <label for="edit_term_code" class="form-label">Term Code <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="text" class="form-control" id="edit_term_code" name="term_code" maxlength="50" required aria-required="true" aria-describedby="editTermCodeHelp">
+                        <small id="editTermCodeHelp" class="text-muted">Institutional term code (e.g., 202630)</small>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="edit_term_name" class="form-label">Term Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="edit_term_name" name="term_name" maxlength="100" required>
+                        <label for="edit_term_name" class="form-label">Term Name <span class="text-danger" aria-label="required">*</span></label>
+                        <input type="text" class="form-control" id="edit_term_name" name="term_name" maxlength="100" required aria-required="true">
                     </div>
                     
                     <div class="mb-3">
@@ -728,7 +729,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save Changes</button>
                 </div>
             </form>
         </div>

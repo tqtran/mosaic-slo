@@ -123,15 +123,9 @@ while ($row = $result->fetch()) {
         'is_active' => $row['is_active']
     ], JSON_HEX_APOS | JSON_HEX_QUOT);
     
-    $actions = '
-        <button class="btn btn-sm btn-warning" onclick=\'editUser(' . $userJson . ')\' title="Edit">
-            <i class="fas fa-edit"></i>
-        </button>
-        <button class="btn btn-sm btn-info" onclick="toggleStatus(' . $row['users_pk'] . ', \'' . addslashes($fullName) . '\')" title="Toggle Status">
-            <i class="fas fa-exchange-alt"></i>
-        </button>
-        <button class="btn btn-sm btn-danger" onclick="deleteUser(' . $row['users_pk'] . ', \'' . addslashes($fullName) . '\')" title="Delete">
-            <i class="fas fa-trash"></i>
+   $actions = '
+        <button class="btn btn-warning" onclick=\'editUser(' . $userJson . ')\' title="Edit" aria-label="Edit user ' . addslashes($fullName) . '">
+            <i class="fas fa-edit" aria-hidden="true"></i>
         </button>
     ';
     

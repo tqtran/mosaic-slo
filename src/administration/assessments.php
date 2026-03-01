@@ -406,7 +406,7 @@ $theme->showHeader($context);
             <div class="col-sm-12">
                 <ol class="breadcrumb float-sm-end">
                     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                    <li class="breadcrumb-item active">Assessments</li>
+                    <li class="breadcrumb-item active" aria-current="page">Assessments</li>
                 </ol>
             </div>
         </div>
@@ -419,37 +419,38 @@ $theme->showHeader($context);
 <!-- Success/Error Messages -->
 <?php if ($successMessage): ?>
     <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="fas fa-check-circle"></i> <?= $successMessage ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <i class="fas fa-check-circle" aria-hidden="true"></i> <?= $successMessage ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
     </div>
 <?php endif; ?>
 
 <?php if ($errorMessage): ?>
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="fas fa-exclamation-triangle"></i> <?= $errorMessage ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i> <?= $errorMessage ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
     </div>
 <?php endif; ?>
 
 <!-- Assessments Table -->
 <div class="card">
     <div class="card-header">
-        <h3 class="card-title"><i class="fas fa-table"></i> Assessments</h3>
+        <h2 class="card-title"><i class="fas fa-table" aria-hidden="true"></i> Assessments</h2>
     </div>
     <div class="card-body">
-        <table id="assessmentsTable" class="table table-bordered table-striped table-hover">
+        <table id="assessmentsTable" class="table table-bordered table-striped table-hover" aria-label="Assessments data table">
+            <caption class="visually-hidden">List of assessments with filtering and sorting capabilities</caption>
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Term</th>
-                    <th>CRN</th>
-                    <th>Student</th>
-                    <th>SLO</th>
-                    <th>Score</th>
-                    <th>Level</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th scope="col">ID</th>
+                    <th scope="col">Term</th>
+                    <th scope="col">CRN</th>
+                    <th scope="col">Student</th>
+                    <th scope="col">SLO</th>
+                    <th scope="col">Score</th>
+                    <th scope="col">Level</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Actions</th>
                 </tr>
                 <tr>
                     <th><input type="text" class="form-control form-control-sm" placeholder="Search ID"></th>
@@ -469,12 +470,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Add Assessment Modal -->
-<div class="modal fade" id="addAssessmentModal" tabindex="-1">
+<div class="modal fade" id="addAssessmentModal" tabindex="-1" aria-labelledby="addAssessmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-plus"></i> Add Assessment</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="addAssessmentModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Assessment</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -483,8 +484,8 @@ $theme->showHeader($context);
                     
                     <div class="row">
                         <div class="col-md-8 mb-3">
-                            <label for="enrollmentFk" class="form-label">Enrollment (Term CRN - Student) <span class="text-danger">*</span></label>
-                            <select class="form-select" id="enrollmentFk" name="enrollment_fk" required>
+                            <label for="enrollmentFk" class="form-label">Enrollment (Term CRN - Student) <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="enrollmentFk" name="enrollment_fk" required aria-required="true">
                                 <option value="">Select Enrollment</option>
                                 <?php foreach ($enrollments as $enrollment): 
                                     $studentName = htmlspecialchars(($enrollment['last_name'] ?? '') . ', ' . ($enrollment['first_name'] ?? ''));
@@ -498,8 +499,8 @@ $theme->showHeader($context);
                         </div>
                         
                         <div class="col-md-4 mb-3">
-                            <label for="sloFk" class="form-label">Student Learning Outcome <span class="text-danger">*</span></label>
-                            <select class="form-select" id="sloFk" name="student_learning_outcome_fk" required>
+                            <label for="sloFk" class="form-label">Student Learning Outcome <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="sloFk" name="student_learning_outcome_fk" required aria-required="true">
                                 <option value="">Select SLO</option>
                                 <?php foreach ($slos as $slo): ?>
                                     <option value="<?= $slo['student_learning_outcomes_pk'] ?>">
@@ -512,8 +513,8 @@ $theme->showHeader($context);
                     
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label for="scoreValue" class="form-label">Score <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" class="form-control" id="scoreValue" name="score_value" required>
+                            <label for="scoreValue" class="form-label">Score <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="number" step="0.01" class="form-control" id="scoreValue" name="score_value" required aria-required="true">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="achievementLevel" class="form-label">Achievement Level</label>
@@ -548,7 +549,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
                 </div>
             </form>
         </div>
@@ -556,12 +557,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Edit Assessment Modal -->
-<div class="modal fade" id="editAssessmentModal" tabindex="-1">
+<div class="modal fade" id="editAssessmentModal" tabindex="-1" aria-labelledby="editAssessmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Assessment</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="editAssessmentModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Assessment</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -571,8 +572,8 @@ $theme->showHeader($context);
                     
                     <div class="row">
                         <div class="col-md-8 mb-3">
-                            <label for="editEnrollmentFk" class="form-label">Enrollment (Term CRN - Student) <span class="text-danger">*</span></label>
-                            <select class="form-select" id="editEnrollmentFk" name="enrollment_fk" required>
+                            <label for="editEnrollmentFk" class="form-label">Enrollment (Term CRN - Student) <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="editEnrollmentFk" name="enrollment_fk" required aria-required="true">
                                 <option value="">Select Enrollment</option>
                                 <?php foreach ($enrollments as $enrollment): 
                                     $studentName = htmlspecialchars(($enrollment['last_name'] ?? '') . ', ' . ($enrollment['first_name'] ?? ''));
@@ -586,8 +587,8 @@ $theme->showHeader($context);
                         </div>
                         
                         <div class="col-md-4 mb-3">
-                            <label for="editSloFk" class="form-label">Student Learning Outcome <span class="text-danger">*</span></label>
-                            <select class="form-select" id="editSloFk" name="student_learning_outcome_fk" required>
+                            <label for="editSloFk" class="form-label">Student Learning Outcome <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="editSloFk" name="student_learning_outcome_fk" required aria-required="true">
                                 <option value="">Select SLO</option>
                                 <?php foreach ($slos as $slo): ?>
                                     <option value="<?= $slo['student_learning_outcomes_pk'] ?>">
@@ -600,8 +601,8 @@ $theme->showHeader($context);
                     
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label for="editScoreValue" class="form-label">Score <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" class="form-control" id="editScoreValue" name="score_value" required>
+                            <label for="editScoreValue" class="form-label">Score <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="number" step="0.01" class="form-control" id="editScoreValue" name="score_value" required aria-required="true">
                         </div>
                         <div class="col-md-4 mb-3">
                             <label for="editAchievementLevel" class="form-label">Achievement Level</label>
@@ -636,7 +637,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save Changes</button>
                 </div>
             </form>
         </div>

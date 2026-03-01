@@ -259,7 +259,7 @@ $theme->showHeader($context);
             <div class="col-sm-12">
                 <ol class="breadcrumb float-sm-end">
                     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                    <li class="breadcrumb-item active">Institutional Outcomes</li>
+                    <li class="breadcrumb-item active" aria-current="page">Institutional Outcomes</li>
                 </ol>
             </div>
         </div>
@@ -271,43 +271,44 @@ $theme->showHeader($context);
         
         <?php if ($successMessage): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle"></i> <?= $successMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-check-circle" aria-hidden="true"></i> <?= $successMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
         
         <?php if ($errorMessage): ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle"></i> <?= $errorMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-exclamation-circle" aria-hidden="true"></i> <?= $errorMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
 
         <!-- Outcomes Table -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-table"></i> Institutional Learning Outcomes</h3>
+                <h2 class="card-title"><i class="fas fa-table" aria-hidden="true"></i> Institutional Learning Outcomes</h2>
                 <div class="card-tools">
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addOutcomeModal">
-                        <i class="fas fa-plus"></i> Add Outcome
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addOutcomeModal" aria-label="Add new institutional outcome">
+                        <i class="fas fa-plus" aria-hidden="true"></i> Add Outcome
                     </button>
                 </div>
             </div>
             <div class="card-body">
-                <table id="outcomesTable" class="table table-bordered table-striped">
+                <table id="outcomesTable" class="table table-bordered table-striped" aria-label="Institutional outcomes data table">
+                    <caption class="visually-hidden">List of institutional learning outcomes with filtering and sorting capabilities</caption>
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Term</th>
-                            <th>Code</th>
-                            <th>Description</th>
-                            <th>Sequence</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Created By</th>
-                            <th>Updated</th>
-                            <th>Updated By</th>
-                            <th>Actions</th>
+                            <th scope="col">ID</th>
+                            <th scope="col">Term</th>
+                            <th scope="col">Code</th>
+                            <th scope="col">Description</th>
+                            <th scope="col">Sequence</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Created By</th>
+                            <th scope="col">Updated</th>
+                            <th scope="col">Updated By</th>
+                            <th scope="col">Actions</th>
                         </tr>
                         <tr>
                             <th></th>
@@ -333,12 +334,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Add Outcome Modal -->
-<div class="modal fade" id="addOutcomeModal" tabindex="-1">
+<div class="modal fade" id="addOutcomeModal" tabindex="-1" aria-labelledby="addOutcomeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-plus"></i> Add Institutional Outcome</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="addOutcomeModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Institutional Outcome</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -346,8 +347,8 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="add">
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label for="addTermFk" class="form-label">Term</label>
-                            <select class="form-select" id="addTermFk" name="term_fk" required>
+                            <label for="addTermFk" class="form-label">Term <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="addTermFk" name="term_fk" required aria-required="true">
                                 <?php foreach ($terms as $term): ?>
                                     <option value="<?= $term['terms_pk'] ?>" <?= $term['terms_pk'] == $selectedTermFk ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($term['term_code'] . ' - ' . $term['term_name']) ?>
@@ -356,9 +357,9 @@ $theme->showHeader($context);
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="outcomeCode" class="form-label">Outcome Code</label>
-                            <input type="text" class="form-control" id="outcomeCode" name="outcome_code" maxlength="50" required>
-                            <small class="form-text text-muted">e.g., ILO-1, INST-A</small>
+                            <label for="outcomeCode" class="form-label">Outcome Code <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="text" class="form-control" id="outcomeCode" name="outcome_code" maxlength="50" required aria-required="true" aria-describedby="outcomeCodeHelp">
+                            <small id="outcomeCodeHelp" class="form-text text-muted">e.g., ILO-1, INST-A</small>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="sequenceNum" class="form-label">Sequence Number</label>
@@ -366,8 +367,8 @@ $theme->showHeader($context);
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="outcomeDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="outcomeDescription" name="outcome_description" rows="4" required></textarea>
+                        <label for="outcomeDescription" class="form-label">Description <span class="text-danger" aria-label="required">*</span></label>
+                        <textarea class="form-control" id="outcomeDescription" name="outcome_description" rows="4" required aria-required="true"></textarea>
                     </div>
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
@@ -376,7 +377,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
                 </div>
             </form>
         </div>
@@ -384,12 +385,12 @@ $theme->showHeader($context);
 </div>
 
 <!-- Edit Outcome Modal -->
-<div class="modal fade" id="editOutcomeModal" tabindex="-1">
+<div class="modal fade" id="editOutcomeModal" tabindex="-1" aria-labelledby="editOutcomeModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Institutional Outcome</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="editOutcomeModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Institutional Outcome</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
                 <div class="modal-body">
@@ -398,8 +399,8 @@ $theme->showHeader($context);
                     <input type="hidden" name="outcome_id" id="editOutcomeId">
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label for="editTermFk" class="form-label">Term</label>
-                            <select class="form-select" id="editTermFk" name="term_fk" required>
+                            <label for="editTermFk" class="form-label">Term <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="editTermFk" name="term_fk" required aria-required="true">
                                 <?php foreach ($terms as $term): ?>
                                     <option value="<?= $term['terms_pk'] ?>">
                                         <?= htmlspecialchars($term['term_code'] . ' - ' . $term['term_name']) ?>
@@ -408,8 +409,8 @@ $theme->showHeader($context);
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="editOutcomeCode" class="form-label">Outcome Code</label>
-                            <input type="text" class="form-control" id="editOutcomeCode" name="outcome_code" maxlength="50" required>
+                            <label for="editOutcomeCode" class="form-label">Outcome Code <span class="text-danger" aria-label="required">*</span></label>
+                            <input type="text" class="form-control" id="editOutcomeCode" name="outcome_code" maxlength="50" required aria-required="true">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="editSequenceNum" class="form-label">Sequence Number</label>
@@ -417,15 +418,15 @@ $theme->showHeader($context);
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="editOutcomeDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="editOutcomeDescription" name="outcome_description" rows="4" required></textarea>
+                        <label for="editOutcomeDescription" class="form-label">Description <span class="text-danger" aria-label="required">*</span></label>
+                        <textarea class="form-control" id="editOutcomeDescription" name="outcome_description" rows="4" required aria-required="true"></textarea>
                     </div>
                     <div class="form-check mb-3">
                         <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
                         <label class="form-check-label" for="editIsActive">Active</label>
                     </div>
                     <hr>
-                    <h6 class="text-muted mb-3"><i class="fas fa-history"></i> Audit Information</h6>
+                    <h3 class="text-muted mb-3"><i class="fas fa-history" aria-hidden="true"></i> Audit Information</h3>
                     <div class="row mb-2">
                         <div class="col-md-6">
                             <small class="text-muted">Created:</small>
@@ -449,7 +450,7 @@ $theme->showHeader($context);
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Update</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
                 </div>
             </form>
         </div>

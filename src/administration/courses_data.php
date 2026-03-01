@@ -124,10 +124,7 @@ try {
             htmlspecialchars(trim($row['created_by_name'] ?? '') ?: 'System'),
             htmlspecialchars($row['updated_at'] ?? ''),
             htmlspecialchars(trim($row['updated_by_name'] ?? '') ?: 'System'),
-            '<button class="btn btn-sm btn-info" title="View" onclick=\'viewCourse(' . $rowJson . ')\'><i class="fas fa-eye"></i></button> ' .
-            '<button class="btn btn-sm btn-primary" title="Edit" onclick=\'editCourse(' . $rowJson . ')\'><i class="fas fa-edit"></i></button> ' .
-            '<button class="btn btn-sm btn-' . $toggleClass . '" title="Toggle Status" onclick="toggleStatus(' . $row['courses_pk'] . ', \'' . htmlspecialchars($row['course_name'], ENT_QUOTES) . '\')"><i class="fas fa-' . $toggleIcon . '"></i></button> ' .
-            '<button class="btn btn-sm btn-danger" title="Delete" onclick="deleteCourse(' . $row['courses_pk'] . ', \'' . htmlspecialchars($row['course_name'], ENT_QUOTES) . '\')"><i class="fas fa-trash"></i></button>'
+            '<button class="btn btn-warning" title="Edit" onclick=\'editCourse(' . $rowJson . ')\' aria-label="Edit course ' . htmlspecialchars($row['course_name'], ENT_QUOTES) . '"><i class="fas fa-edit" aria-hidden="true"></i></button>'
         ];
     }
 

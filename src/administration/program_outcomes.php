@@ -294,7 +294,7 @@ $theme->showHeader($context);
             <div class="col-sm-12">
                 <ol class="breadcrumb float-sm-end">
                     <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                    <li class="breadcrumb-item active">Program Outcomes</li>
+                    <li class="breadcrumb-item active" aria-current="page">Program Outcomes</li>
                 </ol>
             </div>
         </div>
@@ -306,46 +306,47 @@ $theme->showHeader($context);
         
         <?php if ($successMessage): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle"></i> <?= $successMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-check-circle" aria-hidden="true"></i> <?= $successMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
         
         <?php if ($errorMessage): ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle"></i> <?= $errorMessage ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <i class="fas fa-exclamation-circle" aria-hidden="true"></i> <?= $errorMessage ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
         </div>
         <?php endif; ?>
         
         <!-- Program Outcomes Table -->
         <div class="card shadow-sm">
             <div class="card-header">
-                <h3 class="card-title">
-                    <i class="fas fa-bullseye"></i> Program Outcomes
-                </h3>
+                <h2 class="card-title">
+                    <i class="fas fa-bullseye" aria-hidden="true"></i> Program Outcomes
+                </h2>
                 <div class="card-tools">
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addOutcomeModal">
-                        <i class="fas fa-plus"></i> Add Outcome
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addOutcomeModal" aria-label="Add new program outcome">
+                        <i class="fas fa-plus" aria-hidden="true"></i> Add Outcome
                     </button>
                 </div>
             </div>
             <div class="card-body">
-                <table id="outcomesTable" class="table table-bordered table-striped table-hover">
+                <table id="outcomesTable" class="table table-bordered table-striped table-hover" aria-label="Program outcomes data table">
+                    <caption class="visually-hidden">List of program outcomes with filtering and sorting capabilities</caption>
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Program</th>
-                            <th>PSLO Code</th>
-                            <th>PSLO Language</th>
-                            <th>ISLO Map</th>
-                            <th>Sequence</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Created By</th>
-                            <th>Updated</th>
-                            <th>Updated By</th>
-                            <th>Actions</th>
+                            <th scope="col">ID</th>
+                            <th scope="col">Program</th>
+                            <th scope="col">PSLO Code</th>
+                            <th scope="col">PSLO Language</th>
+                            <th scope="col">ISLO Map</th>
+                            <th scope="col">Sequence</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Created By</th>
+                            <th scope="col">Updated</th>
+                            <th scope="col">Updated By</th>
+                            <th scope="col">Actions</th>
                         </tr>
                         <tr>
                             <th></th>
@@ -377,14 +378,14 @@ $theme->showHeader($context);
                 <input type="hidden" name="action" value="add">
                 <div class="modal-header">
                     <h5 class="modal-title" id="addOutcomeModalLabel">
-                        <i class="fas fa-plus"></i> Add Program Outcome
+                        <i class="fas fa-plus" aria-hidden="true"></i> Add Program Outcome
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close dialog"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="programFk" class="form-label">Program <span class="text-danger">*</span></label>
-                        <select class="form-select" id="programFk" name="program_fk" required>
+                        <label for="programFk" class="form-label">Program <span class="text-danger" aria-label="required">*</span></label>
+                        <select class="form-select" id="programFk" name="program_fk" required aria-required="true">
                             <option value="">-- Select Program --</option>
                             <?php foreach ($programs as $prog): ?>
                                 <option value="<?= $prog['programs_pk'] ?>">
@@ -395,17 +396,17 @@ $theme->showHeader($context);
                     </div>
                     
                     <div class="mb-3">
-                        <label for="outcomeCode" class="form-label">Outcome Code <span class="text-danger">*</span></label>
+                        <label for="outcomeCode" class="form-label">Outcome Code <span class="text-danger" aria-label="required">*</span></label>
                         <input type="text" class="form-control" id="outcomeCode" name="outcome_code" 
-                               required pattern="[A-Z0-9_.-]+" 
-                               placeholder="e.g., PO1, PO-2, OUTCOME1">
-                        <small class="form-text text-muted">Letters, numbers, hyphens, underscores, and periods only</small>
+                               required aria-required="true" pattern="[A-Z0-9_.-]+" 
+                               placeholder="e.g., PO1, PO-2, OUTCOME1" aria-describedby="outcomeCodeHelp">
+                        <small id="outcomeCodeHelp" class="form-text text-muted">Letters, numbers, hyphens, underscores, and periods only</small>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="outcomeDescription" class="form-label">Description <span class="text-danger">*</span></label>
+                        <label for="outcomeDescription" class="form-label">Description <span class="text-danger" aria-label="required">*</span></label>
                         <textarea class="form-control" id="outcomeDescription" name="outcome_description" 
-                                  rows="3" required placeholder="Enter outcome description"></textarea>
+                                  rows="3" required aria-required="true" placeholder="Enter outcome description"></textarea>
                     </div>
                     
                     <div class="mb-3">
@@ -438,7 +439,7 @@ $theme->showHeader($context);
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Add Outcome
+                        <i class="fas fa-save" aria-hidden="true"></i> Add Outcome
                     </button>
                 </div>
             </form>
@@ -456,14 +457,14 @@ $theme->showHeader($context);
                 <input type="hidden" name="outcome_id" id="editOutcomeId">
                 <div class="modal-header">
                     <h5 class="modal-title" id="editOutcomeModalLabel">
-                        <i class="fas fa-edit"></i> Edit Program Outcome
+                        <i class="fas fa-edit" aria-hidden="true"></i> Edit Program Outcome
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close dialog"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="editProgramFk" class="form-label">Program <span class="text-danger">*</span></label>
-                        <select class="form-select" id="editProgramFk" name="program_fk" required>
+                        <label for="editProgramFk" class="form-label">Program <span class="text-danger" aria-label="required">*</span></label>
+                        <select class="form-select" id="editProgramFk" name="program_fk" required aria-required="true">
                             <option value="">-- Select Program --</option>
                             <?php foreach ($programs as $prog): ?>
                                 <option value="<?= $prog['programs_pk'] ?>">
@@ -474,16 +475,16 @@ $theme->showHeader($context);
                     </div>
                     
                     <div class="mb-3">
-                        <label for="editOutcomeCode" class="form-label">Outcome Code <span class="text-danger">*</span></label>
+                        <label for="editOutcomeCode" class="form-label">Outcome Code <span class="text-danger" aria-label="required">*</span></label>
                         <input type="text" class="form-control" id="editOutcomeCode" name="outcome_code" 
-                               required pattern="[A-Z0-9_.-]+">
-                        <small class="form-text text-muted">Letters, numbers, hyphens, underscores, and periods only</small>
+                               required aria-required="true" pattern="[A-Z0-9_.-]+" aria-describedby="editOutcomeCodeHelp">
+                        <small id="editOutcomeCodeHelp" class="form-text text-muted">Letters, numbers, hyphens, underscores, and periods only</small>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="editOutcomeDescription" class="form-label">Description <span class="text-danger">*</span></label>
+                        <label for="editOutcomeDescription" class="form-label">Description <span class="text-danger" aria-label="required">*</span></label>
                         <textarea class="form-control" id="editOutcomeDescription" name="outcome_description" 
-                                  rows="3" required></textarea>
+                                  rows="3" required aria-required="true"></textarea>
                     </div>
                     
                     <div class="mb-3">
@@ -513,7 +514,7 @@ $theme->showHeader($context);
                         </div>
                     </div>
                     <hr>
-                    <h6 class="text-muted mb-3"><i class="fas fa-history"></i> Audit Information</h6>
+                    <h3 class="text-muted mb-3"><i class="fas fa-history" aria-hidden="true"></i> Audit Information</h3>
                     <div class="row mb-2">
                         <div class="col-md-6">
                             <small class="text-muted">Created:</small>
@@ -538,7 +539,7 @@ $theme->showHeader($context);
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Update Outcome
+                        <i class="fas fa-save" aria-hidden="true"></i> Update Outcome
                     </button>
                 </div>
             </form>
