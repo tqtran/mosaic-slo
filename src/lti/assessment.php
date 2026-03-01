@@ -573,6 +573,104 @@ ob_start();
     .slo-content.fade-in {
         opacity: 1;
     }
+    
+    /* ==================== WCAG 2.2 AA Accessibility Styles ==================== */
+    
+    /* Skip link - visible on focus for keyboard navigation */
+    .skip-link {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 10000;
+        padding: 0.75rem 1.5rem;
+        transform: translateY(-100%);
+    }
+    .skip-link:focus {
+        transform: translateY(0);
+    }
+    
+    /* Enhanced focus indicators (WCAG 2.4.7, 2.4.11) */
+    a:focus,
+    button:focus,
+    input:focus,
+    select:focus,
+    textarea:focus,
+    .btn:focus,
+    .btn-check:focus + label,
+    [tabindex]:focus {
+        outline: 3px solid #0D47A1;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 4px rgba(13, 71, 161, 0.2);
+    }
+    
+    /* Remove default Bootstrap focus styles to avoid double outlines */
+    .btn-check:focus + .btn {
+        box-shadow: 0 0 0 4px rgba(13, 71, 161, 0.2);
+    }
+    
+    /* Focus visible for :focus-visible support */
+    *:focus:not(:focus-visible) {
+        outline: none;
+        box-shadow: none;
+    }
+    *:focus-visible {
+        outline: 3px solid #0D47A1;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 4px rgba(13, 71, 161, 0.2);
+    }
+    
+    /* Improved color contrast for muted text (WCAG 1.4.3) */
+    .text-muted {
+        color: #5a6268 !important; /* 4.5:1 contrast ratio on white */
+    }
+    
+    /* Visually hidden but accessible to screen readers */
+    .visually-hidden-focusable:not(:focus):not(:focus-within) {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+    }
+    
+    /* Touch target sizes (WCAG 2.5.8) - minimum 24x24px */
+    .btn-sm {
+        min-height: 32px;
+        min-width: 32px;
+        padding: 0.25rem 0.75rem;
+    }
+    .btn-tool {
+        min-height: 32px;
+        min-width: 32px;
+    }
+    
+    /* Remove default fieldset styling to prevent spacing issues */
+    fieldset.outcome-buttons {
+        border: 0;
+        margin: 0;
+        padding: 0;
+        min-width: 0;
+    }
+    
+    /* Table caption for screen readers */
+    caption {
+        caption-side: top;
+        text-align: left;
+        padding: 0.75rem;
+    }
+    
+    /* Ensure save indicators are announced but not visually intrusive */
+    .save-indicator[role="status"] {
+        min-width: 20px;
+        min-height: 20px;
+        display: inline-block;
+    }
+    
+    /* ==================== End Accessibility Styles ==================== */
 </style>
 <?php
 $customStyles = ob_get_clean();
@@ -593,9 +691,13 @@ $theme = ThemeLoader::getActiveTheme(null, 'embedded');
 $theme->showHeader($context);
 ?>
 
+<!-- Skip Navigation Link for Keyboard Users -->
+<a href="#main-content" class="skip-link visually-hidden-focusable btn btn-primary">Skip to main content</a>
+
+<header role="banner">
 <h1 class="mb-4">SLO Assessment Entry</h1>
 
-<div class="lti-header">
+<div class="lti-header" aria-label="Course and instructor information">
     <div class="container-fluid">
         <div class="row align-items-center">
             <div class="col-md-8">
@@ -619,7 +721,9 @@ $theme->showHeader($context);
         </div>
     </div>
 </div>
+</header>
 
+<main id="main-content" role="main">
 <div class="container-fluid">
     <?php if ($successMessage): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -650,14 +754,18 @@ $theme->showHeader($context);
         <!-- Instructions Card -->
         <div class="card card-info card-outline mb-3" id="instructions-card">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-question-circle"></i> Instructions</h3>
+                <h2 class="card-title" id="instructions-title"><i class="fas fa-question-circle" aria-hidden="true"></i> Instructions</h2>
                 <div class="card-tools">
-                    <button type="button" class="btn btn-tool" data-lte-toggle="card-collapse">
-                        <i class="fas fa-minus"></i>
+                    <button type="button" class="btn btn-tool" 
+                            data-lte-toggle="card-collapse" 
+                            aria-expanded="true" 
+                            aria-controls="instructions-body"
+                            aria-label="Collapse instructions section">
+                        <i class="fas fa-minus" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
-            <div class="card-body">
+            <div class="card-body" id="instructions-body" role="region" aria-labelledby="instructions-title">
                 <ol class="mb-2">
                     <li><strong>Select Course SLO:</strong> Choose the specific learning outcome you're assessing.</li>
                     <li><strong>Choose Assessment Type:</strong> Select the type of assessment used (Quiz, Exam, Project, etc.). This is saved per SLO and will be remembered for this course section.</li>
@@ -665,27 +773,33 @@ $theme->showHeader($context);
                     <li><strong>Quick Actions:</strong> Use the buttons above the table to quickly set all students to the same achievement level.</li>
                     <li><strong>Continuous Improvement Strategies (Optional):</strong> Check any strategies you've implemented or plan to implement.</li>
                 </ol>
-                <p class="mb-0 text-muted"><i class="fas fa-info-circle"></i> <em>Note: Looking for the save button? All changes are saved automatically.</em></p>
+                <p class="mb-0 text-muted"><i class="fas fa-info-circle" aria-hidden="true"></i> <em>Note: Looking for the save button? All changes are saved automatically.</em></p>
             </div>
         </div>
 
         <!-- SLO Selection Buttons -->
         <div class="card card-primary card-outline mb-3">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-tasks"></i> Select Student Learning Outcome</h3>
+                <h2 class="card-title"><i class="fas fa-tasks" aria-hidden="true"></i> Select Student Learning Outcome</h2>
             </div>
             <div class="card-body">
-                <div class="row g-2">
-                    <?php foreach ($slos as $slo): ?>
+                <nav aria-label="Student Learning Outcomes">
+                <div class="row g-2" role="group">
+                    <?php foreach ($slos as $slo): 
+                        $isSelected = $slo['student_learning_outcomes_pk'] == $selectedSloId;
+                    ?>
                         <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex">
                             <a href="?crn=<?= urlencode($selectedCrn) ?>&term_code=<?= urlencode($selectedTermCode) ?>&slo_id=<?= $slo['student_learning_outcomes_pk'] ?>" 
-                               class="btn slo-button <?= $slo['student_learning_outcomes_pk'] == $selectedSloId ? 'btn-primary' : 'btn-outline-primary' ?> w-100 h-100">
+                               class="btn slo-button <?= $isSelected ? 'btn-primary' : 'btn-outline-primary' ?> w-100 h-100"
+                               <?= $isSelected ? 'aria-current="true"' : '' ?>
+                               aria-label="<?= htmlspecialchars($slo['slo_code'] . ': ' . $slo['slo_description']) ?>">
                                 <strong><?= htmlspecialchars($slo['slo_code']) ?></strong>
                                 <small class="slo-description mt-1"><?= htmlspecialchars($slo['slo_description']) ?></small>
                             </a>
                         </div>
                     <?php endforeach; ?>
                 </div>
+                </nav>
             </div>
         </div>
 
@@ -702,13 +816,13 @@ $theme->showHeader($context);
             <!-- Assessment Method Selection -->
             <div class="card card-info card-outline mb-3">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-clipboard-list"></i> Assessment Method</h3>
+                    <h2 class="card-title"><i class="fas fa-clipboard-list" aria-hidden="true"></i> Assessment Method</h2>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
-                            <label for="assessment_method" class="form-label">What type of assessment are you recording?</label>
-                            <select class="form-select" id="assessment_method" name="assessment_method" required>
+                            <label for="assessment_method" class="form-label">What type assessment are you recording? <span class="text-danger" aria-label="required">*</span></label>
+                            <select class="form-select" id="assessment_method" name="assessment_method" required aria-required="true">
                                 <option value="">-- Select Assessment Type --</option>
                                 <?php
                                 $assessmentTypes = explode(',', $config->get('app.assessment_types', 'Quiz,Exam,Project,Assignment'));
@@ -733,31 +847,35 @@ $theme->showHeader($context);
 
             <div class="card">
                 <div class="card-header bg-primary text-white">
-                    <h3 class="card-title">
-                        <i class="fas fa-users"></i> Student Assessments (<?= count($students) ?> students)
-                    </h3>
+                    <h2 class="card-title">
+                        <i class="fas fa-users" aria-hidden="true"></i> Student Assessments (<?= count($students) ?> students)
+                    </h2>
                     <div class="card-tools">
-                        <div class="btn-group">
-                            <button type="button" class="btn btn-sm btn-success" onclick="setAllOutcomes('met')">
-                                <i class="fas fa-check"></i> All Met
+                        <div class="btn-group" role="group" aria-label="Quick assessment actions">
+                            <button type="button" class="btn btn-sm btn-success" onclick="setAllOutcomes('met')" 
+                                    aria-label="Mark all students as met">
+                                <i class="fas fa-check" aria-hidden="true"></i> All Met
                             </button>
-                            <button type="button" class="btn btn-sm btn-danger" onclick="setAllOutcomes('not_met')">
-                                <i class="fas fa-times"></i> All Not Met
+                            <button type="button" class="btn btn-sm btn-danger" onclick="setAllOutcomes('not_met')"
+                                    aria-label="Mark all students as not met">
+                                <i class="fas fa-times" aria-hidden="true"></i> All Not Met
                             </button>
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="setAllOutcomes('pending')">
-                                <i class="fas fa-circle"></i> All Unassessed
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="setAllOutcomes('pending')"
+                                    aria-label="Mark all students as not assessed">
+                                <i class="fas fa-minus" aria-hidden="true"></i> All Unassessed
                             </button>
                         </div>
                     </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-striped table-hover mb-0">
+                        <table class="table table-striped table-hover mb-0" aria-label="Student assessment results">
+                            <caption class="visually-hidden">Student assessment results for selected SLO</caption>
                             <thead>
                                 <tr>
-                                    <th>Student ID</th>
-                                    <th>Student Name</th>
-                                    <th>Achievement Level</th>
+                                    <th scope="col">Student ID</th>
+                                    <th scope="col">Student Name</th>
+                                    <th scope="col">Achievement Level</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -772,23 +890,23 @@ $theme->showHeader($context);
                                             <strong><?= htmlspecialchars($student['first_name']) ?> <?= htmlspecialchars($student['last_name']) ?></strong>
                                         </td>
                                         <td>
-                                            <div class="btn-group btn-group-sm outcome-buttons" role="group" data-enrollment="<?= $student['enrollment_pk'] ?>">
+                                            <fieldset class="btn-group btn-group-sm outcome-buttons" role="group" aria-label="Achievement level for <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?>" data-enrollment="<?= $student['enrollment_pk'] ?>">
                                                 <input type="radio" class="btn-check outcome-radio" name="outcome[<?= $student['enrollment_pk'] ?>]" id="met_<?= $student['enrollment_pk'] ?>" value="met" <?= $currentLevel === 'met' ? 'checked' : '' ?> data-enrollment="<?= $student['enrollment_pk'] ?>">
                                                 <label class="btn btn-outline-success" for="met_<?= $student['enrollment_pk'] ?>">
-                                                    <i class="fas fa-check"></i> Met
+                                                    <i class="fas fa-check" aria-hidden="true"></i> Met
                                                 </label>
 
                                                 <input type="radio" class="btn-check outcome-radio" name="outcome[<?= $student['enrollment_pk'] ?>]" id="not_met_<?= $student['enrollment_pk'] ?>" value="not_met" <?= $currentLevel === 'not_met' ? 'checked' : '' ?> data-enrollment="<?= $student['enrollment_pk'] ?>">
                                                 <label class="btn btn-outline-danger" for="not_met_<?= $student['enrollment_pk'] ?>">
-                                                    <i class="fas fa-times"></i> Not Met
+                                                    <i class="fas fa-times" aria-hidden="true"></i> Not Met
                                                 </label>
 
                                                 <input type="radio" class="btn-check outcome-radio" name="outcome[<?= $student['enrollment_pk'] ?>]" id="pending_<?= $student['enrollment_pk'] ?>" value="pending" <?= $currentLevel === 'pending' ? 'checked' : '' ?> data-enrollment="<?= $student['enrollment_pk'] ?>">
                                                 <label class="btn btn-outline-secondary" for="pending_<?= $student['enrollment_pk'] ?>">
-                                                    <i class="fas fa-minus"></i> Not Assessed
+                                                    <i class="fas fa-minus" aria-hidden="true"></i> Not Assessed
                                                 </label>
-                                            </div>
-                                            <span class="save-indicator ms-2" id="indicator_<?= $student['enrollment_pk'] ?>"></span>
+                                            </fieldset>
+                                            <span class="save-indicator ms-2" id="indicator_<?= $student['enrollment_pk'] ?>" role="status" aria-live="polite" aria-atomic="true"></span>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -802,16 +920,22 @@ $theme->showHeader($context);
         <!-- Continuous Improvement Strategies -->
         <div class="card card-warning card-outline mt-3">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-lightbulb"></i> Continuous Improvement Strategies (Optional)</h3>
+                <h2 class="card-title"><i class="fas fa-lightbulb" aria-hidden="true"></i> Continuous Improvement Strategies (Optional)</h2>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-3">
-                    Select any strategies you've implemented or plan to implement to improve student learning for this outcome.
-                    <span class="float-end">
-                        <a href="#" id="selectAllStrategies" class="btn btn-sm btn-outline-primary"><i class="fas fa-check-square"></i> Select All</a>
-                        <a href="#" id="selectNoneStrategies" class="btn btn-sm btn-outline-secondary"><i class="fas fa-square"></i> Select None</a>
-                    </span>
-                </p>
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <p class="text-muted mb-0">
+                        Select any strategies you've implemented or plan to implement to improve student learning for this outcome.
+                    </p>
+                    <div class="btn-group" role="group" aria-label="Strategy selection actions">
+                        <button type="button" id="selectAllStrategies" class="btn btn-sm btn-outline-primary" aria-label="Select all strategies">
+                            <i class="fas fa-check-square" aria-hidden="true"></i> Select All
+                        </button>
+                        <button type="button" id="selectNoneStrategies" class="btn btn-sm btn-outline-secondary" aria-label="Clear all strategies">
+                            <i class="fas fa-square" aria-hidden="true"></i> Select None
+                        </button>
+                    </div>
+                </div>
                 <div class="row">
                     <?php
                     $improvementStrategies = explode(',', $config->get('app.improvement_strategies', ''));
@@ -887,9 +1011,10 @@ $theme->showHeader($context);
     </div>
     <?php endif; ?>
 </div>
+</main>
 
 <!-- Toast Container -->
-<div id="toast-container" class="toast-container"></div>
+<div id="toast-container" class="toast-container" role="region" aria-live="polite" aria-atomic="true"></div>
 
 <script>
 // CSRF token for AJAX requests
@@ -1090,6 +1215,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 100);
     }
     
+    // Collapsible card accessibility - sync aria-expanded with card state
+    const collapseButton = document.querySelector('[data-lte-toggle="card-collapse"]');
+    const instructionsCard = document.getElementById('instructions-card');
+    if (collapseButton && instructionsCard) {
+        // Listen for AdminLTE card events
+        instructionsCard.addEventListener('collapsed.lte.cardwidget', function() {
+            collapseButton.setAttribute('aria-expanded', 'false');
+        });
+        instructionsCard.addEventListener('expanded.lte.cardwidget', function() {
+            collapseButton.setAttribute('aria-expanded', 'true');
+        });
+        
+        // Fallback: manual click handler if AdminLTE doesn't fire events
+        collapseButton.addEventListener('click', function() {
+            setTimeout(() => {
+                const isCollapsed = instructionsCard.classList.contains('collapsed-card');
+                collapseButton.setAttribute('aria-expanded', !isCollapsed);
+            }, 100);
+        });
+    }
+    
     document.querySelectorAll('.outcome-radio').forEach(function(radio) {
         radio.addEventListener('change', function() {
             if (this.checked) {
@@ -1148,7 +1294,7 @@ document.getElementById('selectNoneStrategies')?.addEventListener('click', funct
 });
 </script>
 
-<footer class="mt-5 py-3 border-top">
+<footer role="contentinfo" class="mt-5 py-3 border-top">
     <div class="container-fluid">
         <div class="text-center text-muted">
             <small>v<?= htmlspecialchars(trim(file_get_contents(__DIR__ . '/../VERSION'))) ?></small>
