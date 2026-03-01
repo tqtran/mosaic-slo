@@ -328,6 +328,7 @@ CREATE TABLE tbl_section_slo_methods (
     term_code VARCHAR(50) NOT NULL COMMENT 'Term code from enrollment',
     student_learning_outcome_fk INT NOT NULL,
     assessment_method VARCHAR(100) NOT NULL COMMENT 'Type of assessment: Quiz, Exam, Project, etc.',
+    improvement_strategies TEXT COMMENT 'Comma-separated list of continuous improvement strategies',
     assessed_date DATE COMMENT 'Date this assessment was administered',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

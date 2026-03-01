@@ -92,10 +92,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
             
-            if (empty($assessmentMethod)) {
+            // Allow empty assessment method (means user is clearing/deselecting it)
+            $userId = $_SESSION['user_id'] ?? null;
+            $methodExists = $db->query(
+                "SELECT section_slo_methods_pk FROM {$dbPrefix}section_slo_methods 
+                 WHERE crn = ? AND term_code = ? AND student_learning_outcome_fk = ?",
+                [$crn, $termCode, $sloId],
+                'ssi'
+            );
+            
+            if ($methodExists->rowCount() > 0) {
+                // Update existing method (can be set to empty/NULL to clear)
+                $db->query(
+                    "UPDATE {$dbPrefix}section_slo_methods 
+                     SET assessment_method = ?, assessed_date = CURDATE(), updated_at = NOW(), updated_by_fk = ?
+                     WHERE crn = ? AND term_code = ? AND student_learning_outcome_fk = ?",
+                    [$assessmentMethod, $userId, $crn, $termCode, $sloId],
+                    'sissi'
+                );
+            } else {
+                // Only insert if assessment method is provided (not empty)
+                if (!empty($assessmentMethod)) {
+                    $db->query(
+                        "INSERT INTO {$dbPrefix}section_slo_methods 
+                         (crn, term_code, student_learning_outcome_fk, assessment_method, assessed_date, created_at, updated_at, created_by_fk, updated_by_fk)
+                         VALUES (?, ?, ?, ?, CURDATE(), NOW(), NOW(), ?, ?)",
+                        [$crn, $termCode, $sloId, $assessmentMethod, $userId, $userId],
+                        'ssisii'
+                    );
+                }
+            }
+            
+            $message = empty($assessmentMethod) ? 'Assessment method cleared' : 'Assessment method saved';
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => $message]);
+            exit;
+            
+        } elseif ($action === 'save_strategies') {
+            // AJAX handler for saving improvement strategies
+            $crn = $_POST['crn'] ?? '';
+            $termCode = $_POST['term_code'] ?? '';
+            $sloId = (int)($_POST['slo_id'] ?? 0);
+            $improvementStrategies = $_POST['improvement_strategies'] ?? [];
+            
+            if (empty($crn) || empty($termCode) || $sloId <= 0) {
                 http_response_code(400);
-                echo json_encode(['success' => false, 'message' => 'Assessment method is required']);
+                echo json_encode(['success' => false, 'message' => 'Invalid course section or SLO']);
                 exit;
+            }
+            
+            // Convert strategies array to pipe-separated string (using || to avoid conflicts with commas in strategies)
+            $strategiesString = '';
+            if (is_array($improvementStrategies) && !empty($improvementStrategies)) {
+                $strategiesString = implode('||', array_map('trim', $improvementStrategies));
             }
             
             $userId = $_SESSION['user_id'] ?? null;
@@ -107,27 +156,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             
             if ($methodExists->rowCount() > 0) {
-                // Update existing method
+                // Update existing record
                 $db->query(
                     "UPDATE {$dbPrefix}section_slo_methods 
-                     SET assessment_method = ?, assessed_date = CURDATE(), updated_at = NOW(), updated_by_fk = ?
+                     SET improvement_strategies = ?, updated_at = NOW(), updated_by_fk = ?
                      WHERE crn = ? AND term_code = ? AND student_learning_outcome_fk = ?",
-                    [$assessmentMethod, $userId, $crn, $termCode, $sloId],
+                    [$strategiesString, $userId, $crn, $termCode, $sloId],
                     'sissi'
                 );
             } else {
-                // Insert new method record
+                // Insert new record with just strategies (no assessment method yet)
                 $db->query(
                     "INSERT INTO {$dbPrefix}section_slo_methods 
-                     (crn, term_code, student_learning_outcome_fk, assessment_method, assessed_date, created_at, updated_at, created_by_fk, updated_by_fk)
-                     VALUES (?, ?, ?, ?, CURDATE(), NOW(), NOW(), ?, ?)",
-                    [$crn, $termCode, $sloId, $assessmentMethod, $userId, $userId],
+                     (crn, term_code, student_learning_outcome_fk, improvement_strategies, created_at, updated_at, created_by_fk, updated_by_fk)
+                     VALUES (?, ?, ?, ?, NOW(), NOW(), ?, ?)",
+                    [$crn, $termCode, $sloId, $strategiesString, $userId, $userId],
                     'ssisii'
                 );
             }
             
+            $count = is_array($improvementStrategies) ? count($improvementStrategies) : 0;
             header('Content-Type: application/json');
-            echo json_encode(['success' => true, 'message' => 'Assessment method saved']);
+            echo json_encode(['success' => true, 'message' => "Saved {$count} improvement strategies"]);
             exit;
             
         } elseif ($action === 'save_assessments') {
@@ -366,9 +416,10 @@ if ($selectedCrn && $selectedTermCode) {
 
 // Get current assessment method for this section/SLO if it exists
 $currentAssessmentMethod = '';
+$currentImprovementStrategies = [];
 if ($selectedCrn && $selectedTermCode && $selectedSloId > 0) {
     $methodQuery = "
-        SELECT assessment_method
+        SELECT assessment_method, improvement_strategies
         FROM {$dbPrefix}section_slo_methods
         WHERE crn = ? AND term_code = ? AND student_learning_outcome_fk = ?
     ";
@@ -376,6 +427,10 @@ if ($selectedCrn && $selectedTermCode && $selectedSloId > 0) {
     $methodRow = $methodResult->fetch();
     if ($methodRow) {
         $currentAssessmentMethod = $methodRow['assessment_method'];
+        if (!empty($methodRow['improvement_strategies'])) {
+            $currentImprovementStrategies = explode('||', $methodRow['improvement_strategies']);
+            $currentImprovementStrategies = array_map('trim', $currentImprovementStrategies);
+        }
     }
 }
 
@@ -490,11 +545,26 @@ ob_start();
     .btn.slo-button {
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: flex-start;
         justify-content: flex-start;
         padding: 10px 15px;
         white-space: normal;
         height: auto;
+        text-align: left;
+    }
+    .card-header {
+        padding: 0.75rem 1.25rem;
+    }
+    .card-header .card-title {
+        margin-bottom: 0;
+    }
+    .card-tools .btn-tool {
+        color: inherit;
+        font-size: 1.2rem;
+    }
+    #instructionsChevron {
+        color: #0c5460;
+        transition: transform 0.3s ease;
     }
 </style>
 <?php
@@ -568,6 +638,26 @@ $theme->showHeader($context);
             No students are currently enrolled in this course section.
         </div>
     <?php else: ?>
+        <!-- Instructions Card -->
+        <div class="card card-info card-outline mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#instructionsCollapse" style="cursor: pointer;">
+                <h3 class="card-title mb-0"><i class="fas fa-question-circle"></i> Instructions</h3>
+                <i class="fas fa-chevron-up" id="instructionsChevron"></i>
+            </div>
+            <div id="instructionsCollapse" class="collapse show">
+                <div class="card-body">
+                    <ol class="mb-2">
+                        <li><strong>Select Course SLO:</strong> Choose the specific learning outcome you're assessing.</li>
+                        <li><strong>Choose Assessment Type:</strong> Select the type of assessment used (Quiz, Exam, Project, etc.). This is saved per SLO and will be remembered for this course section.</li>
+                        <li><strong>Enter Achievement Levels:</strong> Click the button to indicate whether each student Met, did Not Meet, or have Not Assessed the learning outcome.</li>
+                        <li><strong>Quick Actions:</strong> Use the buttons above the table to quickly set all students to the same achievement level.</li>
+                        <li><strong>Continuous Improvement Strategies (Optional):</strong> Check any strategies you've implemented or plan to implement.</li>
+                    </ol>
+                    <p class="mb-0 text-muted"><i class="fas fa-info-circle"></i> <em>Note: All changes are saved automatically.</em></p>
+                </div>
+            </div>
+        </div>
+
         <!-- SLO Selection Buttons -->
         <div class="card card-primary card-outline mb-3">
             <div class="card-header">
@@ -710,18 +800,35 @@ $theme->showHeader($context);
             </div>
         </form>
 
-        <!-- Instructions Card -->
-        <div class="card card-info card-outline mt-4">
+        <!-- Continuous Improvement Strategies -->
+        <div class="card card-warning card-outline mt-3">
             <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-question-circle"></i> Instructions</h3>
+                <h3 class="card-title"><i class="fas fa-lightbulb"></i> Continuous Improvement Strategies (Optional)</h3>
             </div>
             <div class="card-body">
-                <ol class="mb-0">
-                    <li><strong>Select Course SLO:</strong> Choose the specific learning outcome you're assessing.</li>
-                    <li><strong>Choose Assessment Type:</strong> Select the type of assessment used (Quiz, Exam, Project, etc.). This is saved per SLO and will be remembered for this course section.</li>
-                    <li><strong>Enter Achievement Levels:</strong> Click the button to indicate whether each student Met, did Not Meet, or have Not Assessed the learning outcome. <strong>Assessments are saved automatically</strong> when you click.</li>
-                    <li><strong>Quick Actions:</strong> Use the buttons above the table to quickly set all students to the same achievement level.</li>
-                </ol>
+                <p class="text-muted mb-3">Select any strategies you've implemented or plan to implement to improve student learning for this outcome.</p>
+                <div class="row">
+                    <?php
+                    $improvementStrategies = explode(',', $config->get('app.improvement_strategies', ''));
+                    foreach ($improvementStrategies as $index => $strategy):
+                        $strategy = trim($strategy);
+                        if (empty($strategy)) continue;
+                        $checked = in_array($strategy, $currentImprovementStrategies) ? ' checked' : '';
+                        $strategyId = 'strategy_' . $index;
+                    ?>
+                        <div class="col-md-6 col-lg-4 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input improvement-strategy-checkbox" type="checkbox" 
+                                       id="<?= $strategyId ?>" 
+                                       name="improvement_strategies[]" 
+                                       value="<?= htmlspecialchars($strategy) ?>"<?= $checked ?>>
+                                <label class="form-check-label" for="<?= $strategyId ?>">
+                                    <?= htmlspecialchars($strategy) ?>
+                                </label>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </div>
     <?php endif; ?>
@@ -816,6 +923,9 @@ function showToast(message, type = 'info', duration = 3000) {
 
 // Save individual assessment via AJAX
 function saveAssessment(enrollmentId, achievementLevel) {
+    // Get UI elements for this specific enrollment
+    const indicator = document.getElementById('indicator_' + enrollmentId);
+    
     const formData = new FormData();
     formData.append('csrf_token', csrfToken);
     formData.append('action', 'save_assessments');
@@ -835,7 +945,14 @@ function saveAssessment(enrollmentId, achievementLevel) {
             ok: response.ok,
             status: response.status,
             data: data
-        }));
+        })).catch(jsonError => {
+            // If JSON parsing fails, return error info
+            return {
+                ok: false,
+                status: response.status,
+                data: { success: false, message: 'Invalid server response' }
+            };
+        });
     })
     .then(({ok, status, data}) => {
         if (ok && data.success) {
@@ -845,14 +962,6 @@ function saveAssessment(enrollmentId, achievementLevel) {
                     indicator.innerHTML = '';
                 }, 2000);
             }
-            statusBadge.className = 'badge bg-success';
-            statusText.textContent = 'Saved';
-            spinner.classList.add('d-none');
-            
-            setTimeout(() => {
-                statusBadge.className = 'badge bg-secondary';
-                statusText.textContent = 'Ready';
-            }, 2000);
             showToast('Assessment saved successfully', 'success', 2000);
         } else {
             throw new Error(data.message || 'Save failed');
@@ -862,17 +971,11 @@ function saveAssessment(enrollmentId, achievementLevel) {
         console.error('Error saving assessment:', error);
         if (indicator) {
             indicator.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i>';
+            setTimeout(() => {
+                indicator.innerHTML = '';
+            }, 3000);
         }
-        statusBadge.className = 'badge bg-danger';
-        statusText.textContent = 'Error';
-        spinner.classList.add('d-none');
         showToast(error.message || 'Error saving assessment', 'error', 3000);
-        
-        setTimeout(() => {
-            if (indicator) indicator.innerHTML = '';
-            statusBadge.className = 'badge bg-secondary';
-            statusText.textContent = 'Ready';
-        }, 3000);
     });
 }
 
@@ -898,18 +1001,75 @@ function saveAssessmentMethod(assessmentMethod) {
             ok: response.ok,
             status: response.status,
             data: data
-        }));
+        })).catch(jsonError => {
+            // If JSON parsing fails, return error info
+            return {
+                ok: false,
+                status: response.status,
+                data: { success: false, message: 'Invalid server response' }
+            };
+        });
     })
     .then(({ok, status, data}) => {
         if (ok && data.success) {
-            showToast('Assessment method saved: ' + assessmentMethod, 'success', 3000);
+            const message = assessmentMethod ? `Assessment method saved: ${assessmentMethod}` : 'Assessment method cleared';
+            showToast(message, 'success', 3000);
         } else {
             showToast('Error: ' + (data.message || 'Failed to save'), 'error');
         }
     })
     .catch(error => {
         console.error('Error saving method:', error);
-        showToast(error.message || 'Error saving assessment method', 'error');
+        showToast('Error saving assessment method', 'error');
+    });
+}
+
+// Save improvement strategies separately
+function saveImprovementStrategies() {
+    const formData = new FormData();
+    formData.append('csrf_token', csrfToken);
+    formData.append('action', 'save_strategies');
+    formData.append('crn', selectedCrn);
+    formData.append('term_code', selectedTermCode);
+    formData.append('slo_id', selectedSloId);
+    
+    // Add improvement strategies from checkboxes
+    const checkboxes = document.querySelectorAll('.improvement-strategy-checkbox:checked');
+    checkboxes.forEach(checkbox => {
+        formData.append('improvement_strategies[]', checkbox.value);
+    });
+
+    showToast('Saving improvement strategies...', 'info', 2000);
+
+    fetch('', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        // Parse JSON regardless of status code
+        return response.json().then(data => ({
+            ok: response.ok,
+            status: response.status,
+            data: data
+        })).catch(jsonError => {
+            // If JSON parsing fails, return error info
+            return {
+                ok: false,
+                status: response.status,
+                data: { success: false, message: 'Invalid server response' }
+            };
+        });
+    })
+    .then(({ok, status, data}) => {
+        if (ok && data.success) {
+            showToast(data.message || 'Improvement strategies saved', 'success', 3000);
+        } else {
+            showToast('Error: ' + (data.message || 'Failed to save'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving strategies:', error);
+        showToast('Error saving improvement strategies', 'error');
     });
 }
 
@@ -929,9 +1089,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const methodSelect = document.getElementById('assessment_method');
     if (methodSelect) {
         methodSelect.addEventListener('change', function() {
-            if (this.value) {
-                saveAssessmentMethod(this.value);
-            }
+            // Always save, even if empty (allows deselecting)
+            saveAssessmentMethod(this.value);
+        });
+    }
+    
+    // Improvement strategies checkbox change handler
+    document.querySelectorAll('.improvement-strategy-checkbox').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            saveImprovementStrategies();
+        });
+    });
+    
+    // Instructions collapse icon rotation
+    const instructionsCollapse = document.getElementById('instructionsCollapse');
+    const instructionsChevron = document.getElementById('instructionsChevron');
+    if (instructionsCollapse && instructionsChevron) {
+        instructionsCollapse.addEventListener('show.bs.collapse', function() {
+            instructionsChevron.classList.remove('fa-chevron-down');
+            instructionsChevron.classList.add('fa-chevron-up');
+        });
+        instructionsCollapse.addEventListener('hide.bs.collapse', function() {
+            instructionsChevron.classList.remove('fa-chevron-up');
+            instructionsChevron.classList.add('fa-chevron-down');
         });
     }
 });
@@ -948,5 +1128,13 @@ function setAllOutcomes(outcome) {
     });
 }
 </script>
+
+<footer class="mt-5 py-3 border-top">
+    <div class="container-fluid">
+        <div class="text-center text-muted">
+            <small>v<?= htmlspecialchars(trim(file_get_contents(__DIR__ . '/../VERSION'))) ?></small>
+        </div>
+    </div>
+</footer>
 
 <?php $theme->showFooter($context); ?>
