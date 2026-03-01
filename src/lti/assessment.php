@@ -566,6 +566,13 @@ ob_start();
         color: #0c5460;
         transition: transform 0.3s ease;
     }
+    .slo-content {
+        opacity: 0;
+        transition: opacity 0.5s ease-in;
+    }
+    .slo-content.fade-in {
+        opacity: 1;
+    }
 </style>
 <?php
 $customStyles = ob_get_clean();
@@ -653,7 +660,7 @@ $theme->showHeader($context);
                         <li><strong>Quick Actions:</strong> Use the buttons above the table to quickly set all students to the same achievement level.</li>
                         <li><strong>Continuous Improvement Strategies (Optional):</strong> Check any strategies you've implemented or plan to implement.</li>
                     </ol>
-                    <p class="mb-0 text-muted"><i class="fas fa-info-circle"></i> <em>Note: All changes are saved automatically.</em></p>
+                    <p class="mb-0 text-muted"><i class="fas fa-info-circle"></i> <em>Note: Looking for the save button? All changes are saved automatically.</em></p>
                 </div>
             </div>
         </div>
@@ -677,7 +684,9 @@ $theme->showHeader($context);
             </div>
         </div>
 
+        <?php if ($selectedSloId): ?>
         <!-- Assessment Entry Form -->
+        <div class="slo-content" id="sloContent">
         <form method="POST" action="">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
             <input type="hidden" name="action" value="save_assessments">
@@ -782,21 +791,6 @@ $theme->showHeader($context);
                         </table>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <small class="text-muted">
-                                <i class="fas fa-info-circle"></i> Assessment data is automatically saved when you select an achievement level.
-                            </small>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <span id="save-status" class="badge bg-secondary">
-                                <i class="fas fa-circle-notch fa-spin d-none" id="save-spinner"></i>
-                                <span id="save-text">Ready</span>
-                            </span>
-                        </div>
-                    </div>
-                </div>
             </div>
         </form>
 
@@ -806,7 +800,13 @@ $theme->showHeader($context);
                 <h3 class="card-title"><i class="fas fa-lightbulb"></i> Continuous Improvement Strategies (Optional)</h3>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-3">Select any strategies you've implemented or plan to implement to improve student learning for this outcome.</p>
+                <p class="text-muted mb-3">
+                    Select any strategies you've implemented or plan to implement to improve student learning for this outcome.
+                    <span class="float-end">
+                        <a href="#" id="selectAllStrategies" class="btn btn-sm btn-outline-primary"><i class="fas fa-check-square"></i> Select All</a>
+                        <a href="#" id="selectNoneStrategies" class="btn btn-sm btn-outline-secondary"><i class="fas fa-square"></i> Select None</a>
+                    </span>
+                </p>
                 <div class="row">
                     <?php
                     $improvementStrategies = explode(',', $config->get('app.improvement_strategies', ''));
@@ -831,6 +831,8 @@ $theme->showHeader($context);
                 </div>
             </div>
         </div>
+        </div><!-- /.slo-content -->
+        <?php endif; ?>
     <?php endif; ?>
     
     <?php if (defined('DEBUG_MODE') && DEBUG_MODE === true): ?>
@@ -1075,6 +1077,14 @@ function saveImprovementStrategies() {
 
 // Attach event listeners to all radio buttons
 document.addEventListener('DOMContentLoaded', function() {
+    // Fade in SLO content on page load
+    const sloContent = document.getElementById('sloContent');
+    if (sloContent) {
+        setTimeout(() => {
+            sloContent.classList.add('fade-in');
+        }, 100);
+    }
+    
     document.querySelectorAll('.outcome-radio').forEach(function(radio) {
         radio.addEventListener('change', function() {
             if (this.checked) {
@@ -1127,6 +1137,22 @@ function setAllOutcomes(outcome) {
         }
     });
 }
+
+// Select all improvement strategies
+document.getElementById('selectAllStrategies')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    document.querySelectorAll('.improvement-strategy-checkbox').forEach(function(checkbox) {
+        checkbox.checked = true;
+    });
+});
+
+// Select none improvement strategies
+document.getElementById('selectNoneStrategies')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    document.querySelectorAll('.improvement-strategy-checkbox').forEach(function(checkbox) {
+        checkbox.checked = false;
+    });
+});
 </script>
 
 <footer class="mt-5 py-3 border-top">

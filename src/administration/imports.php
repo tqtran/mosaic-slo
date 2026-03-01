@@ -606,7 +606,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $nextSequence = (int)$maxSeqRow['max_seq'] + 1;
                             
                             // Generate unique slo_code
-                            $sloCode = "CSLO-{$courseId}-{$nextSequence}";
+                            $sloCode = "{$courseId} - CSLO{$nextSequence}";
                             
                             // Insert new SLO
                             $userId = $_SESSION['user_id'] ?? null;
