@@ -587,19 +587,6 @@ ob_start();
         }
     }
     
-    /* Skip link - visible on focus for keyboard navigation */
-    .skip-link {
-        position: absolute;
-        top: 0;
-        left: 0;
-        z-index: 10000;
-        padding: 0.75rem 1.5rem;
-        transform: translateY(-100%);
-    }
-    .skip-link:focus {
-        transform: translateY(0);
-    }
-    
     /* Enhanced focus indicators (WCAG 2.4.7, 2.4.11) */
     a:focus,
     button:focus,
@@ -677,7 +664,9 @@ ob_start();
     }
     
     /* Remove default fieldset styling to prevent spacing issues */
-    fieldset.outcome-buttons {
+    fieldset.outcome-buttons,
+    fieldset.btn-group,
+    .card-body > fieldset {
         border: 0;
         margin: 0;
         padding: 0;
@@ -719,9 +708,6 @@ $theme = ThemeLoader::getActiveTheme(null, 'embedded');
 $theme->showHeader($context);
 ?>
 
-<!-- Skip Navigation Link for Keyboard Users -->
-<a href="#main-content" class="skip-link visually-hidden-focusable btn btn-primary">Skip to main content</a>
-
 <header role="banner">
 <h1 class="mb-4">SLO Assessment Entry</h1>
 
@@ -751,7 +737,7 @@ $theme->showHeader($context);
 </div>
 </header>
 
-<main id="main-content" role="main">
+<main id="main" role="main" tabindex="-1">
 <div class="container-fluid">
     <?php if ($successMessage): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -879,7 +865,8 @@ $theme->showHeader($context);
                         <i class="fas fa-users" aria-hidden="true"></i> Student Assessments (<?= count($students) ?> students)
                     </h2>
                     <div class="card-tools">
-                        <div class="btn-group" role="group" aria-label="Quick assessment actions">
+                        <fieldset class="btn-group">
+                            <legend class="visually-hidden">Quick assessment actions</legend>
                             <button type="button" class="btn btn-sm btn-success" onclick="setAllOutcomes('met')" 
                                     aria-label="Mark all students as met">
                                 <i class="fas fa-check" aria-hidden="true"></i> All Met
@@ -892,7 +879,7 @@ $theme->showHeader($context);
                                     aria-label="Mark all students as not assessed">
                                 <i class="fas fa-minus" aria-hidden="true"></i> All Unassessed
                             </button>
-                        </div>
+                        </fieldset>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -918,7 +905,8 @@ $theme->showHeader($context);
                                             <strong><?= htmlspecialchars($student['first_name']) ?> <?= htmlspecialchars($student['last_name']) ?></strong>
                                         </td>
                                         <td>
-                                            <fieldset class="btn-group btn-group-sm outcome-buttons" role="group" aria-label="Achievement level for <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?>" data-enrollment="<?= $student['enrollment_pk'] ?>">
+                                            <fieldset class="btn-group btn-group-sm outcome-buttons" data-enrollment="<?= $student['enrollment_pk'] ?>">
+                                                <legend class="visually-hidden">Achievement level for <?= htmlspecialchars($student['first_name'] . ' ' . $student['last_name']) ?></legend>
                                                 <input type="radio" class="btn-check outcome-radio" name="outcome[<?= $student['enrollment_pk'] ?>]" id="met_<?= $student['enrollment_pk'] ?>" value="met" <?= $currentLevel === 'met' ? 'checked' : '' ?> data-enrollment="<?= $student['enrollment_pk'] ?>">
                                                 <label class="btn btn-outline-success" for="met_<?= $student['enrollment_pk'] ?>">
                                                     <i class="fas fa-check" aria-hidden="true"></i> Met
@@ -964,28 +952,31 @@ $theme->showHeader($context);
                         </button>
                     </div>
                 </div>
-                <div class="row">
-                    <?php
-                    $improvementStrategies = explode(',', $config->get('app.improvement_strategies', ''));
-                    foreach ($improvementStrategies as $index => $strategy):
-                        $strategy = trim($strategy);
-                        if (empty($strategy)) continue;
-                        $checked = in_array($strategy, $currentImprovementStrategies) ? ' checked' : '';
-                        $strategyId = 'strategy_' . $index;
-                    ?>
-                        <div class="col-md-6 col-lg-4 mb-2">
-                            <div class="form-check">
-                                <input class="form-check-input improvement-strategy-checkbox" type="checkbox" 
-                                       id="<?= $strategyId ?>" 
-                                       name="improvement_strategies[]" 
-                                       value="<?= htmlspecialchars($strategy) ?>"<?= $checked ?>>
-                                <label class="form-check-label" for="<?= $strategyId ?>">
-                                    <?= htmlspecialchars($strategy) ?>
-                                </label>
+                <fieldset>
+                    <legend class="visually-hidden">Continuous improvement strategies</legend>
+                    <div class="row">
+                        <?php
+                        $improvementStrategies = explode(',', $config->get('app.improvement_strategies', ''));
+                        foreach ($improvementStrategies as $index => $strategy):
+                            $strategy = trim($strategy);
+                            if (empty($strategy)) continue;
+                            $checked = in_array($strategy, $currentImprovementStrategies) ? ' checked' : '';
+                            $strategyId = 'strategy_' . $index;
+                        ?>
+                            <div class="col-md-6 col-lg-4 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input improvement-strategy-checkbox" type="checkbox" 
+                                           id="<?= $strategyId ?>" 
+                                           name="improvement_strategies[]" 
+                                           value="<?= htmlspecialchars($strategy) ?>"<?= $checked ?>>
+                                    <label class="form-check-label" for="<?= $strategyId ?>">
+                                        <?= htmlspecialchars($strategy) ?>
+                                    </label>
+                                </div>
                             </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
+                        <?php endforeach; ?>
+                    </div>
+                </fieldset>
             </div>
         </div>
         </div><!-- /.slo-content -->

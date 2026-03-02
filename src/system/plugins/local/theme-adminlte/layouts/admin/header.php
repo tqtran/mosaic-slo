@@ -113,7 +113,7 @@
 <body class="layout-fixed sidebar-mini">
 
 <!-- Skip Navigation Link -->
-<a href="#main-content" class="skip-link">Skip to main content</a>
+<a href="#main" class="skip-link">Skip to main content</a>
 
 <div class="app-wrapper">
 
@@ -321,7 +321,7 @@
 </aside>
 
 <!-- Content Wrapper -->
-<main id="main-content" class="app-main" role="main">
+<main id="main" class="app-main" role="main">
     <?php if (isset($pageTitle)): ?>
     <div class="app-content-header">
         <div class="container-fluid">

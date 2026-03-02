@@ -30,6 +30,21 @@
             background: transparent;
             padding: 1rem;
         }
+        
+        /* Skip link for keyboard navigation (WCAG 2.4.1) */
+        .skip-link {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10000;
+            padding: 0.75rem 1.5rem;
+            transform: translateY(-100%);
+            background: var(--accent-blue);
+            color: white;
+        }
+        .skip-link:focus {
+            transform: translateY(0);
+        }
     </style>
     
     <?php if (isset($customCss)): ?>
@@ -37,4 +52,8 @@
     <?php endif; ?>
 </head>
 <body>
+
+<!-- Skip Navigation Link for Keyboard Users -->
+<a href="#main" class="skip-link">Skip to main content</a>
+
 <div class="container-fluid">
