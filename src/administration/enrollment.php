@@ -282,7 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $userId = $_SESSION['user_id'] ?? null;
                                     $db->query(
                                         "UPDATE {$dbPrefix}enrollment 
-                                         SET course_fk = ?, enrollment_status = '1', enrollment_date = NOW(), updated_at = NOW(), updated_by_fk = ? 
+                                         SET course_fk = ?, enrollment_status = 'enrolled', enrollment_date = NOW(), updated_at = NOW(), updated_by_fk = ? 
                                          WHERE enrollment_pk = ?",
                                         [$courseFk, $userId, $enroll['enrollment_pk']],
                                         'iii'
@@ -293,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     $userId = $_SESSION['user_id'] ?? null;
                                     $db->query(
                                         "INSERT INTO {$dbPrefix}enrollment (term_code, crn, course_fk, student_fk, enrollment_status, enrollment_date, created_at, updated_at, created_by_fk, updated_by_fk) 
-                                         VALUES (?, ?, ?, ?, '1', NOW(), NOW(), NOW(), ?, ?)",
+                                         VALUES (?, ?, ?, ?, 'enrolled', NOW(), NOW(), NOW(), ?, ?)",
                                         [$validatedTermCode, $sectionId, $courseFk, $studentFk, $userId, $userId],
                                         'ssiiii'
                                     );
@@ -421,6 +421,13 @@ $theme->showHeader($context);
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 
+<style>
+    .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+</style>
+
 <div class="app-content-header">
     <div class="container-fluid">
         <div class="row">
@@ -470,7 +477,6 @@ $theme->showHeader($context);
                             <th scope="col">Term Code</th>
                             <th scope="col">CRN</th>
                             <th scope="col">Student C-Number</th>
-                            <th scope="col">Status</th>
                             <th scope="col">Enrollment Date</th>
                             <th scope="col">Created</th>
                             <th scope="col">Created By</th>
@@ -479,17 +485,16 @@ $theme->showHeader($context);
                             <th scope="col">Actions</th>
                         </tr>
                         <tr>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
                         </tr>
                     </thead>
                     <tbody>
@@ -506,7 +511,7 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="addEnrollmentModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Enrollment</h5>
+                <span class="modal-title" id="addEnrollmentModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Enrollment</span>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
@@ -559,7 +564,7 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="editEnrollmentModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Enrollment</h5>
+                <span class="modal-title" id="editEnrollmentModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Enrollment</span>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
@@ -601,7 +606,7 @@ $theme->showHeader($context);
                     </div>
                     
                     <hr>
-                    <h3 class="text-muted mb-3"><i class="fas fa-info-circle" aria-hidden="true"></i> Audit Information</h3>
+                    <div class="text-muted mb-3"><i class="fas fa-info-circle" aria-hidden="true"></i> Audit Information</div>
                     <div class="row">
                         <div class="col-md-6">
                             <small class="text-muted"><strong>Created:</strong></small>
@@ -621,9 +626,18 @@ $theme->showHeader($context);
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
+                <div class="modal-footer d-flex justify-content-between">
+                    <!-- LEFT SIDE: Destructive Actions -->
+                    <div>
+                        <button type="button" class="btn btn-danger" onclick="confirmDeleteEnrollment()" aria-label="Delete enrollment">
+                            <i class="fas fa-trash" aria-hidden="true"></i> Delete
+                        </button>
+                    </div>
+                    <!-- RIGHT SIDE: Primary Actions -->
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -635,8 +649,7 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="fas fa-eye"></i> Enrollment Details</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <span class="modal-title"><i class="fas fa-eye"></i> Enrollment Details</span>
             </div>
             <div class="modal-body">
                 <div class="row mb-3">
@@ -721,19 +734,10 @@ $theme->showHeader($context);
 <script>
 $(document).ready(function() {
     // Setup - add a text input to each header cell (second row)
-    $('#enrollmentTable thead tr:eq(1) th').each(function(i) {
+    $('#enrollmentTable thead tr:eq(1) td').each(function(i) {
         var title = $('#enrollmentTable thead tr:eq(0) th:eq(' + i + ')').text();
-        if (title === 'Status') {
-            var select = '<select class="form-select form-select-sm">';
-            select += '<option value="">All</option>';
-            select += '<option value="enrolled">Enrolled</option>';
-            select += '<option value="completed">Completed</option>';
-            select += '<option value="dropped">Dropped</option>';
-            select += '<option value="withdrawn">Withdrawn</option>';
-            select += '</select>';
-            $(this).html(select);
-        } else if (title !== 'Actions') {
-            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+        if (title !== 'Actions') {
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" aria-label="Filter by ' + title + '" />');
         } else {
             $(this).html(''); // No filter for Actions column
         }
@@ -749,7 +753,7 @@ $(document).ready(function() {
                 d.term_fk = $('#termFilter').val();
             }
         },
-        dom: 'Bfrtip',
+        dom: 'Brtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
@@ -758,20 +762,21 @@ $(document).ready(function() {
             { data: 1, name: 'term_code' },
             { data: 2, name: 'crn' },
             { data: 3, name: 'student_id' },
-            { data: 4, name: 'enrollment_status' },
-            { data: 5, name: 'enrollment_date' },
-            { data: 6, name: 'created_at' },
-            { data: 7, name: 'created_by_name' },
-            { data: 8, name: 'updated_at' },
-            { data: 9, name: 'updated_by_name' },
-            { data: 10, name: 'actions', orderable: false, searchable: false }
+            { data: 4, name: 'enrollment_date' },
+            { data: 5, name: 'created_at' },
+            { data: 6, name: 'created_by_name' },
+            { data: 7, name: 'updated_at' },
+            { data: 8, name: 'updated_by_name' },
+            { data: 9, name: 'actions', orderable: false, searchable: false }
         ],
-        order: [[8, 'desc']], // Sort by last updated
+        order: [[7, 'desc']], // Sort by last updated
         initComplete: function() {
-            // Apply the search
-            this.api().columns().every(function() {
+            // Apply the search - target the second header row where filters are
+            var api = this.api();
+            api.columns().every(function(colIdx) {
                 var column = this;
-                $('input, select', this.header()).on('keyup change clear', function() {
+                // Find input in the second header row (tr:eq(1)) for this column
+                $('input, select', $('#enrollmentTable thead tr:eq(1) td').eq(colIdx)).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -817,6 +822,13 @@ function deleteEnrollment(id, cnum, crn) {
         $('#deleteEnrollmentId').val(id);
         $('#deleteForm').submit();
     }
+}
+
+function confirmDeleteEnrollment() {
+    const enrollmentPk = $('#editEnrollmentId').val();
+    const studentId = $('#editStudentCNumber').text();
+    const crn = $('#editCrn').text();
+    deleteEnrollment(enrollmentPk, studentId, crn);
 }
 
 function getStatusClass(status) {

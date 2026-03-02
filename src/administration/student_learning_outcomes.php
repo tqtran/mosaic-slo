@@ -131,19 +131,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'delete':
                 $id = (int)($_POST['slo_id'] ?? 0);
                 if ($id > 0) {
-                    $checkResult = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}assessments WHERE student_learning_outcome_fk = ?",
-                        [$id],
-                        'i'
-                    );
-                    $checkRow = $checkResult->fetch();
-                    
-                    if ($checkRow['count'] > 0) {
-                        $errorMessage = 'Cannot delete SLO: it has associated assessments.';
-                    } else {
-                        $db->query("DELETE FROM {$dbPrefix}student_learning_outcomes WHERE student_learning_outcomes_pk = ?", [$id], 'i');
-                        $successMessage = 'SLO deleted successfully';
-                    }
+                    // Cascade delete: assessments will be automatically deleted by database
+                    $db->query("DELETE FROM {$dbPrefix}student_learning_outcomes WHERE student_learning_outcomes_pk = ?", [$id], 'i');
+                    $successMessage = 'SLO deleted successfully (including all assessments)';
                 }
                 break;
         }
@@ -242,6 +232,13 @@ $theme->showHeader($context);
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 
+<style>
+    .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+</style>
+
 <div class="app-content-header">
     <div class="container-fluid">
         <div class="row">
@@ -301,19 +298,19 @@ $theme->showHeader($context);
                             <th scope="col">Actions</th>
                         </tr>
                         <tr>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -328,7 +325,7 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="addSLOModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Student Learning Outcome</h5>
+                <span class="modal-title" id="addSLOModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Student Learning Outcome</span>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
@@ -383,10 +380,13 @@ $theme->showHeader($context);
                         <div class="form-text">Describe how this SLO is assessed (optional)</div>
                     </div>
                     
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
-                        <label class="form-check-label" for="isActive">Active</label>
-                    </div>
+                    <fieldset class="mb-3">
+                        <legend class="h6">Status</legend>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
+                            <label class="form-check-label" for="isActive">Active</label>
+                        </div>
+                    </fieldset>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -402,7 +402,7 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="editSLOModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Student Learning Outcome</h5>
+                <span class="modal-title" id="editSLOModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Student Learning Outcome</span>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
@@ -458,13 +458,16 @@ $theme->showHeader($context);
                         <div class="form-text">Describe how this SLO is assessed (optional)</div>
                     </div>
                     
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
-                        <label class="form-check-label" for="editIsActive">Active</label>
-                    </div>
+                    <fieldset class="mb-3">
+                        <legend class="h6">Status</legend>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
+                            <label class="form-check-label" for="editIsActive">Active</label>
+                        </div>
+                    </fieldset>
                     
                     <hr>
-                    <h3 class="text-muted mb-3"><i class="fas fa-info-circle" aria-hidden="true"></i> Audit Information</h3>
+                    <div class="text-muted mb-3"><i class="fas fa-info-circle" aria-hidden="true"></i> Audit Information</div>
                     <div class="row">
                         <div class="col-md-6">
                             <small class="text-muted"><strong>Created:</strong></small>
@@ -484,22 +487,28 @@ $theme->showHeader($context);
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
+                <div class="modal-footer d-flex justify-content-between">
+                    <!-- LEFT SIDE: Destructive Actions -->
+                    <div>
+                        <button type="button" class="btn btn-danger" onclick="confirmDeleteSLO()" aria-label="Delete student learning outcome">
+                            <i class="fas fa-trash" aria-hidden="true"></i> Delete
+                        </button>
+                    </div>
+                    <!-- RIGHT SIDE: Primary Actions -->
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 </div>
-
-<!-- Upload CSV Modal -->
 <div class="modal fade" id="uploadCsvModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-secondary text-white">
-                <h5 class="modal-title"><i class="fas fa-upload"></i> Import CSLO</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <span class="modal-title"><i class="fas fa-upload"></i> Import CSLO</span>
             </div>
             <form method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
@@ -572,12 +581,12 @@ var programOutcomes = <?= json_encode(array_map(function($po) {
 }, $programOutcomes)) ?>;
 
 $(document).ready(function() {
-    $('#slosTable thead tr:eq(1) th').each(function(i) {
+    $('#slosTable thead tr:eq(1) td').each(function(i) {
         var title = $('#slosTable thead tr:eq(0) th:eq(' + i + ')').text();
         
         // Course column (index 1)
         if (title === 'Course') {
-            var select = $('<select class="form-select form-select-sm"><option value="">All Courses</option></select>')
+            var select = $('<select class="form-select form-select-sm" aria-label="Filter by ' + title + '"><option value="">All Courses</option></select>')
                 .appendTo($(this).empty());
             courses.forEach(function(course) {
                 select.append('<option value="' + course.name + '">' + course.name + '</option>');
@@ -585,7 +594,7 @@ $(document).ready(function() {
         }
         // Program Outcome column (index 2)
         else if (title === 'Program Outcome') {
-            var select = $('<select class="form-select form-select-sm"><option value="">All Program Outcomes</option></select>')
+            var select = $('<select class="form-select form-select-sm" aria-label="Filter by ' + title + '"><option value="">All Program Outcomes</option></select>')
                 .appendTo($(this).empty());
             programOutcomes.forEach(function(po) {
                 if (po.code) {
@@ -595,11 +604,11 @@ $(document).ready(function() {
         }
         // Status column (index 7)
         else if (title === 'Status') {
-            var select = $('<select class="form-select form-select-sm"><option value="">All</option><option value="Active">Active</option><option value="Inactive">Inactive</option></select>')
+            var select = $('<select class="form-select form-select-sm" aria-label="Filter by ' + title + '"><option value="">All</option><option value="Active">Active</option><option value="Inactive">Inactive</option></select>')
                 .appendTo($(this).empty());
         }
         else if (title !== 'Actions') {
-            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" aria-label="Filter by ' + title + '" />');
         } else {
             $(this).html('');
         }
@@ -615,7 +624,7 @@ $(document).ready(function() {
                 d.term_fk = $('#termFilter').val();
             }
         },
-        dom: 'Bfrtip',
+        dom: 'Brtip',
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
         columns: [
             { data: 0, name: 'student_learning_outcomes_pk' },
@@ -640,7 +649,7 @@ $(document).ready(function() {
                 var column = this;
                 
                 // Find the input/select in the second header row for this column
-                var filterCell = $('#slosTable thead tr:eq(1) th:eq(' + colIdx + ')');
+                var filterCell = $('#slosTable thead tr:eq(1) td:eq(' + colIdx + ')');
                 
                 $('select', filterCell).on('change', function() {
                     var val = $(this).val();
@@ -685,9 +694,15 @@ function toggleStatus(id, code) {
 }
 
 function deleteSLO(id, code) {
-    if (confirm('Are you sure you want to DELETE SLO "' + code + '"? This action cannot be undone.')) {
+    if (confirm('Are you sure you want to DELETE SLO "' + code + '"?\n\nThis will also delete:\n- All assessments for this SLO\n\nThis action cannot be undone.')) {
         $('#deleteSLOId').val(id);
         $('#deleteForm').submit();
     }
+}
+
+function confirmDeleteSLO() {
+    const sloPk = $('#editSLOId').val();
+    const sloCode = $('#editSLOCode').val();
+    deleteSLO(sloPk, sloCode);
 }
 </script>

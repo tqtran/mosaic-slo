@@ -142,7 +142,7 @@ try {
             : $row['slo_description'];
         
         $programOutcomeDisplay = !empty($row['program_outcome_code']) 
-            ? '<span class="badge bg-info">' . htmlspecialchars($row['program_outcome_code']) . '</span>' 
+            ? htmlspecialchars($row['program_outcome_code'])
             : '<span class="text-muted">-</span>';
         
         $assessmentMethodDisplay = !empty($row['assessment_method'])
@@ -150,14 +150,14 @@ try {
             : '<span class="text-muted">-</span>';
         
         $data[] = [
-            '<span class="badge bg-secondary">' . htmlspecialchars((string)$row['student_learning_outcomes_pk']) . '</span>',
+            htmlspecialchars((string)$row['student_learning_outcomes_pk']),
             htmlspecialchars($row['course_name'] ?? '') . ' (' . htmlspecialchars($row['course_number'] ?? '') . ')',
             $programOutcomeDisplay,
-            '<span class="badge bg-primary">' . htmlspecialchars($row['slo_code']) . '</span>',
+            htmlspecialchars($row['slo_code']),
             htmlspecialchars($descriptionPreview),
             $assessmentMethodDisplay,
             htmlspecialchars((string)$row['sequence_num']),
-            '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
+            $status,
             htmlspecialchars($row['created_at'] ?? ''),
             htmlspecialchars(trim($row['created_by_name'] ?? '') ?: 'System'),
             htmlspecialchars($row['updated_at'] ?? ''),

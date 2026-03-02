@@ -167,33 +167,13 @@ try {
     // Format data for DataTables
     $data = [];
     foreach ($enrollments as $row) {
-        // Determine status badge color
-        $statusLower = strtolower($row['enrollment_status']);
-        switch($statusLower) {
-            case 'enrolled':
-                $statusClass = 'success';
-                break;
-            case 'completed':
-                $statusClass = 'primary';
-                break;
-            case 'dropped':
-                $statusClass = 'warning';
-                break;
-            case 'withdrawn':
-                $statusClass = 'danger';
-                break;
-            default:
-                $statusClass = 'secondary';
-        }
-        
         $rowJson = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
         
         $data[] = [
-            '<span class="badge bg-secondary">' . htmlspecialchars((string)$row['enrollment_pk']) . '</span>',
-            '<span class="badge bg-info">' . htmlspecialchars($row['term_code']) . '</span>',
-            '<span class="badge bg-primary">' . htmlspecialchars($row['crn']) . '</span>',
+            htmlspecialchars((string)$row['enrollment_pk']),
+            htmlspecialchars($row['term_code']),
+            htmlspecialchars($row['crn']),
             htmlspecialchars($row['student_id']),
-            '<span class="badge bg-' . $statusClass . '">' . htmlspecialchars($row['enrollment_status']) . '</span>',
             htmlspecialchars($row['enrollment_date'] ?? ''),
             htmlspecialchars($row['created_at'] ?? ''),
             htmlspecialchars(trim($row['created_by_name'] ?? '') ?: 'System'),

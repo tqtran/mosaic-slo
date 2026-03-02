@@ -133,19 +133,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'delete':
                 $id = (int)($_POST['student_pk'] ?? 0);
                 if ($id > 0) {
-                    $checkResult = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}assessments WHERE students_fk = ?",
-                        [$id],
-                        'i'
-                    );
-                    $checkRow = $checkResult->fetch();
-                    
-                    if ($checkRow['count'] > 0) {
-                        $errorMessage = 'Cannot delete student: they have associated assessments.';
-                    } else {
-                        $db->query("DELETE FROM {$dbPrefix}students WHERE students_pk = ?", [$id], 'i');
-                        $successMessage = 'Student deleted successfully';
-                    }
+                    // Cascade delete: enrollments (and their assessments) will be automatically deleted by database
+                    $db->query("DELETE FROM {$dbPrefix}students WHERE students_pk = ?", [$id], 'i');
+                    $successMessage = 'Student deleted successfully (including all enrollments and assessments)';
                 }
                 break;
         }
@@ -174,6 +164,13 @@ $theme->showHeader($context);
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+<style>
+    .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+</style>
 
 <div class="app-content-header">
     <div class="container-fluid">
@@ -232,17 +229,17 @@ $theme->showHeader($context);
                             <th scope="col">Actions</th>
                         </tr>
                         <tr>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -257,7 +254,7 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="addStudentModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Student</h5>
+                <span class="modal-title" id="addStudentModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Student</span>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
@@ -286,11 +283,13 @@ $theme->showHeader($context);
                         <label for="email" class="form-label">Email</label>
                         <input type="email" class="form-control" id="email" name="email" maxlength="255">
                     </div>
-                    
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
-                        <label class="form-check-label" for="isActive">Active</label>
-                    </div>
+                    <fieldset class="mb-3">
+                        <legend class="h6">Status</legend>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
+                            <label class="form-check-label" for="isActive">Active</label>
+                        </div>
+                    </fieldset>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -306,7 +305,7 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="editStudentModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Student</h5>
+                <span class="modal-title" id="editStudentModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Student</span>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
@@ -337,13 +336,16 @@ $theme->showHeader($context);
                         <input type="email" class="form-control" id="editEmail" name="email" maxlength="255">
                     </div>
                     
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
-                        <label class="form-check-label" for="editIsActive">Active</label>
-                    </div>
+                    <fieldset class="mb-3">
+                        <legend class="h6">Status</legend>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
+                            <label class="form-check-label" for="editIsActive">Active</label>
+                        </div>
+                    </fieldset>
                     
                     <hr>
-                    <h3 class="text-muted mb-3"><i class="fas fa-info-circle" aria-hidden="true"></i> Audit Information</h3>
+                    <div class="text-muted mb-3"><i class="fas fa-info-circle" aria-hidden="true"></i> Audit Information</div>
                     <div class="row">
                         <div class="col-md-6">
                             <small class="text-muted"><strong>Created:</strong></small>
@@ -363,9 +365,18 @@ $theme->showHeader($context);
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
+                <div class="modal-footer d-flex justify-content-between">
+                    <!-- LEFT SIDE: Destructive Actions -->
+                    <div>
+                        <button type="button" class="btn btn-danger" onclick="confirmDeleteStudent()" aria-label="Delete student">
+                            <i class="fas fa-trash" aria-hidden="true"></i> Delete
+                        </button>
+                    </div>
+                    <!-- RIGHT SIDE: Primary Actions -->
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -420,7 +431,7 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: '<?= BASE_URL ?>administration/students_data.php',
-        dom: 'Bfrtip',
+        dom: 'Brtip',
         buttons: [
             {extend: 'copy', text: 'Copy', attr: {'aria-label': 'Copy table data to clipboard'}},
             {extend: 'csv', text: 'CSV', attr: {'aria-label': 'Export table data as CSV'}},
@@ -442,9 +453,12 @@ $(document).ready(function() {
             { data: 10, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
-            this.api().columns().every(function() {
+            // Apply the search - target the second header row where filters are
+            var api = this.api();
+            api.columns().every(function(colIdx) {
                 var column = this;
-                $('input, select', this.header()).on('keyup change clear', function() {
+                // Find input in the second header row (tr:eq(1)) for this column
+                $('input, select', $('#studentsTable thead tr:eq(1) td').eq(colIdx)).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -479,9 +493,15 @@ function toggleStatus(id, studentId) {
 }
 
 function deleteStudent(id, studentId) {
-    if (confirm('Are you sure you want to DELETE student "' + studentId + '"? This action cannot be undone.')) {
+    if (confirm('Are you sure you want to DELETE student "' + studentId + '"?\n\nThis will also delete:\n- All enrollments for this student\n- All assessments for this student\n\nThis action cannot be undone.')) {
         $('#deleteStudentPk').val(id);
         $('#deleteForm').submit();
     }
+}
+
+function confirmDeleteStudent() {
+    const studentPk = $('#editStudentPk').val();
+    const studentId = $('#editStudentId').val();
+    deleteStudent(studentPk, studentId);
 }
 </script>

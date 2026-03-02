@@ -164,24 +164,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'delete':
                 $id = (int)($_POST['outcome_id'] ?? 0);
                 if ($id > 0) {
-                    // Check if outcome has associated SLOs
-                    $checkResult = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}student_learning_outcomes WHERE program_outcome_fk = ?",
+                    // Cascade behavior: SLOs linked to this outcome will have their program_outcomes_fk set to NULL
+                    $db->query(
+                        "DELETE FROM {$dbPrefix}program_outcomes WHERE program_outcomes_pk = ?",
                         [$id],
                         'i'
                     );
-                    $checkRow = $checkResult->fetch();
-                    
-                    if ($checkRow['count'] > 0) {
-                        $errorMessage = 'Cannot delete outcome: it is mapped to student learning outcomes. Please remove mappings first.';
-                    } else {
-                        $db->query(
-                            "DELETE FROM {$dbPrefix}program_outcomes WHERE program_outcomes_pk = ?",
-                            [$id],
-                            'i'
-                        );
-                        $successMessage = 'Program outcome deleted successfully';
-                    }
+                    $successMessage = 'Program outcome deleted successfully (SLO links preserved with NULL mapping)';
                 }
                 break;
         }
@@ -288,6 +277,13 @@ $theme->showHeader($context);
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 
+<style>
+    .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+</style>
+
 <div class="app-content-header">
     <div class="container-fluid">
         <div class="row">
@@ -349,18 +345,18 @@ $theme->showHeader($context);
                             <th scope="col">Actions</th>
                         </tr>
                         <tr>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
                         </tr>
                     </thead>
                 </table>
@@ -377,9 +373,9 @@ $theme->showHeader($context);
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <input type="hidden" name="action" value="add">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addOutcomeModalLabel">
+                    <span class="modal-title" id="addOutcomeModalLabel">
                         <i class="fas fa-plus" aria-hidden="true"></i> Add Program Outcome
-                    </h5>
+                    </span>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close dialog"></button>
                 </div>
                 <div class="modal-body">
@@ -428,11 +424,13 @@ $theme->showHeader($context);
                                    value="0" min="0">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label d-block">Status</label>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="isActive" name="is_active" checked>
-                                <label class="form-check-label" for="isActive">Active</label>
-                            </div>
+                            <fieldset>
+                                <legend class="h6">Status</legend>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="isActive" name="is_active" checked>
+                                    <label class="form-check-label" for="isActive">Active</label>
+                                </div>
+                            </fieldset>
                         </div>
                     </div>
                 </div>
@@ -456,9 +454,9 @@ $theme->showHeader($context);
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="outcome_id" id="editOutcomeId">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="editOutcomeModalLabel">
+                    <span class="modal-title" id="editOutcomeModalLabel">
                         <i class="fas fa-edit" aria-hidden="true"></i> Edit Program Outcome
-                    </h5>
+                    </span>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close dialog"></button>
                 </div>
                 <div class="modal-body">
@@ -506,15 +504,17 @@ $theme->showHeader($context);
                                    value="0" min="0">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label d-block">Status</label>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="editIsActive" name="is_active">
-                                <label class="form-check-label" for="editIsActive">Active</label>
-                            </div>
+                            <fieldset>
+                                <legend class="h6">Status</legend>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="editIsActive" name="is_active">
+                                    <label class="form-check-label" for="editIsActive">Active</label>
+                                </div>
+                            </fieldset>
                         </div>
                     </div>
                     <hr>
-                    <h3 class="text-muted mb-3"><i class="fas fa-history" aria-hidden="true"></i> Audit Information</h3>
+                    <div class="text-muted mb-3"><i class="fas fa-history" aria-hidden="true"></i> Audit Information</div>
                     <div class="row mb-2">
                         <div class="col-md-6">
                             <small class="text-muted">Created:</small>
@@ -536,11 +536,20 @@ $theme->showHeader($context);
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save" aria-hidden="true"></i> Update Outcome
-                    </button>
+                <div class="modal-footer d-flex justify-content-between">
+                    <!-- LEFT SIDE: Destructive Actions -->
+                    <div>
+                        <button type="button" class="btn btn-danger" onclick="confirmDeleteOutcome()" aria-label="Delete outcome">
+                            <i class="fas fa-trash" aria-hidden="true"></i> Delete
+                        </button>
+                    </div>
+                    <!-- RIGHT SIDE: Primary Actions -->
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save" aria-hidden="true"></i> Update Outcome
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -552,9 +561,9 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="viewOutcomeModalLabel">
+                <span class="modal-title" id="viewOutcomeModalLabel">
                     <i class="fas fa-eye"></i> View Program Outcome
-                </h5>
+                </span>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -581,7 +590,7 @@ $theme->showHeader($context);
                     <dd class="col-sm-9" id="viewStatus"></dd>
                 </dl>
                 <hr>
-                <h6 class="text-muted mb-3"><i class="fas fa-history"></i> Audit Information</h6>
+                <div class="text-muted mb-3"><i class="fas fa-history"></i> Audit Information</div>
                 <dl class="row">
                     <dt class="col-sm-3">Created:</dt>
                     <dd class="col-sm-9" id="viewCreated"></dd>
@@ -641,12 +650,12 @@ var institutionalOutcomes = <?= json_encode(array_map(function($io) {
 $(document).ready(function() {
 
     // Setup - add filters to each header cell (second row)
-    $('#outcomesTable thead tr:eq(1) th').each(function(i) {
+    $('#outcomesTable thead tr:eq(1) td').each(function(i) {
         var title = $('#outcomesTable thead tr:eq(0) th:eq(' + i + ')').text();
         
         // Program column (index 1)
         if (title === 'Program') {
-            var select = $('<select class="form-select form-select-sm"><option value="">All Programs</option></select>')
+            var select = $('<select class="form-select form-select-sm" aria-label="Filter by ' + title + '"><option value="">All Programs</option></select>')
                 .appendTo($(this).empty());
             programs.forEach(function(program) {
                 select.append('<option value="' + program.name + '">' + program.name + '</option>');
@@ -654,7 +663,7 @@ $(document).ready(function() {
         }
         // Institutional Outcome column (index 4)
         else if (title === 'Institutional Outcome') {
-            var select = $('<select class="form-select form-select-sm"><option value="">All</option></select>')
+            var select = $('<select class="form-select form-select-sm" aria-label="Filter by ' + title + '"><option value="">All</option></select>')
                 .appendTo($(this).empty());
             institutionalOutcomes.forEach(function(io) {
                 if (io.code) {
@@ -663,7 +672,7 @@ $(document).ready(function() {
             });
         }
         else if (title !== 'Actions' && title !== 'ID') {
-            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" aria-label="Filter by ' + title + '" />');
         } else {
             $(this).html('');
         }
@@ -675,12 +684,12 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: 'program_outcomes_data.php',
+            url: '<?= BASE_URL ?>administration/program_outcomes_data.php',
             data: function(d) {
                 d.term_fk = $('#termFilter').val();
             }
         },
-        dom: 'Bfrtip',
+        dom: 'Brtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
@@ -695,13 +704,16 @@ $(document).ready(function() {
             searchPlaceholder: "Search outcomes..."
         },
         initComplete: function() {
-            // Apply the search
-            this.api().columns().every(function() {
+            // Apply the search - target the second header row where filters are
+            var api = this.api();
+            api.columns().every(function(colIdx) {
                 var column = this;
-                $('select', this.header()).on('change', function() {
+                var filterCell = $('#outcomesTable thead tr:eq(1) td').eq(colIdx);
+                
+                $('select', filterCell).on('change', function() {
                     column.search($(this).val()).draw();
                 });
-                $('input', this.header()).on('keyup change clear', function() {
+                $('input', filterCell).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -751,9 +763,15 @@ function toggleStatus(id, code) {
 }
 
 function deleteOutcome(id, code) {
-    if (confirm('Are you sure you want to DELETE outcome "' + code + '"? This action cannot be undone.')) {
+    if (confirm('Are you sure you want to DELETE outcome "' + code + '"?\n\nSLOs linked to this outcome will be preserved with NULL mapping.\n\nThis action cannot be undone.')) {
         $('#deleteOutcomeId').val(id);
         $('#deleteForm').submit();
     }
+}
+
+function confirmDeleteOutcome() {
+    const outcomePk = $('#editOutcomeId').val();
+    const outcomeCode = $('#editOutcomeCode').val();
+    deleteOutcome(outcomePk, outcomeCode);
 }
 </script>

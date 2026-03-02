@@ -55,6 +55,16 @@ try {
         $types .= 'ssss';
     }
 
+    // Add column-specific filters
+    for ($i = 0; $i < count($columns) - 1; $i++) { // Exclude actions column
+        $columnSearch = $_GET['columns'][$i]['search']['value'] ?? '';
+        if (!empty($columnSearch) && !empty($columns[$i])) {
+            $where[] = "{$columns[$i]} LIKE ?";
+            $params[] = "%{$columnSearch}%";
+            $types .= 's';
+        }
+    }
+
     $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
     // Filtered records
@@ -116,9 +126,7 @@ try {
         ';
         
         // Format status badge
-        $statusBadge = $row['is_active'] 
-            ? '<span class="badge bg-success">Active</span>' 
-            : '<span class="badge bg-secondary">Inactive</span>';
+        $statusBadge = $row['is_active'] ? 'Active' : 'Inactive';
         
         // Format dates
         $startDate = $row['start_date'] ? date('M d, Y', strtotime($row['start_date'])) : '';

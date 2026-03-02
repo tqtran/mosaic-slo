@@ -117,12 +117,12 @@ foreach ($sections as $row) {
     $rowJson = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
     
     $data[] = [
-        '<span class="badge bg-info">' . htmlspecialchars($row['crn'] ?? 'N/A') . '</span>',
+        htmlspecialchars($row['crn'] ?? 'N/A'),
         htmlspecialchars($row['course_number']),
-        '<span class="badge bg-primary">' . htmlspecialchars($row['section_id']) . '</span>',
+        htmlspecialchars($row['section_id']),
         htmlspecialchars($row['instructor_name'] ?? 'N/A'),
         htmlspecialchars($row['max_enrollment'] ?? 'N/A'),
-        '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
+        $status,
         '<button class="btn btn-warning" title="Edit" onclick=\'editSection(' . $rowJson . ')\' aria-label="Edit section ' . htmlspecialchars($sectionLabel, ENT_QUOTES) . '"><i class="fas fa-edit" aria-hidden="true"></i></button>'
     ];
 }

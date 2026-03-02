@@ -400,21 +400,12 @@ $theme->showHeader($context);
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 
-<div class="app-content-header">
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-sm-12">
-                <ol class="breadcrumb float-sm-end">
-                    <li class="breadcrumb-item"><a href="<?= BASE_URL ?>">Home</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Assessments</li>
-                </ol>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="app-content">
-    <div class="container-fluid">
+<style>
+    .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+</style>
 
 <!-- Success/Error Messages -->
 <?php if ($successMessage): ?>
@@ -453,20 +444,21 @@ $theme->showHeader($context);
                     <th scope="col">Actions</th>
                 </tr>
                 <tr>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Search ID"></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Term"></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Search CRN"></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Student"></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Search SLO"></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Score"></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Level"></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Date"></th>
-                    <th><input type="text" class="form-control form-control-sm" placeholder="Search Status"></th>
-                    <th></th>
+                    <td><input type="text" class="form-control form-control-sm" placeholder="Search ID" aria-label="Filter by ID"></td>
+                    <td><input type="text" class="form-control form-control-sm" placeholder="Search Term" aria-label="Filter by Term"></td>
+                    <td><input type="text" class="form-control form-control-sm" placeholder="Search CRN" aria-label="Filter by CRN"></td>
+                    <td><input type="text" class="form-control form-control-sm" placeholder="Search Student" aria-label="Filter by Student"></td>
+                    <td><input type="text" class="form-control form-control-sm" placeholder="Search SLO" aria-label="Filter by SLO"></td>
+                    <td><input type="text" class="form-control form-control-sm" placeholder="Search Score" aria-label="Filter by Score"></td>
+                    <td><input type="text" class="form-control form-control-sm" placeholder="Search Level" aria-label="Filter by Level"></td>
+                    <td><input type="text" class="form-control form-control-sm" placeholder="Search Date" aria-label="Filter by Date"></td>
+                    <td><input type="text" class="form-control form-control-sm" placeholder="Search Status" aria-label="Filter by Status"></td>
+                    <td>&nbsp;</td>
                 </tr>
             </thead>
         </table>
     </div>
+
 </div>
 
 <!-- Add Assessment Modal -->
@@ -474,7 +466,7 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="addAssessmentModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Assessment</h5>
+                <span class="modal-title" id="addAssessmentModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Assessment</span>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
@@ -482,9 +474,11 @@ $theme->showHeader($context);
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="action" value="add">
                     
-                    <div class="row">
-                        <div class="col-md-8 mb-3">
-                            <label for="enrollmentFk" class="form-label">Enrollment (Term CRN - Student) <span class="text-danger" aria-label="required">*</span></label>
+                    <fieldset>
+                        <legend class="h6 mb-3">Assessment Selection</legend>
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="enrollmentFk" class="form-label">Enrollment (Term CRN - Student) <span class="text-danger" aria-label="required">*</span></label>
                             <select class="form-select" id="enrollmentFk" name="enrollment_fk" required aria-required="true">
                                 <option value="">Select Enrollment</option>
                                 <?php foreach ($enrollments as $enrollment): 
@@ -510,42 +504,46 @@ $theme->showHeader($context);
                             </select>
                         </div>
                     </div>
+                    </fieldset>
                     
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="scoreValue" class="form-label">Score <span class="text-danger" aria-label="required">*</span></label>
-                            <input type="number" step="0.01" class="form-control" id="scoreValue" name="score_value" required aria-required="true">
+                    <fieldset>
+                        <legend class="h6 mb-3">Assessment Details</legend>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="scoreValue" class="form-label">Score <span class="text-danger" aria-label="required">*</span></label>
+                                <input type="number" step="0.01" class="form-control" id="scoreValue" name="score_value" required aria-required="true">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="achievementLevel" class="form-label">Achievement Level</label>
+                                <select class="form-select" id="achievementLevel" name="achievement_level">
+                                    <option value="exceeds">Exceeds Expectations</option>
+                                    <option value="meets">Meets Expectations</option>
+                                    <option value="developing">Developing</option>
+                                    <option value="below">Below Expectations</option>
+                                    <option value="pending" selected>Pending</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="assessedDate" class="form-label">Assessment Date</label>
+                                <input type="date" class="form-control" id="assessedDate" name="assessed_date" value="<?= date('Y-m-d') ?>">
+                            </div>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="achievementLevel" class="form-label">Achievement Level</label>
-                            <select class="form-select" id="achievementLevel" name="achievement_level">
-                                <option value="exceeds">Exceeds Expectations</option>
-                                <option value="meets">Meets Expectations</option>
-                                <option value="developing">Developing</option>
-                                <option value="below">Below Expectations</option>
-                                <option value="pending" selected>Pending</option>
-                            </select>
+                        
+                        <div class="mb-3">
+                            <label for="assessmentMethod" class="form-label">Assessment Method</label>
+                            <input type="text" class="form-control" id="assessmentMethod" name="assessment_method" maxlength="255">
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="assessedDate" class="form-label">Assessment Date</label>
-                            <input type="date" class="form-control" id="assessedDate" name="assessed_date" value="<?= date('Y-m-d') ?>">
+                        
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
                         </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="assessmentMethod" class="form-label">Assessment Method</label>
-                        <input type="text" class="form-control" id="assessmentMethod" name="assessment_method" maxlength="255">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
-                    </div>
-                    
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="isFinalized" name="is_finalized">
-                        <label class="form-check-label" for="isFinalized">Finalized</label>
-                    </div>
+                        
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="isFinalized" name="is_finalized">
+                            <label class="form-check-label" for="isFinalized">Finalized</label>
+                        </div>
+                    </fieldset>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -561,7 +559,7 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="editAssessmentModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Assessment</h5>
+                <span class="modal-title" id="editAssessmentModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Assessment</span>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
@@ -570,9 +568,11 @@ $theme->showHeader($context);
                     <input type="hidden" name="action" value="edit">
                     <input type="hidden" name="assessments_pk" id="editAssessmentPk">
                     
-                    <div class="row">
-                        <div class="col-md-8 mb-3">
-                            <label for="editEnrollmentFk" class="form-label">Enrollment (Term CRN - Student) <span class="text-danger" aria-label="required">*</span></label>
+                    <fieldset>
+                        <legend class="h6 mb-3">Assessment Selection</legend>
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="editEnrollmentFk" class="form-label">Enrollment (Term CRN - Student) <span class="text-danger" aria-label="required">*</span></label>
                             <select class="form-select" id="editEnrollmentFk" name="enrollment_fk" required aria-required="true">
                                 <option value="">Select Enrollment</option>
                                 <?php foreach ($enrollments as $enrollment): 
@@ -598,10 +598,13 @@ $theme->showHeader($context);
                             </select>
                         </div>
                     </div>
+                    </fieldset>
                     
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="editScoreValue" class="form-label">Score <span class="text-danger" aria-label="required">*</span></label>
+                    <fieldset>
+                        <legend class="h6 mb-3">Assessment Details</legend>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="editScoreValue" class="form-label">Score <span class="text-danger" aria-label="required">*</span></label>
                             <input type="number" step="0.01" class="form-control" id="editScoreValue" name="score_value" required aria-required="true">
                         </div>
                         <div class="col-md-4 mb-3">
@@ -634,23 +637,30 @@ $theme->showHeader($context);
                         <input type="checkbox" class="form-check-input" id="editIsFinalized" name="is_finalized">
                         <label class="form-check-label" for="editIsFinalized">Finalized</label>
                     </div>
+                    </fieldset>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save Changes</button>
+                <div class="modal-footer d-flex justify-content-between">
+                    <!-- LEFT SIDE: Destructive Actions -->
+                    <div>
+                        <button type="button" class="btn btn-danger" onclick="confirmDeleteAssessment()" aria-label="Delete assessment">
+                            <i class="fas fa-trash" aria-hidden="true"></i> Delete
+                        </button>
+                    </div>
+                    <!-- RIGHT SIDE: Primary Actions -->
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save Changes</button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 </div>
-
-<!-- Import CSV Modal -->
 <div class="modal fade" id="importModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-upload"></i> Import Assessments from CSV</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <span class="modal-title"><i class="fas fa-upload"></i> Import Assessments from CSV</span>
             </div>
             <form method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
@@ -694,16 +704,6 @@ $theme->showHeader($context);
 
 <script>
 $(document).ready(function() {
-    // Initialize DataTable with individual column search
-    $('#assessmentsTable thead tr:eq(1) th').each(function(i) {
-        var title = $('#assessmentsTable thead tr:eq(0) th:eq(' + i + ')').text();
-        if (i < 9) { // Skip last column (actions)
-            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '">');
-        } else {
-            $(this).html('');
-        }
-    });
-    
     var table = $('#assessmentsTable').DataTable({
         orderCellsTop: true,
         processing: true,
@@ -714,7 +714,7 @@ $(document).ready(function() {
                 d.term_fk = $('#termFilter').val();
             }
         },
-        dom: 'Bfrtip',
+        dom: 'Brtip',
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
         columns: [
             { data: 0, name: 'assessments_pk' },
@@ -729,9 +729,12 @@ $(document).ready(function() {
             { data: 9, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
-            this.api().columns().every(function() {
+            // Apply the search - target the second header row where filters are
+            var api = this.api();
+            api.columns().every(function(colIdx) {
                 var column = this;
-                $('input', this.header()).on('keyup change clear', function() {
+                // Find input in the second header row (tr:eq(1)) for this column
+                $('input', $('#assessmentsTable thead tr:eq(1) td').eq(colIdx)).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -766,6 +769,11 @@ function deleteAssessment(id, displayId) {
         $('#deleteAssessmentId').val(id);
         $('#deleteForm').submit();
     }
+}
+
+function confirmDeleteAssessment() {
+    const assessmentPk = $('#editAssessmentPk').val();
+    deleteAssessment(assessmentPk, assessmentPk);
 }
 </script>
 

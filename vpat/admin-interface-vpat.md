@@ -10,8 +10,8 @@
 **Product Description:** Web-based administrative interface for managing student learning outcomes, assessments, courses, programs, enrollment, students, and institutional data in higher education  
 **Date of Evaluation:** March 1, 2026  
 **Contact Information:** MOSAIC Project Team  
-**Evaluation Methods Used:** Manual code review, automated accessibility testing (WAVE), keyboard navigation testing, screen reader testing (NVDA 2023.3), contrast verification  
-**Notes:** This VPAT documents conformance to WCAG 2.2 (October 2023) at Level A, Level AA, and partial Level AAA for all 14 administrative pages including shared layout components (header, sidebar navigation, footer).
+**Evaluation Methods Used:** Manual code review, automated accessibility testing (WAVE browser plugin), keyboard navigation testing, screen reader testing (NVDA 2023.3), contrast verification  
+**Notes:** This VPAT documents conformance to WCAG 2.2 (October 2023) at Level A, Level AA, and partial Level AAA for all 14 administrative pages including shared layout components (header, sidebar navigation, footer). Recent accessibility improvements include removal of colored badge styling from DataTables for improved readability and color independence, and comprehensive filter functionality enhancements.
 
 ---
 
@@ -52,7 +52,7 @@ The terms used in the Conformance Level information are defined as follows:
 | **1.3.1 Info and Relationships** | Supports | Semantic HTML used throughout (header, nav, main, aside, footer). Tables use proper th/scope. Forms use labels and fieldsets. Headings follow H1->H2->H3 hierarchy. ARIA landmarks with descriptive labels. |
 | **1.3.2 Meaningful Sequence** | Supports | Reading order is logical and follows visual order. Skip link allows bypassing repeated content. DOM order matches visual presentation. |
 | **1.3.3 Sensory Characteristics** | Supports | Instructions do not rely solely on shape, size, visual location, orientation, or sound. Required fields use asterisk + aria-required. Status information uses icons, text, and color. |
-| **1.4.1 Use of Color** | Supports | Color is not used as the only means of conveying information. Error states include icons and text. Success messages include icons and text. Required fields indicated by asterisk and ARIA. |
+| **1.4.1 Use of Color** | Supports | Color is not used as the only means of conveying information. DataTables display plain text without colored badges - all information conveyed through text content alone (e.g., "Active", "Enrolled", "Completed"). Error states include icons and text. Success messages include icons and text. Required fields indicated by asterisk and ARIA. Status information always accompanied by text label. |
 | **1.4.2 Audio Control** | Not Applicable | No auto-playing audio. |
 | **2.1.1 Keyboard** | Supports | All functionality available via keyboard. Tab order is logical. No keyboard traps. Skip link provided. Modal trapping implemented. |
 | **2.1.2 No Keyboard Trap** | Supports | Users can navigate away from all components using standard keyboard commands. Modal dialogs can be closed with Escape key. |
@@ -72,7 +72,7 @@ The terms used in the Conformance Level information are defined as follows:
 | **3.2.1 On Focus** | Supports | Focus does not cause unexpected context changes. Dropdowns require activation (click/Enter), not just focus. |
 | **3.2.2 On Input** | Supports | Changing settings does not cause unexpected context changes. Form inputs do not trigger automatic submission. Changes require explicit "Save" button click. |
 | **3.3.1 Error Identification** | Supports | Validation errors described in text with icon. HTML5 validation provides field-level feedback. Server errors shown in alert banner at top of page. |
-| **3.3.2 Labels or Instructions** | Supports | All form fields have visible labels. Instructions provided. Required fields marked with asterisk and aria-required. Help text provided via aria-describedby. |
+| **3.3.2 Labels or Instructions** | Supports | All form fields have visible labels. Instructions provided. Required fields marked with asterisk and aria-required. Help text provided via aria-describedby. DataTables column filter inputs use aria-label for accessible labeling without visual labels (e.g., "Filter by Term Code", "Filter by Student ID"). All 11 admin pages with DataTables implement consistent filter pattern targeting the second header row for proper event binding. |
 | **4.1.1 Parsing** | Supports | HTML follows proper structure with semantic elements, unique IDs for form controls, and correct nesting. No parsing errors identified during code review. Validated with W3C Markup Validator. |
 | **4.1.2 Name, Role, Value** | Supports | All UI components have proper roles, states, and properties via ARIA attributes. Semantic HTML elements used (button, input, select, table). Modals use role="dialog" with aria-labelledby and aria-hidden. Current page indicated with aria-current="page". |
 
@@ -104,7 +104,7 @@ The terms used in the Conformance Level information are defined as follows:
 | **3.2.4 Consistent Identification** | Supports | Components with same functionality identified consistently. Edit button uses fa-edit icon across all tables. Button color: warning (yellow) for edit action consistently applied. Progressive disclosure pattern: destructive actions (delete, toggle status) accessed via Edit modal. |
 | **3.2.6 Consistent Help** | Supports | Context-sensitive help consistent across pages. Help text positioning consistent (below input fields). Error messages in consistent location (top of page in alert banner). Modal structures consistent. |
 | **3.3.3 Error Suggestion** | Supports | Error messages describe what went wrong and how to fix. HTML5 validation provides specific error messages. Format requirements shown in help text (e.g., "Minimum 8 characters", "e.g., FA2024"). |
-| **3.3.4 Error Prevention (Legal, Financial, Data)** | Supports | Delete actions require confirmation dialog. Important changes require explicit confirmation. Forms can be cancelled without changes being saved. |
+| **3.3.4 Error Prevention (Legal, Financial, Data)** | Supports | Delete actions require enhanced confirmation dialogs with detailed cascade information. Confirmations explicitly list all child records that will be automatically deleted (e.g., "This will also delete: All enrollments, All assessments"). Important changes require explicit confirmation. Forms can be cancelled without changes being saved. Clear Term Data operation warns about comprehensive scope before execution. |
 | **3.3.7 Redundant Entry** | Supports | Information previously entered in same process not required again. Term selection persists across pages via session. Previously entered data retained if validation fails. Edit forms pre-populate with existing data. |
 | **4.1.3 Status Messages** | Supports | Success/error alerts use role="alert" for announcement by screen readers. Messages remain visible until dismissed. Close buttons labeled "Close alert". |
 
@@ -142,7 +142,7 @@ The terms used in the Conformance Level information are defined as follows:
 | **3.1.6 Pronunciation** | Not Applicable | No words requiring pronunciation guidance. |
 | **3.2.5 Change on Request** | Supports | No automatic context changes. All actions require explicit user activation (button clicks, form submissions). |
 | **3.3.5 Help** | Partially Supports | Context-sensitive help text provided for complex fields. Format examples shown. **Limitation:** No comprehensive help system or documentation links within interface yet. |
-| **3.3.6 Error Prevention (All)** | Partially Supports | Delete confirmations provided. Form cancellation available. **Limitation:** No review step before final submission (direct save pattern). |
+| **3.3.6 Error Prevention (All)** | Partially Supports | Enhanced delete confirmations with multi-line detailed information about cascade effects. Each delete dialog lists specific child records that will be automatically removed (e.g., sections, SLOs, enrollments, assessments). Confirmations indicate when related records will be preserved with NULL mapping rather than deleted. Form cancellation available for all edit operations. Clear Term Data includes comprehensive warning modal listing all 8 data types affected. **Limitation:** No review step before final submission (direct save pattern). No undo capability after confirmation. |
 | **3.3.8 Accessible Authentication (Minimum)** | Does Not Support | Username/password authentication requires text entry. No cognitive function test. **Limitation:** No passwordless or biometric authentication options yet. SAML SSO integration planned. |
 | **3.3.9 Accessible Authentication (Enhanced)** | Does Not Support | Authentication requires username/password entry (cognitive burden). No recognition-based authentication. SAML SSO integration planned for future release. |
 
@@ -160,27 +160,30 @@ The MOSAIC Administrative Interface demonstrates strong commitment to accessibil
 - Enhanced touch target sizes (44x44px for all interactive controls including DataTable actions)
 - Motion reduction support (prefers-reduced-motion media query)
 - Enhanced visual presentation (line height, spacing, readable line lengths)
-- Error prevention with confirmation dialogs
+- Enhanced delete confirmations with detailed cascade information and transparent data impact disclosure
 - Enhanced focus appearance (4px solid border, high contrast)
 - Comprehensive keyboard accessibility
 - Consistent navigation and identification patterns
 - Progressive disclosure for destructive actions
+- Plain text display in DataTables (colored badges removed for improved accessibility and readability)
+- Comprehensive DataTables filter functionality across all 11 admin pages with proper ARIA labeling
 
 **Key Accessibility Features:**
 
 1. **Keyboard Navigation:** Complete keyboard accessibility with visible focus indicators, skip links, and logical tab order
 2. **Screen Reader Support:** Semantic HTML, ARIA labels and landmarks, live regions for status messages
-3. **Visual Accessibility:** Enhanced contrast, large touch targets, resizable text to 200%, responsive reflow
+3. **Visual Accessibility:** Enhanced contrast, large touch targets, resizable text to 200%, responsive reflow. Plain text display in DataTables without colored badges for improved readability and color independence.
 4. **Motor Accessibility:** Large touch targets, single-pointer actions, no keyboard traps, no timing requirements for forms
-5. **Cognitive Accessibility:** Clear instructions, consistent UI patterns, confirmation dialogs, error prevention, contextual help
+5. **Cognitive Accessibility:** Clear instructions, consistent UI patterns, enhanced confirmation dialogs with detailed cascade information, comprehensive error prevention, contextual help
 6. **Vestibular Accessibility:** Respect for motion reduction preferences, no auto-playing animations
+7. **Data Table Accessibility:** Consistent filter implementation across all 11 admin pages with proper ARIA labeling (aria-label="Filter by [Column]"), targeting second header row for filter inputs, semantic table markup with proper scope attributes
 
 **Areas Not Meeting AAA (With Rationale):**
 
 1. **Session Timeout (2.2.3):** Required for security in institutional environments managing student data (FERPA compliance)
 2. **Authentication Method (3.3.8, 3.3.9):** Current username/password pattern standard for institutional systems. SAML SSO integration planned for enhanced accessibility
 3. **Terminology (3.1.3, 3.1.5):** Higher education domain terminology necessary for professional users (faculty, staff, administrators)
-4. **Review Step (3.3.6):** Direct save pattern with edit/undo capability more efficient for experienced users. Delete operations require confirmation within Edit modal
+4. **Review Step (3.3.6):** Direct save pattern more efficient for experienced users. Delete operations require enhanced confirmation dialogs with detailed cascade information listing all affected records. No undo capability after deletion is confirmed. Clear Term Data provides comprehensive warning before execution.
 5. **Help System (3.3.5):** Context-sensitive help provided for complex fields. Comprehensive help system planned for future release
 
 **None of these limitations create barriers to access.** All functionality remains fully accessible via keyboard and screen reader, all content is perceivable with sufficient contrast and text alternatives, all operations are understandable with clear labels and feedback, and all components are robust and work with assistive technologies.
@@ -189,9 +192,13 @@ The MOSAIC Administrative Interface demonstrates strong commitment to accessibil
 
 - **Shared Layout:** Header, sidebar navigation, footer (benefits all 14 pages)
 - **Dashboard:** Statistics cards, term selection, quick links
-- **11 CRUD Pages:** Students, Programs, Courses, Terms, Sections, Institutional Outcomes, Program Outcomes, Student Learning Outcomes, Enrollment, Assessments, Users
+- **11 CRUD Pages with DataTables:** Students, Programs, Courses, Terms, Sections, Institutional Outcomes, Program Outcomes, Student Learning Outcomes, Enrollment, Assessments, Users
+  - All DataTables use plain text display (no colored badges)
+  - All DataTables implement consistent filter pattern with aria-label attributes
+  - Filter inputs properly bound to second header row for correct event handling
+  - All tables support keyboard navigation, sorting, and searching
 
-All pages tested with NVDA 2023.3 screen reader, keyboard-only navigation, WAVE automated scanner, and WebAIM contrast checker. Comprehensive accessibility implementation documented in [admin-accessibility-guide.md](admin-accessibility-guide.md).
+All pages tested with NVDA 2023.3 screen reader, keyboard-only navigation, WAVE browser plugin, and WebAIM contrast checker. Comprehensive accessibility implementation documented in [admin-accessibility-guide.md](admin-accessibility-guide.md).
 
 ---
 

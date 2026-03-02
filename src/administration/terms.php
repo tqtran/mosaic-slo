@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         // Copy Programs
                         $programsResult = $db->query(
-                            "SELECT program_code, program_name, degree_type, is_active 
+                            "SELECT programs_pk, program_code, program_name, degree_type, is_active 
                              FROM {$dbPrefix}programs 
                              WHERE term_fk = ?",
                             [$sourceTermPk],
@@ -112,6 +112,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $programs = $programsResult->fetchAll();
                         
                         foreach ($programs as $program) {
+                            $sourceProgramPk = $program['programs_pk'];
+                            
                             // Check if program exists in destination
                             $existingCheck = $db->query(
                                 "SELECT programs_pk FROM {$dbPrefix}programs 
@@ -120,16 +122,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 'is'
                             );
                             $existing = $existingCheck->fetch();
-                            
-                            // Get source program PK first
-                            $sourceProgResult = $db->query(
-                                "SELECT programs_pk FROM {$dbPrefix}programs 
-                                 WHERE term_fk = ? AND program_code = ?",
-                                [$sourceTermPk, $program['program_code']],
-                                'is'
-                            );
-                            $sourceProgRow = $sourceProgResult->fetch();
-                            $sourceProgramPk = $sourceProgRow['programs_pk'];
                             
                             if ($existing) {
                                 // Map to existing program
@@ -250,7 +242,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         
                         $db->query("COMMIT");
-                        $successMessage = "Copied data from '$sourceTermCode' to '$destTermCode': $copiedInstitutionalOutcomes institutional outcomes, $copiedPrograms programs, $copiedProgramOutcomes program outcomes, $copiedCourses courses, $copiedSLOs student learning outcomes";
+                        
+                        $copiedTotal = $copiedInstitutionalOutcomes + $copiedPrograms + $copiedProgramOutcomes + $copiedCourses + $copiedSLOs;
+                        if ($copiedTotal === 0) {
+                            $successMessage = "Copy operation completed from '$sourceTermCode' to '$destTermCode'. No new records were created (all records already exist in destination term).";
+                        } else {
+                            $successMessage = "Copied data from '$sourceTermCode' to '$destTermCode': $copiedInstitutionalOutcomes institutional outcomes, $copiedPrograms programs, $copiedProgramOutcomes program outcomes, $copiedCourses courses, $copiedSLOs student learning outcomes";
+                        }
                     } catch (\Exception $e) {
                         $db->query("ROLLBACK");
                         throw $e;
@@ -417,15 +415,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 // Verify term exists
                 $termCheck = $db->query("SELECT terms_pk FROM {$dbPrefix}terms WHERE term_code = ?", [$termCode], 's');
+                $termRow = $termCheck->fetch();
                 
-                if (!$termCheck->fetch()) {
+                if (!$termRow) {
                     $errorMessage = "Term '$termCode' not found";
                 } else {
+                    $termPk = $termRow['terms_pk'];
+                    
                     // Start transaction
                     $db->query("START TRANSACTION");
                     
                     try {
-                        // Get enrollment IDs for this term
+                        // Initialize counters
+                        $deletedAssessments = 0;
+                        $deletedEnrollments = 0;
+                        $deletedSections = 0;
+                        $deletedSLOs = 0;
+                        $deletedProgramCourses = 0;
+                        $deletedCourses = 0;
+                        $deletedProgramOutcomes = 0;
+                        $deletedPrograms = 0;
+                        $deletedInstitutionalOutcomes = 0;
+                        
+                        // 1. Delete Assessments (via enrollments for this term)
                         $enrollmentsResult = $db->query(
                             "SELECT enrollment_pk FROM {$dbPrefix}enrollment WHERE term_code = ?",
                             [$termCode],
@@ -436,11 +448,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $enrollmentIds[] = $row['enrollment_pk'];
                         }
                         
-                        $deletedAssessments = 0;
-                        $deletedEnrollments = 0;
-                        
                         if (!empty($enrollmentIds)) {
-                            // Delete assessments for these enrollments
                             $placeholders = implode(',', array_fill(0, count($enrollmentIds), '?'));
                             $assessmentCountResult = $db->query(
                                 "SELECT COUNT(*) as total FROM {$dbPrefix}assessments WHERE enrollment_fk IN ($placeholders)",
@@ -450,14 +458,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $countRow = $assessmentCountResult->fetch();
                             $deletedAssessments = $countRow['total'] ?? 0;
                             
-                            $db->query(
-                                "DELETE FROM {$dbPrefix}assessments WHERE enrollment_fk IN ($placeholders)",
-                                $enrollmentIds,
-                                str_repeat('i', count($enrollmentIds))
-                            );
+                            if ($deletedAssessments > 0) {
+                                $db->query(
+                                    "DELETE FROM {$dbPrefix}assessments WHERE enrollment_fk IN ($placeholders)",
+                                    $enrollmentIds,
+                                    str_repeat('i', count($enrollmentIds))
+                                );
+                            }
                         }
                         
-                        // Delete enrollments
+                        // 2. Delete Enrollments
                         $enrollmentCountResult = $db->query(
                             "SELECT COUNT(*) as total FROM {$dbPrefix}enrollment WHERE term_code = ?",
                             [$termCode],
@@ -466,14 +476,168 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $countRow = $enrollmentCountResult->fetch();
                         $deletedEnrollments = $countRow['total'] ?? 0;
                         
-                        $db->query(
-                            "DELETE FROM {$dbPrefix}enrollment WHERE term_code = ?",
-                            [$termCode],
-                            's'
+                        if ($deletedEnrollments > 0) {
+                            $db->query(
+                                "DELETE FROM {$dbPrefix}enrollment WHERE term_code = ?",
+                                [$termCode],
+                                's'
+                            );
+                        }
+                        
+                        // 3. Delete Student Learning Outcomes (for courses in this term)
+                        $sloCountResult = $db->query(
+                            "SELECT COUNT(*) as total FROM {$dbPrefix}student_learning_outcomes slo
+                             INNER JOIN {$dbPrefix}courses c ON slo.course_fk = c.courses_pk
+                             WHERE c.term_fk = ?",
+                            [$termPk],
+                            'i'
                         );
+                        $countRow = $sloCountResult->fetch();
+                        $deletedSLOs = $countRow['total'] ?? 0;
+                        
+                        if ($deletedSLOs > 0) {
+                            $db->query(
+                                "DELETE slo FROM {$dbPrefix}student_learning_outcomes slo
+                                 INNER JOIN {$dbPrefix}courses c ON slo.course_fk = c.courses_pk
+                                 WHERE c.term_fk = ?",
+                                [$termPk],
+                                'i'
+                            );
+                        }
+                        
+                        // 4. Delete Sections (for courses in this term)
+                        $sectionCountResult = $db->query(
+                            "SELECT COUNT(*) as total FROM {$dbPrefix}sections WHERE term_fk = ?",
+                            [$termPk],
+                            'i'
+                        );
+                        $countRow = $sectionCountResult->fetch();
+                        $deletedSections = $countRow['total'] ?? 0;
+                        
+                        if ($deletedSections > 0) {
+                            $db->query(
+                                "DELETE FROM {$dbPrefix}sections WHERE term_fk = ?",
+                                [$termPk],
+                                'i'
+                            );
+                        }
+                        
+                        // 5. Delete Program-Course relationships (for courses in this term)
+                        $programCourseCountResult = $db->query(
+                            "SELECT COUNT(*) as total FROM {$dbPrefix}program_courses pc
+                             INNER JOIN {$dbPrefix}courses c ON pc.course_fk = c.courses_pk
+                             WHERE c.term_fk = ?",
+                            [$termPk],
+                            'i'
+                        );
+                        $countRow = $programCourseCountResult->fetch();
+                        $deletedProgramCourses = $countRow['total'] ?? 0;
+                        
+                        if ($deletedProgramCourses > 0) {
+                            $db->query(
+                                "DELETE pc FROM {$dbPrefix}program_courses pc
+                                 INNER JOIN {$dbPrefix}courses c ON pc.course_fk = c.courses_pk
+                                 WHERE c.term_fk = ?",
+                                [$termPk],
+                                'i'
+                            );
+                        }
+                        
+                        // 6. Delete Courses
+                        $courseCountResult = $db->query(
+                            "SELECT COUNT(*) as total FROM {$dbPrefix}courses WHERE term_fk = ?",
+                            [$termPk],
+                            'i'
+                        );
+                        $countRow = $courseCountResult->fetch();
+                        $deletedCourses = $countRow['total'] ?? 0;
+                        
+                        if ($deletedCourses > 0) {
+                            $db->query(
+                                "DELETE FROM {$dbPrefix}courses WHERE term_fk = ?",
+                                [$termPk],
+                                'i'
+                            );
+                        }
+                        
+                        // 7. Delete Program Outcomes (for programs in this term)
+                        $programOutcomeCountResult = $db->query(
+                            "SELECT COUNT(*) as total FROM {$dbPrefix}program_outcomes po
+                             INNER JOIN {$dbPrefix}programs p ON po.program_fk = p.programs_pk
+                             WHERE p.term_fk = ?",
+                            [$termPk],
+                            'i'
+                        );
+                        $countRow = $programOutcomeCountResult->fetch();
+                        $deletedProgramOutcomes = $countRow['total'] ?? 0;
+                        
+                        if ($deletedProgramOutcomes > 0) {
+                            $db->query(
+                                "DELETE po FROM {$dbPrefix}program_outcomes po
+                                 INNER JOIN {$dbPrefix}programs p ON po.program_fk = p.programs_pk
+                                 WHERE p.term_fk = ?",
+                                [$termPk],
+                                'i'
+                            );
+                        }
+                        
+                        // 8. Delete Programs
+                        $programCountResult = $db->query(
+                            "SELECT COUNT(*) as total FROM {$dbPrefix}programs WHERE term_fk = ?",
+                            [$termPk],
+                            'i'
+                        );
+                        $countRow = $programCountResult->fetch();
+                        $deletedPrograms = $countRow['total'] ?? 0;
+                        
+                        if ($deletedPrograms > 0) {
+                            $db->query(
+                                "DELETE FROM {$dbPrefix}programs WHERE term_fk = ?",
+                                [$termPk],
+                                'i'
+                            );
+                        }
+                        
+                        // 9. Delete Institutional Outcomes
+                        $ioCountResult = $db->query(
+                            "SELECT COUNT(*) as total FROM {$dbPrefix}institutional_outcomes WHERE term_fk = ?",
+                            [$termPk],
+                            'i'
+                        );
+                        $countRow = $ioCountResult->fetch();
+                        $deletedInstitutionalOutcomes = $countRow['total'] ?? 0;
+                        
+                        if ($deletedInstitutionalOutcomes > 0) {
+                            $db->query(
+                                "DELETE FROM {$dbPrefix}institutional_outcomes WHERE term_fk = ?",
+                                [$termPk],
+                                'i'
+                            );
+                        }
                         
                         $db->query("COMMIT");
-                        $successMessage = "Cleared data for term '$termCode': $deletedEnrollments enrollments, $deletedAssessments assessments deleted";
+                        
+                        // Build success message
+                        $totalDeleted = $deletedAssessments + $deletedEnrollments + $deletedSections + $deletedSLOs + 
+                                       $deletedProgramCourses + $deletedCourses + $deletedProgramOutcomes + 
+                                       $deletedPrograms + $deletedInstitutionalOutcomes;
+                        
+                        if ($totalDeleted === 0) {
+                            $successMessage = "Clear operation completed for term '$termCode'. No data found to delete.";
+                        } else {
+                            $details = [];
+                            if ($deletedAssessments > 0) $details[] = "$deletedAssessments assessments";
+                            if ($deletedEnrollments > 0) $details[] = "$deletedEnrollments enrollments";
+                            if ($deletedSections > 0) $details[] = "$deletedSections sections";
+                            if ($deletedSLOs > 0) $details[] = "$deletedSLOs SLOs";
+                            if ($deletedProgramCourses > 0) $details[] = "$deletedProgramCourses program-course links";
+                            if ($deletedCourses > 0) $details[] = "$deletedCourses courses";
+                            if ($deletedProgramOutcomes > 0) $details[] = "$deletedProgramOutcomes program outcomes";
+                            if ($deletedPrograms > 0) $details[] = "$deletedPrograms programs";
+                            if ($deletedInstitutionalOutcomes > 0) $details[] = "$deletedInstitutionalOutcomes institutional outcomes";
+                            
+                            $successMessage = "Cleared data for term '$termCode': " . implode(', ', $details) . " deleted";
+                        }
                     } catch (\Exception $e) {
                         $db->query("ROLLBACK");
                         throw $e;
@@ -483,6 +647,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } catch (\Exception $e) {
         $errorMessage = 'Error: ' . $e->getMessage();
+        // Log the error for debugging
+        error_log("Terms page error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
     }
 }
 
@@ -529,6 +695,13 @@ $theme->showHeader($context);
 <!-- DataTables CSS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+<style>
+    .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+</style>
 
 <div class="app-content-header">
     <div class="container-fluid">
@@ -593,14 +766,14 @@ $theme->showHeader($context);
                             <th scope="col">Actions</th>
                         </tr>
                         <tr>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -615,7 +788,7 @@ $theme->showHeader($context);
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="addTermModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Term</h5>
+                <span class="modal-title" id="addTermModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Term</span>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
@@ -659,10 +832,13 @@ $theme->showHeader($context);
                         </div>
                     </div>
                     
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="is_active" name="is_active" checked>
-                        <label class="form-check-label" for="is_active">Active</label>
-                    </div>
+                    <fieldset class="mb-3">
+                        <legend class="h6">Status</legend>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="is_active" name="is_active" checked>
+                            <label class="form-check-label" for="is_active">Active</label>
+                        </div>
+                    </fieldset>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -678,7 +854,7 @@ $theme->showHeader($context);
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="editTermModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Term</h5>
+                <span class="modal-title" id="editTermModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Term</span>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
@@ -722,14 +898,26 @@ $theme->showHeader($context);
                         </div>
                     </div>
                     
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="edit_is_active" name="is_active">
-                        <label class="form-check-label" for="edit_is_active">Active</label>
-                    </div>
+                    <fieldset class="mb-3">
+                        <legend class="h6">Status</legend>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="edit_is_active" name="is_active">
+                            <label class="form-check-label" for="edit_is_active">Active</label>
+                        </div>
+                    </fieldset>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save Changes</button>
+                <div class="modal-footer d-flex justify-content-between">
+                    <!-- LEFT SIDE: Destructive Actions -->
+                    <div>
+                        <button type="button" class="btn btn-danger" onclick="confirmDeleteTerm()" aria-label="Delete term">
+                            <i class="fas fa-trash" aria-hidden="true"></i> Delete
+                        </button>
+                    </div>
+                    <!-- RIGHT SIDE: Primary Actions -->
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Save Changes</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -755,10 +943,9 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title"><i class="fas fa-copy"></i> Copy Term Data</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <span class="modal-title"><i class="fas fa-copy"></i> Copy Term Data</span>
             </div>
-            <form method="POST">
+            <form method="POST" action="<?= htmlspecialchars($_SERVER['PHP_SELF']) ?>">
                 <div class="modal-body">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="action" value="copy_term_data">
@@ -818,10 +1005,9 @@ $theme->showHeader($context);
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="fas fa-trash"></i> Clear Term Data</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <span class="modal-title"><i class="fas fa-trash"></i> Clear Term Data</span>
             </div>
-            <form method="POST">
+            <form method="POST" action="<?= htmlspecialchars($_SERVER['PHP_SELF']) ?>">
                 <div class="modal-body">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                     <input type="hidden" name="action" value="clear_term_data">
@@ -839,12 +1025,18 @@ $theme->showHeader($context);
                     </div>
                     
                     <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle"></i> <strong>WARNING:</strong> This will permanently delete:
+                        <i class="fas fa-exclamation-triangle"></i> <strong>WARNING:</strong> This will permanently delete ALL data for this term:
                         <ul class="mb-0 mt-2">
-                            <li>All enrollments for this term</li>
-                            <li>All assessments for this term's enrollments</li>
+                            <li>All assessments</li>
+                            <li>All enrollments</li>
+                            <li>All sections</li>
+                            <li>All student learning outcomes (SLOs)</li>
+                            <li>All courses</li>
+                            <li>All program outcomes (PSLOs)</li>
+                            <li>All programs</li>
+                            <li>All institutional outcomes (ISLOs)</li>
                         </ul>
-                        <p class="mb-0 mt-2"><strong>This action cannot be undone!</strong></p>
+                        <p class="mb-0 mt-2"><strong>This action cannot be undone! The term record itself will remain.</strong></p>
                     </div>
                     
                     <div class="mb-3">
@@ -879,10 +1071,10 @@ $theme->showHeader($context);
 <script>
 $(document).ready(function() {
     // Setup - add a text input to each header cell (second row)
-    $('#termsTable thead tr:eq(1) th').each(function(i) {
+    $('#termsTable thead tr:eq(1) td').each(function(i) {
         var title = $('#termsTable thead tr:eq(0) th:eq(' + i + ')').text();
         if (title !== 'Actions' && title !== 'ID') {
-            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" aria-label="Filter by ' + title + '" />');
         } else {
             $(this).html('');
         }
@@ -891,8 +1083,8 @@ $(document).ready(function() {
     var table = $('#termsTable').DataTable({
         processing: true,
         serverSide: true,
-        ajax: 'terms_data.php',
-        dom: 'Bfrtip',
+        ajax: '<?= BASE_URL ?>administration/terms_data.php',
+        dom: 'Brtip',
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
         order: [[0, 'desc']],
         pageLength: 25,
@@ -905,10 +1097,12 @@ $(document).ready(function() {
             searchPlaceholder: "Search terms..."
         },
         initComplete: function() {
-            // Apply the search
-            this.api().columns().every(function() {
+            // Apply the search - target the second header row where filters are
+            var api = this.api();
+            api.columns().every(function(colIdx) {
                 var column = this;
-                $('input', this.header()).on('keyup change clear', function() {
+                // Find input in the second header row (tr:eq(1)) for this column
+                $('input', $('#termsTable thead tr:eq(1) td').eq(colIdx)).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -942,5 +1136,11 @@ function deleteTerm(id, termCode) {
         $('#delete_terms_pk').val(id);
         $('#deleteForm').submit();
     }
+}
+
+function confirmDeleteTerm() {
+    const termPk = $('#edit_terms_pk').val();
+    const termCode = $('#edit_term_code').val();
+    deleteTerm(termPk, termCode);
 }
 </script>

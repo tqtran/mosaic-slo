@@ -18,6 +18,7 @@ $params = getDataTablesParams();
 // Define searchable columns
 $searchableColumns = [
     'p.programs_pk',
+    't.term_name',
     't.term_code',
     'p.program_code',
     'p.program_name',
@@ -27,7 +28,7 @@ $searchableColumns = [
 // Column definitions for ordering (must match DataTables column order)
 $columns = [
     'p.programs_pk',
-    't.term_code',
+    't.term_name',
     'p.program_code',
     'p.program_name',
     'p.degree_type',
@@ -48,21 +49,49 @@ if ($orderColumn === 'actions') {
 // Build WHERE clause
 $whereParams = [];
 $whereTypes = '';
-$whereClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
+$whereConditions = [];
 
-// Add column-specific searches
-$columnConditions = buildColumnSearchWhere($params['columnSearches'], $columns, $whereParams, $whereTypes);
-if (!empty($columnConditions)) {
-    if (!empty($whereClause)) {
-        $whereClause .= ' AND ' . implode(' AND ', $columnConditions);
-    } else {
-        $whereClause = implode(' AND ', $columnConditions);
+// Global search
+if (!empty($params['search'])) {
+    $searchClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
+    if (!empty($searchClause)) {
+        $whereConditions[] = $searchClause;
     }
 }
 
-if (!empty($whereClause)) {
-    $whereClause = "WHERE {$whereClause}";
+// Add column-specific searches with special handling for is_active and term
+foreach ($params['columnSearches'] as $columnIndex => $searchValue) {
+    if (!isset($columns[$columnIndex]) || empty($searchValue)) {
+        continue;
+    }
+    
+    $columnName = $columns[$columnIndex];
+    
+    // Special handling for is_active column
+    if ($columnName === 'p.is_active') {
+        // Check if searching for inactive (starts with 'in' or equals 'inactive')
+        if (stripos($searchValue, 'inact') === 0 || strtolower($searchValue) === 'inactive') {
+            $activeValue = 0;
+        } else {
+            $activeValue = 1;
+        }
+        $whereConditions[] = "p.is_active = ?";
+        $whereParams[] = $activeValue;
+        $whereTypes .= 'i';
+    // Special handling for term column - search both term_name and term_code
+    } elseif ($columnName === 't.term_name') {
+        $whereConditions[] = "(t.term_name LIKE ? OR t.term_code LIKE ?)";
+        $whereParams[] = "%{$searchValue}%";
+        $whereParams[] = "%{$searchValue}%";
+        $whereTypes .= 'ss';
+    } elseif ($columnName !== 'actions') {
+        $whereConditions[] = "{$columnName} LIKE ?";
+        $whereParams[] = "%{$searchValue}%";
+        $whereTypes .= 's';
+    }
 }
+
+$whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
 
 // Get total records (without filtering)
 $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}programs");
@@ -131,11 +160,11 @@ try {
         
         $data[] = [
             htmlspecialchars((string)$row['programs_pk']),
-            '<span class="badge bg-info">' . htmlspecialchars($row['term_code'] ?? 'N/A') . '</span>',
-            '<span class="badge bg-primary">' . htmlspecialchars($row['program_code']) . '</span>',
+            htmlspecialchars($row['term_name'] ?? 'N/A'),
+            htmlspecialchars($row['program_code']),
             htmlspecialchars($row['program_name']),
             htmlspecialchars($row['degree_type'] ?? ''),
-            '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
+            $status,
             htmlspecialchars($row['created_at'] ?? ''),
             htmlspecialchars(trim($row['created_by_name'] ?? '') ?: 'System'),
             htmlspecialchars($row['updated_at'] ?? ''),

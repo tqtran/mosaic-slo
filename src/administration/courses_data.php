@@ -39,21 +39,43 @@ if ($orderColumn === 'actions') {
 
 $whereParams = [];
 $whereTypes = '';
-$whereClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
+$whereConditions = [];
 
-// Add column-specific searches
-$columnConditions = buildColumnSearchWhere($params['columnSearches'], $columns, $whereParams, $whereTypes);
-if (!empty($columnConditions)) {
-    if (!empty($whereClause)) {
-        $whereClause .= ' AND ' . implode(' AND ', $columnConditions);
-    } else {
-        $whereClause = implode(' AND ', $columnConditions);
+// Global search
+if (!empty($params['search'])) {
+    $searchClause = buildSearchWhere($params['search'], $searchableColumns, $whereParams, $whereTypes);
+    if (!empty($searchClause)) {
+        $whereConditions[] = $searchClause;
     }
 }
 
-if (!empty($whereClause)) {
-    $whereClause = "WHERE {$whereClause}";
+// Add column-specific searches with special handling for is_active
+foreach ($params['columnSearches'] as $columnIndex => $searchValue) {
+    if (!isset($columns[$columnIndex]) || empty($searchValue)) {
+        continue;
+    }
+    
+    $columnName = $columns[$columnIndex];
+    
+    // Special handling for is_active column
+    if ($columnName === 'c.is_active') {
+        // Check if searching for inactive (starts with 'in' or equals 'inactive')
+        if (stripos($searchValue, 'inact') === 0 || strtolower($searchValue) === 'inactive') {
+            $activeValue = 0;
+        } else {
+            $activeValue = 1;
+        }
+        $whereConditions[] = "c.is_active = ?";
+        $whereParams[] = $activeValue;
+        $whereTypes .= 'i';
+    } elseif ($columnName !== 'actions') {
+        $whereConditions[] = "{$columnName} LIKE ?";
+        $whereParams[] = "%{$searchValue}%";
+        $whereTypes .= 's';
+    }
 }
+
+$whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
 
 $totalResult = $db->query("SELECT COUNT(*) as total FROM {$dbPrefix}courses");
 $totalRow = $totalResult->fetch();
@@ -116,10 +138,10 @@ try {
         
         $data[] = [
             htmlspecialchars((string)$row['courses_pk']),
-            '<span class="badge bg-info">' . htmlspecialchars($row['term_code'] ?? 'N/A') . '</span>',
-            '<span class="badge bg-primary">' . htmlspecialchars($row['course_number']) . '</span>',
+            htmlspecialchars($row['term_code'] ?? 'N/A'),
+            htmlspecialchars($row['course_number']),
             htmlspecialchars($row['course_name']),
-            '<span class="badge bg-' . $statusClass . '">' . $status . '</span>',
+            $status,
             htmlspecialchars($row['created_at'] ?? ''),
             htmlspecialchars(trim($row['created_by_name'] ?? '') ?: 'System'),
             htmlspecialchars($row['updated_at'] ?? ''),

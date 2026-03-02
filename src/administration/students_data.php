@@ -119,9 +119,7 @@ try {
 
     $data = [];
     while ($row = $result->fetch()) {
-        $statusBadge = $row['is_active'] ? 
-            '<span class="badge bg-success">Active</span>' : 
-            '<span class="badge bg-secondary">Inactive</span>';
+        $statusBadge = $row['is_active'] ? 'Active' : 'Inactive';
         
         $rowData = json_encode($row);
         $escapedStudentId = htmlspecialchars($row['student_id'] ?? '', ENT_QUOTES);
@@ -133,7 +131,7 @@ try {
         ';
         
         $data[] = [
-            '<span class="badge bg-secondary">' . htmlspecialchars((string)$row['students_pk']) . '</span>',
+            htmlspecialchars((string)$row['students_pk']),
             htmlspecialchars($row['student_id'] ?? ''),
             htmlspecialchars($row['first_name'] ?? ''),
             htmlspecialchars($row['last_name'] ?? ''),

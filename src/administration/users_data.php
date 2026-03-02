@@ -109,9 +109,7 @@ $result = $db->query($dataQuery, $params, $types);
 
 $data = [];
 while ($row = $result->fetch()) {
-    $statusBadge = $row['is_active'] == 1 
-        ? '<span class="badge bg-success">Active</span>' 
-        : '<span class="badge bg-warning">Inactive</span>';
+    $statusBadge = $row['is_active'] == 1 ? 'Active' : 'Inactive';
     
     $fullName = htmlspecialchars($row['full_name']);
     

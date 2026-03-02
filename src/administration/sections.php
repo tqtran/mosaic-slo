@@ -189,24 +189,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'delete':
                 $id = (int)($_POST['section_id'] ?? 0);
                 if ($id > 0) {
-                    // Check if section has associated enrollments
-                    $checkResult = $db->query(
-                        "SELECT COUNT(*) as count FROM {$dbPrefix}enrollment WHERE crn IN (SELECT crn FROM {$dbPrefix}sections WHERE sections_pk = ?)",
+                    // Get section CRN before deletion
+                    $sectionResult = $db->query(
+                        "SELECT crn FROM {$dbPrefix}sections WHERE sections_pk = ?",
                         [$id],
                         'i'
                     );
-                    $checkRow = $checkResult->fetch();
+                    $section = $sectionResult->fetch();
                     
-                    if ($checkRow['count'] > 0) {
-                        $errorMessage = 'Cannot delete section: it has associated enrollments. Please remove enrollments first.';
-                    } else {
+                    if ($section && !empty($section['crn'])) {
+                        // Cascade delete enrollments (which cascades assessments)
                         $db->query(
-                            "DELETE FROM {$dbPrefix}sections WHERE sections_pk = ?",
-                            [$id],
-                            'i'
+                            "DELETE FROM {$dbPrefix}enrollment WHERE crn = ?",
+                            [$section['crn']],
+                            's'
                         );
-                        $successMessage = 'Section deleted successfully';
                     }
+                    
+                    // Delete the section
+                    $db->query(
+                        "DELETE FROM {$dbPrefix}sections WHERE sections_pk = ?",
+                        [$id],
+                        'i'
+                    );
+                    $successMessage = 'Section deleted successfully (including all enrollments and assessments)';
                 }
                 break;
                 
@@ -443,6 +449,13 @@ $theme->showHeader($context);
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 
+<style>
+    .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+</style>
+
 <div class="app-content-header">
     <div class="container-fluid">
         <div class="row">
@@ -535,7 +548,7 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="addSectionModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Section</h5>
+                <span class="modal-title" id="addSectionModalLabel"><i class="fas fa-plus" aria-hidden="true"></i> Add Section</span>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
@@ -587,10 +600,13 @@ $theme->showHeader($context);
                             <input type="number" class="form-control" id="maxEnrollment" name="max_enrollment" min="1">
                         </div>
                     </div>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
-                        <label class="form-check-label" for="isActive">Active</label>
-                    </div>
+                    <fieldset class="mb-3">
+                        <legend class="h6">Status</legend>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
+                            <label class="form-check-label" for="isActive">Active</label>
+                        </div>
+                    </fieldset>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -606,7 +622,7 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="editSectionModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Section</h5>
+                <span class="modal-title" id="editSectionModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit Section</span>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
             </div>
             <form method="POST">
@@ -657,14 +673,26 @@ $theme->showHeader($context);
                             <input type="number" class="form-control" id="editMaxEnrollment" name="max_enrollment" min="1">
                         </div>
                     </div>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
-                        <label class="form-check-label" for="editIsActive">Active</label>
-                    </div>
+                    <fieldset class="mb-3">
+                        <legend class="h6">Status</legend>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
+                            <label class="form-check-label" for="editIsActive">Active</label>
+                        </div>
+                    </fieldset>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
+                <div class="modal-footer d-flex justify-content-between">
+                    <!-- LEFT SIDE: Destructive Actions -->
+                    <div>
+                        <button type="button" class="btn btn-danger" onclick="confirmDeleteSection()" aria-label="Delete section">
+                            <i class="fas fa-trash" aria-hidden="true"></i> Delete
+                        </button>
+                    </div>
+                    <!-- RIGHT SIDE: Primary Actions -->
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -676,8 +704,7 @@ $theme->showHeader($context);
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="fas fa-eye"></i> Section Details</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <span class="modal-title"><i class="fas fa-eye"></i> Section Details</span>
             </div>
             <div class="modal-body">
                 <div class="row mb-3">
@@ -734,8 +761,7 @@ $theme->showHeader($context);
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-file-upload"></i> Import Sections</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <span class="modal-title"><i class="fas fa-file-upload"></i> Import Sections</span>
             </div>
             <form method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
@@ -799,7 +825,7 @@ $(document).ready(function() {
                 d.status = $('#statusFilter').val();
             }
         },
-        dom: 'Bfrtip',
+        dom: 'Brtip',
         buttons: [
             'copy', 'csv', 'excel', 'pdf', 'print'
         ],
@@ -853,9 +879,15 @@ function toggleStatus(id, name) {
 }
 
 function deleteSection(id, name) {
-    if (confirm('Are you sure you want to DELETE section "' + name + '"? This action cannot be undone.')) {
+    if (confirm('Are you sure you want to DELETE section "' + name + '"?\n\nThis will also delete:\n- All enrollments for this section\n- All assessments for this section\n\nThis action cannot be undone.')) {
         $('#deleteSectionId').val(id);
         $('#deleteForm').submit();
     }
+}
+
+function confirmDeleteSection() {
+    const sectionPk = $('#editSectionId').val();
+    const crn = $('#editCrn').val();
+    deleteSection(sectionPk, crn);
 }
 </script>

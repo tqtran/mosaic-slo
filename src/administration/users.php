@@ -209,6 +209,13 @@ $theme->showHeader($context);
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 
+<style>
+    .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+</style>
+
 <div class="app-content-header">
     <div class="container-fluid">
         <div class="row">
@@ -261,11 +268,11 @@ $theme->showHeader($context);
                             <th scope="col">Actions</th>
                         </tr>
                         <tr>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
-                            <th></th>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
                         </tr>
                     </thead>
                 </table>
@@ -282,7 +289,7 @@ $theme->showHeader($context);
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token']) ?>">
                 <input type="hidden" name="action" value="add">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="addUserModalLabel"><i class="fas fa-user-plus" aria-hidden="true"></i> Add User</h5>
+                    <span class="modal-title" id="addUserModalLabel"><i class="fas fa-user-plus" aria-hidden="true"></i> Add User</span>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close dialog"></button>
                 </div>
                 <div class="modal-body">
@@ -299,10 +306,13 @@ $theme->showHeader($context);
                         <input type="password" class="form-control" id="password" name="password" required aria-required="true" minlength="8" aria-describedby="passwordHelp">
                         <small id="passwordHelp" class="form-text text-muted">Minimum 8 characters</small>
                     </div>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
-                        <label class="form-check-label" for="isActive">Active</label>
-                    </div>
+                    <fieldset class="mb-3">
+                        <legend class="h6">Status</legend>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
+                            <label class="form-check-label" for="isActive">Active</label>
+                        </div>
+                    </fieldset>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -322,7 +332,7 @@ $theme->showHeader($context);
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="users_pk" id="editUserPk">
                 <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title" id="editUserModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit User</h5>
+                    <span class="modal-title" id="editUserModalLabel"><i class="fas fa-edit" aria-hidden="true"></i> Edit User</span>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close dialog"></button>
                 </div>
                 <div class="modal-body">
@@ -339,14 +349,26 @@ $theme->showHeader($context);
                         <input type="password" class="form-control" id="editPassword" name="password" minlength="8" aria-describedby="editPasswordHelp">
                         <small id="editPasswordHelp" class="form-text text-muted">Leave blank to keep existing password. Minimum 8 characters if changing.</small>
                     </div>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
-                        <label class="form-check-label" for="editIsActive">Active</label>
-                    </div>
+                    <fieldset class="mb-3">
+                        <legend class="h6">Status</legend>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
+                            <label class="form-check-label" for="editIsActive">Active</label>
+                        </div>
+                    </fieldset>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
+                <div class="modal-footer d-flex justify-content-between">
+                    <!-- LEFT SIDE: Destructive Actions -->
+                    <div>
+                        <button type="button" class="btn btn-danger" onclick="confirmDeleteUser()" aria-label="Delete user">
+                            <i class="fas fa-trash" aria-hidden="true"></i> Delete
+                        </button>
+                    </div>
+                    <!-- RIGHT SIDE: Primary Actions -->
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary"><i class="fas fa-save" aria-hidden="true"></i> Update</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -386,7 +408,7 @@ $(document).ready(function() {
     $('#usersTable thead tr:eq(1) th').each(function(i) {
         var title = $('#usersTable thead tr:eq(0) th:eq(' + i + ')').text();
         if (title !== 'Actions' && title !== 'ID') {
-            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" />');
+            $(this).html('<input type="text" class="form-control form-control-sm" placeholder="Search ' + title + '" aria-label="Filter by ' + title + '" />');
         } else {
             $(this).html('');
         }
@@ -397,7 +419,7 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: '<?= BASE_URL ?>administration/users_data.php',
-        dom: 'Bfrtip',
+        dom: 'Brtip',
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
         columns: [
             { data: 0, name: 'users_pk' },
@@ -407,9 +429,12 @@ $(document).ready(function() {
             { data: 4, name: 'actions', orderable: false, searchable: false }
         ],
         initComplete: function() {
-            this.api().columns().every(function() {
+            // Apply the search - target the second header row where filters are
+            var api = this.api();
+            api.columns().every(function(colIdx) {
                 var column = this;
-                $('input', this.header()).on('keyup change clear', function() {
+                // Find input in the second header row (tr:eq(1)) for this column
+                $('input', $('#usersTable thead tr:eq(1) td').eq(colIdx)).on('keyup change clear', function() {
                     if (column.search() !== this.value) {
                         column.search(this.value).draw();
                     }
@@ -440,5 +465,11 @@ function deleteUser(id, name) {
         $('#deleteUserPk').val(id);
         $('#deleteForm').submit();
     }
+}
+
+function confirmDeleteUser() {
+    const userPk = $('#editUserPk').val();
+    const fullName = $('#editFullName').val();
+    deleteUser(userPk, fullName);
 }
 </script>

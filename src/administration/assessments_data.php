@@ -149,9 +149,7 @@ $result = $db->query($sql, $params, $types);
 
 $data = [];
 while ($row = $result->fetch()) {
-    $statusBadge = $row['is_finalized'] ? 
-        '<span class="badge bg-success">Finalized</span>' : 
-        '<span class="badge bg-secondary">Draft</span>';
+    $statusBadge = $row['is_finalized'] ? 'Finalized' : 'Draft';
     
     $studentName = htmlspecialchars($row['last_name']) . ', ' . htmlspecialchars($row['first_name']);
     $sloDisplay = htmlspecialchars($row['slo_code']);

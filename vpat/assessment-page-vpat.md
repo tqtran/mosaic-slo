@@ -10,7 +10,7 @@
 **Product Description:** LTI-integrated Student Learning Outcome assessment interface for instructors to evaluate student achievement levels  
 **Date of Evaluation:** February 28, 2026  
 **Contact Information:** MOSAIC Project Team  
-**Evaluation Methods Used:** Manual code review, automated accessibility testing, keyboard navigation testing, screen reader testing  
+**Evaluation Methods Used:** Manual code review, automated accessibility testing (WAVE browser plugin), keyboard navigation testing, screen reader testing  
 **Notes:** This VPAT documents conformance to WCAG 2.2 (October 2023) at Level A, Level AA, and partial Level AAA.
 
 ---

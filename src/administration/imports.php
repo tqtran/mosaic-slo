@@ -867,14 +867,14 @@ $theme->showHeader($context);
         <div class="container-fluid">
             <?php if ($successMessage): ?>
                 <div class="alert alert-success alert-dismissible fade show">
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
                     <?= $successMessage ?>
                 </div>
             <?php endif; ?>
             
             <?php if ($errorMessage): ?>
                 <div class="alert alert-danger alert-dismissible fade show">
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close alert"></button>
                     <?= $errorMessage ?>
                 </div>
             <?php endif; ?>
@@ -913,7 +913,7 @@ $theme->showHeader($context);
                     <div class="tab-content">
                         <!-- ISLO Import -->
                         <div class="tab-pane fade <?= $activeTab === 'islo' ? 'show active' : '' ?>" id="islo-tab" role="tabpanel">
-                            <h4>Import Institutional Student Learning Outcomes</h4>
+                            <h2>Import Institutional Student Learning Outcomes</h2>
                             <p>Upload a CSV file with ISLO data. Format: One outcome per line (outcome description only)</p>
                             
                             <form method="post" enctype="multipart/form-data" class="mt-3">
@@ -934,7 +934,7 @@ $theme->showHeader($context);
                         
                         <!-- PSLO Import -->
                         <div class="tab-pane fade <?= $activeTab === 'pslo' ? 'show active' : '' ?>" id="pslo-tab" role="tabpanel">
-                            <h4>Import Program Student Learning Outcomes</h4>
+                            <h2>Import Program Student Learning Outcomes</h2>
                             <p>Upload a CSV file with PSLO data. Format: Program Code, Program, seq, PSLOID, Program Outcome</p>
                             
                             <form method="post" enctype="multipart/form-data" class="mt-3">
@@ -955,7 +955,7 @@ $theme->showHeader($context);
                         
                         <!-- CSLO Import -->
                         <div class="tab-pane fade <?= $activeTab === 'cslo' ? 'show active' : '' ?>" id="cslo-tab" role="tabpanel">
-                            <h4>Import Course Student Learning Outcomes</h4>
+                            <h2>Import Course Student Learning Outcomes</h2>
                             <p>Upload a CSV file with CSLO data. Format: CRS ID, CRS TITLE, CSLO</p>
                             
                             <form method="post" enctype="multipart/form-data" class="mt-3">
@@ -975,7 +975,7 @@ $theme->showHeader($context);
                         
                         <!-- PSLO Mapping Import -->
                         <div class="tab-pane fade <?= $activeTab === 'pslo-map' ? 'show active' : '' ?>" id="pslo-map-tab" role="tabpanel">
-                            <h4>Import Program-Course Mappings</h4>
+                            <h2>Import Program-Course Mappings</h2>
                             <p>Upload a CSV file to map courses to programs. Format: ProgramID, Program, Course</p>
                             
                             <form method="post" enctype="multipart/form-data" class="mt-3">
@@ -995,7 +995,7 @@ $theme->showHeader($context);
                         
                         <!-- Enrollment Import -->
                         <div class="tab-pane fade <?= $activeTab === 'enrollment' ? 'show active' : '' ?>" id="enrollment-tab" role="tabpanel">
-                            <h4>Import Enrollment Data</h4>
+                            <h2>Import Enrollment Data</h2>
                             <p>Upload a CSV file with enrollment data. Format: BannerTerm, TermCode, StudentID, SectionID, FirstName, LastName, PartofTerm, Discipline, CourseID</p>
                             
                             <form method="post" enctype="multipart/form-data" class="mt-3">
